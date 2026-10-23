@@ -1,0 +1,15 @@
+{
+  "grammars": [
+    {
+      "name": "fuse",
+      "camelcase": "Fuse",
+      "scope": "source.fuse",
+      "file-types": [],
+      "injection-regex": "^fuse$"
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "MIT"
+  }
+}

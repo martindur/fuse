@@ -1,0 +1,9 @@
+Extracted from pipegl
+Source revision: bb3794830df9b41ae5475cd3370a8d06fddbd7a3
+
+Frontend: src/lang (excluding catalog)
+LSP and private JSON: src/matterbox/lsp.*, src/matterbox/json.*
+Grammar: tree-sitter-pipe
+Tests: frontend and JSON tests from tests/
+
+The original repository retains its sources and legacy workspace.
