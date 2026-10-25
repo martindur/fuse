@@ -1,0 +1,86 @@
+.TH FUSETEX 1 "October 2026" "Fuse" "User Commands"
+.SH NAME
+fusetex \- evaluate FuseTex source and write a PNG image
+.SH SYNOPSIS
+.B fusetex
+[\fB--width\fR \fIN\fR] [\fB--height\fR \fIN\fR] [\fB--seed\fR \fIN\fR]
+[\fB--preview-line\fR \fIN\fR]
+.br
+.B fusetex
+[\fB--builtins\fR]
+.br
+.B fusetex lsp
+.SH DESCRIPTION
+.B fusetex
+reads one FuseTex program from standard input and writes a PNG image to
+standard output. The final program result must be a \fBvec4\fR. Intermediate
+preview lines may produce a scalar or vector value and are visualized by the
+renderer.
+.SH COMMANDS
+.TP
+.B lsp
+Run the capability language server over JSON-RPC on standard input and output.
+It provides diagnostics, receiver-aware completion, and hover documentation.
+.SH OPTIONS
+.TP
+.BI --width " N"
+Set the output width in pixels. The default is 256.
+.TP
+.BI --height " N"
+Set the output height in pixels. The default is 256.
+.TP
+.BI --seed " N"
+Set the deterministic seed used by \fBnoise\fR. The default is 0.
+.TP
+.BI --preview-line " N"
+Render the intermediate result selected by source line \fIN\fR.
+.TP
+.B --builtins
+Print all FuseTex function signatures, globals, and their descriptions.
+.TP
+.B -h, --help
+Print a short usage guide.
+.SH LANGUAGE API
+FuseTex uses dot calls for pipeline stages. The value on the left is passed as
+the first argument to the next function.
+.PP
+.nf
+center(vec2) -> vec2       aspect(vec2) -> vec2
+add(float, float) -> float
+add(vec2, vec2) -> vec2
+multiply(float, float) -> float
+multiply(vec2, float) -> vec2
+sin(float) -> float         cos(float) -> float
+abs(float) -> float         floor(float) -> float
+fract(float) -> float       length(vec2) -> float
+dot(vec2, vec2) -> float
+smoothstep(float, float, float) -> float
+noise(vec2) -> float
+noise(vec2, vec2) -> float
+vec2(float, float) -> vec2
+vec3(float, float, float) -> vec3
+vec4(vec2, float, float) -> vec4
+vec4(vec3, float) -> vec4
+vec4(float, float, float, float) -> vec4
+rgb(float, float, float) -> vec3
+colorize(float, vec3) -> vec4
+.fi
+.PP
+.B uv
+is the normalized coordinate of the current texture pixel.
+\fBresolution\fR is the output size in pixels.
+.PP
+\fBnoise\fR generates seeded improved Perlin noise in the [0, 1] range. Its
+optional second argument is a period in noise-coordinate units and makes the
+result tileable.
+.PP
+Use \fBfusetex --builtins\fR for the complete descriptions of these functions.
+.SH EXAMPLES
+.nf
+fusetex < texture.ptex > texture.png
+fusetex --width 512 --height 256 < texture.ptex > texture.png
+fusetex --seed 42 --preview-line 3 < texture.ptex > preview.png
+.fi
+.SH EXIT STATUS
+Returns zero on success and non-zero for invalid options, source, rendering,
+or output errors.

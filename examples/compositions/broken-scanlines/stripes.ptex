@@ -1,0 +1,6 @@
+uv
+.dot(vec2(18.0, 18.0))
+.sin()
+.multiply(0.5)
+.add(0.5)
+.colorize(rgb(0.15, 0.45, 0.9))

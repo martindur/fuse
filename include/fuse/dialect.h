@@ -3,7 +3,7 @@
 
 #include "fuse/builtins.h"
 
-/* Product-owned metadata. All referenced storage is immutable and borrowed. */
+/* Capability-owned metadata. All referenced storage is immutable and borrowed. */
 typedef struct {
     const char *language_id;
     const LanguageEnvironment *environment;

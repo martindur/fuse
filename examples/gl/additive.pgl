@@ -1,0 +1,14 @@
+uv
+.center()
+.aspect()
+.circle(0.15)
+.fill()
+.colorize(rgb(0.1, 0.4, 1.0))
+.blend_add(
+    uv
+    .center()
+    .aspect()
+    .circle(0.3)
+    .stroke(0.025)
+    .colorize(rgb(1.0, 0.15, 0.02))
+)

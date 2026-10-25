@@ -1,7 +1,7 @@
 # Fuse language
 
 Fuse programs consist of zero or more bindings followed by one result
-expression. The syntax does not define a builtin vocabulary; a product's
+expression. The syntax does not define a builtin vocabulary; a capability's
 catalog supplies functions, globals, documentation, and reserved names.
 
 ## Expressions and calls
@@ -41,20 +41,20 @@ amount.finish()
 ```
 
 Bindings are visible to later bindings and the final result. Duplicate names,
-forward references, and names reserved by the product catalog are rejected.
+forward references, and names reserved by the capability catalog are rejected.
 The current language has no reassignment or user-defined functions.
 
-## Types and product catalogs
+## Types and capability catalogs
 
 The shared type vocabulary is `float`, `vec2`, `vec3`, `vec4`, `texture`, and
 `mesh`. Function signatures determine argument and result types. Overloads
 are resolved by exact parameter count and types; there are no implicit
-conversions. Products supply constructors as ordinary functions when needed.
+conversions. Capabilities supply constructors as ordinary functions when needed.
 
 Type checking does not execute calls. Texture and mesh representations,
-numeric evaluation, generated code, and file output belong to the product.
+numeric evaluation, generated code, and file output belong to the capability.
 
-`semantic_analyze` infers the actual final type. Each product's dialect
+`semantic_analyze` infers the actual final type. Each capability's dialect
 descriptor specifies the required type of a complete program. Tools that
 inspect an intermediate expression can infer its type independently of that
 complete-program rule.

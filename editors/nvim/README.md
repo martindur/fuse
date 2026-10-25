@@ -1,32 +1,43 @@
-# Fuse grammar in Neovim
+# Fuse in Neovim
 
-Build the standalone grammar parser:
+Install the compilers and optional shared editor runtime:
 
 ```sh
-make tree-sitter-parser
+make PREFIX="$HOME/.local" install install-editor
 ```
 
-Add the grammar directory to the runtime path and load the parser:
+Add the runtime and grammar to Neovim's runtime path in your configuration:
 
 ```lua
-vim.opt.runtimepath:append("/path/to/fuse/tree-sitter-fuse")
+local data = vim.fn.expand("$HOME/.local/share/fuse")
+vim.opt.runtimepath:append(data .. "/nvim")
+vim.opt.runtimepath:append(data .. "/tree-sitter-fuse")
+require("fuse.lsp").setup()
+```
+
+The runtime maps `.pgl`, `.ptex`, and `.pmesh` to `fusegl`, `fusetex`, and
+`fusemesh`. All use the shared Fuse highlighter, while each file type starts
+its own compiler's `lsp` command. Files are grouped by Git root where present,
+otherwise by directory. No workspace config or GUI is required.
+
+For checkout use, run `make tree-sitter-parser` and configure:
+
+```lua
+local repo = "/path/to/fuse"
+vim.opt.runtimepath:append(repo .. "/editors/nvim")
+vim.opt.runtimepath:append(repo .. "/tree-sitter-fuse")
 vim.treesitter.language.add("fuse", {
-  path = "/path/to/fuse/build/tree-sitter/fuse.so",
+  path = repo .. "/build/tree-sitter/fuse.so",
+})
+require("fuse.lsp").setup({
+  commands = {
+    fusegl = { repo .. "/build/fusegl", "lsp" },
+    fusetex = { repo .. "/build/fusetex", "lsp" },
+    fusemesh = { repo .. "/build/fusemesh", "lsp" },
+  },
 })
 ```
 
-Products define their file extensions, file types, and LSP command. Once a
-product has configured a file type, associate it with the shared grammar:
-
-```lua
-vim.treesitter.language.register("fuse", "your-product-filetype")
-```
-
-Start Tree-sitter for that file type using the editor's usual setup, or call
-`vim.treesitter.start(0, "fuse")` in its buffer. The shared queries provide
-syntax highlighting, indentation, and local binding information. Product
-builtin knowledge is supplied through the product's LSP.
-
-For an installed grammar, append the installed
-`share/fuse/tree-sitter-fuse` directory to the runtime path. Its parser is at
-`parser/fuse.so`.
+Command overrides can be supplied individually. This integration uses native
+Neovim LSP and Tree-sitter facilities. Other editors can launch the same three
+LSP commands and load the shared grammar through their own configuration.

@@ -1,0 +1,9 @@
+uv
+.center()
+.aspect()
+.length()
+.multiply(28.0)
+.sin()
+.multiply(0.5)
+.add(0.5)
+.colorize(rgb(0.8, 0.25, 0.08))

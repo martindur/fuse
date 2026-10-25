@@ -1,0 +1,14 @@
+let clouds = uv
+    .scroll(vec2(0.03, -0.02), time)
+    .mirror(tex0)
+    .sample(tex0);
+
+let rings = uv
+    .mirror(tex1)
+    .sample(tex1);
+
+let waves = uv
+    .radial_wave(time, 60.0, 4.0)
+    .colorize(rgb(1.0, 1.0, 1.0));
+
+rings.multiply(waves).multiply(clouds)

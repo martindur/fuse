@@ -2,7 +2,7 @@
 
 This grammar covers Fuse bindings, calls, numbers, and chained expressions.
 For example, `point.shift(0.5).magnitude()` chains function applications.
-Products define their builtin vocabulary and file associations separately.
+Capabilities define their builtin vocabulary and file associations separately.
 
 `queries/fuse` contains generic highlighting, indentation, and local binding
 queries. Editors can use these files through their usual Tree-sitter setup.

@@ -1,0 +1,90 @@
+.TH FUSEGL 1 "October 2026" "FuseGL" "User Commands"
+.SH NAME
+fusegl \- compile FuseGL source to a GLSL fragment shader
+.SH SYNOPSIS
+.B fusegl
+[\fB--preview-line\fR \fIN\fR]
+.br
+.B fusegl
+[\fB--builtins\fR]
+.br
+.B fusegl lsp
+.SH DESCRIPTION
+.B fusegl
+reads one FuseGL program from standard input and writes a GLSL 330 fragment
+shader to standard output. It is deliberately a filter, so it can be used
+alone or as part of a build pipeline.
+.PP
+The generated shader expects the host to provide the
+.B matterboxUv
+texture coordinate. It also expects \fBu_time\fR and \fBu_resolution\fR
+uniforms and any used texture inputs \fBtex0\fR through \fBtex3\fR.
+The existing input name is retained for compatibility with legacy hosts.
+.SH COMMANDS
+.TP
+.B lsp
+Run the FuseGL language server over JSON-RPC on standard input and output.
+It provides diagnostics, receiver-aware completion, and hover documentation
+using the same shader catalog as compilation and \fB--builtins\fR.
+.SH OPTIONS
+.TP
+.BI --preview-line " N"
+Compile the intermediate result selected by source line \fIN\fR. The result
+must be a previewable numeric or vector value.
+.TP
+.B --builtins
+Print all FuseGL function signatures, globals, and their descriptions.
+.TP
+.B -h, --help
+Print a short usage guide.
+.SH LANGUAGE API
+FuseGL uses dot calls for pipeline stages. The value on the left is passed as
+the first argument to the next function. Regular calls are also available for
+constructors and functions with additional arguments.
+.PP
+.nf
+sample(vec2, texture) -> vec4
+scroll(vec2, vec2, float) -> vec2
+repeat(vec2) -> vec2
+mirror(vec2) -> vec2
+mirror(vec2, texture) -> vec2
+zoom(vec2, float) -> vec2
+distort(vec2, vec4, float) -> vec2
+r(vec4) -> float       g(vec4) -> float
+b(vec4) -> float       a(vec4) -> float
+clamp(float, float, float) -> float
+vec2(float, float) -> vec2
+vec3(float, float, float) -> vec3
+vec4(vec2, float, float) -> vec4
+vec4(vec3, float) -> vec4
+vec4(float, float, float, float) -> vec4
+center(vec2) -> vec2    aspect(vec2) -> vec2
+rotate(vec2, float) -> vec2
+oscillate(float, float, float) -> float
+cycle(float, float, float, float) -> float
+radial_wave(vec2, float, float, float) -> float
+circle(vec2, float) -> float
+box(vec2, vec2) -> float
+sdf_union(float, float) -> float
+fill(float) -> float     stroke(float, float) -> float
+rgb(float, float, float) -> vec3
+colorize(float, vec3) -> vec4
+add(float, float) -> float
+blend_add(vec4, vec4) -> vec4
+multiply(float, float) -> float
+multiply(vec4, vec4) -> vec4
+.fi
+.PP
+.B uv
+is the normalized fragment coordinate. \fBresolution\fR is the output size
+in pixels, \fBtime\fR is elapsed animation time, and \fBtex0\fR through
+\fBtex3\fR are configured texture inputs.
+.PP
+Use \fBfusegl --builtins\fR for the complete descriptions of these functions.
+.SH EXAMPLES
+.nf
+fusegl < main.pgl > main.frag
+fusegl --preview-line 4 < main.pgl > preview.frag
+.fi
+.SH EXIT STATUS
+Returns zero on success and non-zero for invalid options, source, or output.

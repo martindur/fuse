@@ -1,0 +1,11 @@
+let p = uv.center().aspect();
+
+p
+.circle(0.2)
+.sdf_union(
+    p
+    .rotate(time)
+    .box(vec2(0.32, 0.06))
+)
+.fill()
+.colorize(rgb(0.5, 0.65, 1.0))

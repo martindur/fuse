@@ -1,0 +1,79 @@
+"""Shared process/protocol helpers for compiler integration tests."""
+import json
+import subprocess
+import unittest
+
+URI = "file:///test/main.fuse"
+
+def notification(method, params=None):
+    return {"jsonrpc": "2.0", "method": method, "params": params or {}}
+
+
+def request(method, request_id, params=None):
+    return {**notification(method, params), "id": request_id}
+
+
+def opened(text, language_id="fusegl"):
+    return notification("textDocument/didOpen", {
+        "textDocument": {
+            "uri": URI, "languageId": language_id, "version": 1, "text": text,
+        },
+    })
+
+
+def changed(text, version):
+    return notification("textDocument/didChange", {
+        "textDocument": {"uri": URI, "version": version},
+        "contentChanges": [{"text": text}],
+    })
+
+
+def at(source):
+    return {
+        "textDocument": {"uri": URI},
+        "position": {"line": 0, "character": len(source)},
+    }
+
+
+class CompilerTests(unittest.TestCase):
+    def run_command(self, *arguments, source=""):
+        return subprocess.run(
+            [str(self.binary), *arguments], input=source.encode(),
+            capture_output=True, timeout=10,
+        )
+
+    def lsp_session(self, *messages):
+        messages = (
+            request("initialize", 1), *messages,
+            request("shutdown", 99), notification("exit"),
+        )
+        frames = []
+        for message in messages:
+            body = json.dumps(message).encode()
+            frames.append(f"Content-Length: {len(body)}\r\n\r\n".encode() + body)
+        result = subprocess.run(
+            [str(self.binary), "lsp"], input=b"".join(frames),
+            capture_output=True, timeout=10,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        self.assertEqual(result.stderr, b"")
+        packets = []
+        remaining = result.stdout
+        while remaining:
+            header, separator, body = remaining.partition(b"\r\n\r\n")
+            self.assertEqual(separator, b"\r\n\r\n")
+            self.assertRegex(header.decode(), r"^Content-Length: [0-9]+$")
+            length = int(header.split(b":", 1)[1])
+            self.assertGreaterEqual(len(body), length)
+            packets.append(json.loads(body[:length]))
+            remaining = body[length:]
+        responses = {packet["id"]: packet for packet in packets if "id" in packet}
+        self.assertEqual(responses[1]["result"]["serverInfo"]["name"], self.language_id)
+        self.assertIsNone(responses[99]["result"])
+        return packets, responses
+
+    def completions(self, source):
+        _, responses = self.lsp_session(
+            opened(source, self.language_id), request("textDocument/completion", 2, at(source)),
+        )
+        return {item["label"]: item for item in responses[2]["result"]["items"]}

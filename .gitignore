@@ -3,3 +3,5 @@
 *.d
 *.a
 *.so
+__pycache__/
+*.pyc

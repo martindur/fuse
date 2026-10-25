@@ -1,0 +1,12 @@
+let displacement = uv
+    .scroll(vec2(0.02, -0.03), time)
+    .mirror(tex0)
+    .sample(tex0);
+
+let surface = uv
+    .scroll(vec2(-0.015, 0.02), time)
+    .distort(displacement, 0.22)
+    .mirror(tex1)
+    .sample(tex1);
+
+surface.multiply(displacement)

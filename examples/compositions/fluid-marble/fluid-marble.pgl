@@ -1,0 +1,12 @@
+let field = uv
+    .scroll(vec2(0.025, -0.015), time)
+    .mirror(tex0)
+    .sample(tex0);
+
+let surface = uv
+    .scroll(vec2(-0.018, 0.022), time)
+    .distort(field, 0.18)
+    .mirror(tex1)
+    .sample(tex1);
+
+surface.multiply(field)

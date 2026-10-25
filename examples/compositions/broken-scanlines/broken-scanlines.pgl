@@ -1,0 +1,11 @@
+let breakup = uv
+    .scroll(vec2(-0.025, 0.018), time)
+    .mirror(tex0)
+    .sample(tex0);
+
+let lines = uv
+    .scroll(vec2(0.08, 0.0), time)
+    .mirror(tex1)
+    .sample(tex1);
+
+lines.multiply(breakup)

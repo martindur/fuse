@@ -1,0 +1,11 @@
+let flicker = uv
+    .scroll(vec2(-0.035, 0.025), time)
+    .mirror(tex0)
+    .sample(tex0);
+
+let shield = uv
+    .zoom(time.cycle(0.2, 1.0, 0.2))
+    .mirror(tex1)
+    .sample(tex1);
+
+shield.multiply(flicker).blend_add(shield)
