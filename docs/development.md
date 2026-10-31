@@ -69,6 +69,13 @@ command's integration tests. Focused targets run only their own dependencies;
 `make test-lang` needs neither Python nor libpng.
 
 ```sh
+make test-lang
+make test-fusegl
+make test-fusetex
+make test-fusemesh
+```
+
+```sh
 make BUILD_DIR=build/sanitize \
   SANITIZERS='-fsanitize=address,undefined -fno-omit-frame-pointer' test
 ```
@@ -87,6 +94,8 @@ make tree-sitter-parser
 Native grammar builds use the checked-in generated C. Reusable queries express
 syntax and bindings; capability symbol knowledge lives in the catalogs.
 
-`make install-library` preserves the shared C integration surface.
+Install individual commands with `make install-fusegl`, `make install-fusetex`,
+or `make install-fusemesh`. `make install-library` installs the shared C library
+and headers.
 `make install-grammar` installs only the grammar. `PREFIX`, `BINDIR`, `LIBDIR`,
 `INCLUDEDIR`, `MANDIR`, `DATADIR`, and `DESTDIR` control installation paths.

@@ -1,6 +1,6 @@
 # Fuse in Neovim
 
-Install the compilers and optional shared editor runtime:
+Install the commands, Neovim integration, and syntax parser:
 
 ```sh
 make PREFIX="$HOME/.local" install install-editor
@@ -18,7 +18,7 @@ require("fuse.lsp").setup()
 The runtime maps `.pgl`, `.ptex`, and `.pmesh` to `fusegl`, `fusetex`, and
 `fusemesh`. All use the shared Fuse highlighter, while each file type starts
 its own compiler's `lsp` command. Files are grouped by Git root where present,
-otherwise by directory. No workspace config or GUI is required.
+otherwise by directory.
 
 For checkout use, run `make tree-sitter-parser` and configure:
 

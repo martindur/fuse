@@ -16,10 +16,9 @@ application. Shaders need a host implementing the [shader interface](../docs/sha
 
 ## Source compositions
 
-`compositions/` preserves the language sources from the previous combined
-demos. Compile each texture source with FuseTex and each shader with FuseGL,
-then bind the resulting images to the shader's texture slots. These are
-source-only examples; the old application configs remain in the legacy repo.
+`compositions/` contains shaders with procedural texture inputs. Compile each
+texture with FuseTex and the shader with FuseGL, then bind the resulting images
+to the shader's texture slots in your rendering host.
 
 | Directory | Shader | Texture slots | Texture generation |
 | --- | --- | --- | --- |

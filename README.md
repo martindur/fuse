@@ -9,16 +9,13 @@ from small chained transformations.
 | `fusetex` | Texture source (`.ptex`) | PNG image |
 | `fusemesh` | Geometry source (`.pmesh`) | Wavefront OBJ mesh |
 
-Each command is a filter: source on stdin, output on stdout, diagnostics on
-stderr. Each also provides `--builtins` and an `lsp` subcommand backed by its
-own capability catalog. The shared language implementation lives once in this
-repository.
+Each command reads source from stdin, writes output to stdout, and reports
+errors on stderr. Use `--builtins` to list its functions and globals.
 
 ## Build and try it
 
-Requirements are Make, a C17 compiler, an archiver, and POSIX facilities.
-FuseTex additionally needs libpng and `pkg-config`. Windowing and graphics
-libraries are not required to build the compilers.
+Requires Make, a C17 compiler, an archiver, and a POSIX environment.
+FuseTex also requires libpng and `pkg-config`.
 
 ```sh
 make
@@ -28,10 +25,10 @@ build/fusetex --width 256 --height 256 --seed 42 \
 build/fusemesh < examples/mesh/radial.pmesh > build/radial.obj
 ```
 
-Build just one command with `make fusegl`, `make fusetex`, or `make fusemesh`.
-A FuseGL-only build does not need libpng or `pkg-config`.
+To build a single command, use `make fusegl`, `make fusetex`, or `make fusemesh`.
+Shaders need a [rendering host](docs/shader-interface.md) to display them.
 
-Programs share call and binding syntax; each capability defines its vocabulary:
+Programs chain transformations. For example, this shader draws an orange circle:
 
 ```text
 uv
@@ -42,49 +39,32 @@ uv
   .colorize(rgb(1.0, 0.4, 0.1))
 ```
 
-The example above is a shader. See the [language reference](docs/language.md),
+See the [language reference](docs/language.md),
 [capability guide](docs/capabilities.md), and [runnable examples](examples/README.md).
-The existing `.pgl`, `.ptex`, and `.pmesh` extensions remain supported.
 
-## Install and editor support
+## Install
 
 ```sh
 make PREFIX="$HOME/.local" install
 ```
 
-This installs the commands, man pages, and shared C library/headers. Add the
-prefix's `bin` directory to `PATH`. Individual commands can be installed with
-`install-fusegl`, `install-fusetex`, or `install-fusemesh`; `install-library`
-installs only the shared library. `DESTDIR` supports staged packaging.
+Installs the three commands to `~/.local/bin`, plus man pages and the C library
+and headers. Add `~/.local/bin` to your `PATH`.
 
-Any LSP-capable editor can start `fusegl lsp`, `fusetex lsp`, or `fusemesh lsp`
-for the corresponding file type. The language servers provide diagnostics,
-receiver-aware completion, and hover documentation from the same catalogs
-used by compilation and builtin help.
+## Editors
 
-```sh
-make PREFIX="$HOME/.local" install-editor
-```
+Configure your editor to run `fusegl lsp` for `.pgl`, `fusetex lsp` for `.ptex`,
+or `fusemesh lsp` for `.pmesh`. Each provides diagnostics, completion, and hover
+documentation.
 
-This optional target installs the shared grammar and native Neovim runtime.
-It builds the checked-in parser without needing Tree-sitter CLI. See
-[Neovim setup](editors/nvim/README.md).
+For Neovim, see the [setup guide](editors/nvim/README.md) to install and enable
+the optional LSP integration and syntax highlighting.
 
 ## Development
 
 ```sh
 make test
-make test-lang
-make test-fusegl
-make test-fusetex
-make test-fusemesh
 ```
 
-Command integration tests use Python 3's standard library. Core language tests
-need only the native build tools. See [development](docs/development.md) for
-module boundaries, the C API, instrumented builds, and grammar tests.
-
-Fuse owns the language, its capabilities, and its authoring tools. The previous
-workspace application, project configuration, watching, and GUI remain in the
-legacy repository. Formatting is subsequent shared-tooling work. Extraction
-provenance is recorded in [ORIGIN](ORIGIN).
+Tests also require Python 3. See [development](docs/development.md) for focused
+test targets, architecture, the C API, and installation options.

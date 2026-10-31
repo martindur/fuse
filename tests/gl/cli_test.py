@@ -17,7 +17,7 @@ class ShaderTests(CompilerTests):
         self.assertEqual(result.returncode, 0, result.stderr.decode())
         self.assertEqual(result.stderr, b"")
         self.assertTrue(result.stdout.startswith(b"#version 330 core\n"))
-        self.assertIn(b"in vec2 matterboxUv;", result.stdout)
+        self.assertIn(b"in vec2 fuseUv;", result.stdout)
         self.assertIn(
             b"fragColor = colorize(fill(circle(center(uv), 0.2)), rgb(1.0, 0.5, 0.0));",
             result.stdout,

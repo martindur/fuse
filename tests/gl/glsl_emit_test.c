@@ -15,7 +15,7 @@
 static const char EXPECTED_SHADER[] =
     "#version 330 core\n"
     "\n"
-    "in vec2 matterboxUv;\n"
+    "in vec2 fuseUv;\n"
     "out vec4 fragColor;\n"
     "\n"
     "uniform float u_time;\n"
@@ -139,7 +139,7 @@ static const char EXPECTED_SHADER[] =
     "}\n"
     "\n"
     "void main() {\n"
-    "    vec2 uv = matterboxUv;\n"
+    "    vec2 uv = fuseUv;\n"
     "    vec2 p = aspect(center(uv));\n"
     "    fragColor = colorize(fill(sdf_union("
     "circle(p, 0.22), "

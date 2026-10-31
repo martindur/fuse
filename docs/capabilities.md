@@ -18,7 +18,6 @@ texture sampling, animation, shape masks, and color composition. Globals are
 
 The output is a complete GLSL 330 core fragment shader. Rendering requires a
 host that supplies the documented [shader interface](shader-interface.md).
-The historical `matterboxUv` input name is retained for compatibility.
 
 ## Textures: fusetex
 

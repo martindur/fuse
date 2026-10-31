@@ -9,7 +9,7 @@
 static const char SHADER_HEADER[] =
     "#version 330 core\n"
     "\n"
-    "in vec2 matterboxUv;\n"
+    "in vec2 fuseUv;\n"
     "out vec4 fragColor;\n"
     "\n"
     "uniform float u_time;\n"
@@ -26,7 +26,7 @@ static const char SHADER_HEADER[] =
 static const char SHADER_MAIN_PREFIX[] =
     "\n"
     "void main() {\n"
-    "    vec2 uv = matterboxUv;\n";
+    "    vec2 uv = fuseUv;\n";
 
 static const char SHADER_SUFFIX[] =
     ";\n"

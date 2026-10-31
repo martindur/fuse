@@ -401,7 +401,7 @@ static const SymbolDocumentation DOCUMENTATION[] = {
 
 static const char *const RESERVED_NAMES[] = {
     "fragColor",
-    "matterboxUv",
+    "fuseUv",
 };
 
 static const LanguageEnvironment ENVIRONMENT = {
