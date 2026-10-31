@@ -75,6 +75,7 @@ make test-fusegl
 make test-fusetex
 make test-fusemesh
 make test-install
+make test-release
 ```
 
 ```sh
@@ -108,10 +109,40 @@ published GitHub release and accepts `--version TAG` and `--prefix PATH`.
 Installer tests use a local source archive and a substitute curl command;
 they do not access GitHub or install outside a temporary directory.
 
-For a release, select a commit with passing CI, tag it as `vMAJOR.MINOR.PATCH`,
-and publish a GitHub release for that tag. GitHub provides the source archive;
-no binary artifacts are needed. The installer's default requires a published
-release, while `--version` can select any existing version tag.
+For user-visible changes, add a [changelog fragment](../changes/README.md) to
+the feature PR. `VERSION` records the project version; Tree-sitter metadata
+uses the same version. Version numbers change during release preparation.
+
+To prepare a release, authenticate GitHub CLI (`gh auth login`), start from a
+clean `main` that matches `origin/main`, and run:
+
+```sh
+make release VERSION=0.1.0
+```
+
+This creates a local `release/v0.1.0` branch, updates the version, collects
+pending fragments into a dated `CHANGELOG.md` entry, and removes those fragments.
+It commits with your Git identity, pushes the branch, and opens a PR using your
+GitHub login. Your checkout stays on the release branch so you can edit the
+changelog and push adjustments. Only one release PR can be open at a time.
+Review the version and notes before manually merging. If new
+fragments land on `main` during review, update the release PR to include them;
+release checks reject unconsumed fragments.
+
+Merging a release PR starts **Publish release**, which runs the shared CI
+checks against the exact merged commit. It then creates `v0.1.0`, publishes
+the changelog entry as GitHub release notes, and tests installation from the
+published source archive. GitHub supplies the archive; no binary artifacts
+are needed. Retrying publication preserves an existing tag on the same commit
+and an already published release. Tags on other commits are rejected.
+
+Normal PR CI runs when the release PR is opened or updated. Publication uses
+the repository token with write permission only in the publishing job. If
+branch protection is enabled, require the CI `test` check before merging.
+
+The installer's default requires a published release; `--version` can select
+any existing version tag. The first release uses `0.1.0`, already recorded in
+the initial metadata. Later releases must advance the version.
 
 Install individual commands with `make install-fusegl`, `make install-fusetex`,
 or `make install-fusemesh`. `make install-library` installs the shared C library

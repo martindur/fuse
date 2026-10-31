@@ -1,0 +1,49 @@
+name: Publish release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-release
+  cancel-in-progress: false
+
+jobs:
+  check:
+    if: >-
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.event.pull_request.head.ref, 'release/v')
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ github.event.pull_request.merge_commit_sha }}
+  publish:
+    needs: check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+      - name: Tag and publish tested commit
+        run: python3 scripts/release.py publish "${HEAD_BRANCH#release/v}"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libpng-dev
+      - name: Verify published source installation
+        run: |
+          sh install.sh --version "v$(cat VERSION)" --prefix "$RUNNER_TEMP/fuse"
+          "$RUNNER_TEMP/fuse/bin/fusegl" --help
+          "$RUNNER_TEMP/fuse/bin/fusetex" --help
+          "$RUNNER_TEMP/fuse/bin/fusemesh" --help

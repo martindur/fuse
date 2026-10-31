@@ -48,6 +48,7 @@ DATADIR ?= $(PREFIX)/share/fuse
 INSTALL ?= install
 
 .PHONY: all language fusegl fusetex fusemesh test test-lang test-fusegl test-fusetex test-fusemesh test-install test-shaders \
+	test-release release \
 	clean install install-library install-fusegl install-fusetex install-fusemesh \
 	install-grammar install-editor tree-sitter-generate tree-sitter-test tree-sitter-parser
 .SECONDARY: $(TEST_OBJECTS)
@@ -90,7 +91,14 @@ $(BUILD_DIR)/tests/%_test: $(OBJECT_DIR)/tests/%_test.o $(LIBRARY)
 	@mkdir -p $(dir $@)
 	$(CC) $(LDFLAGS) $(SANITIZERS) -o $@ $(filter %.o,$^) $(LIBRARY) $(LDLIBS)
 
-test: test-lang test-fusegl test-fusetex test-fusemesh test-install
+test: test-lang test-fusegl test-fusetex test-fusemesh test-install test-release
+
+test-release:
+	$(PYTHON) -m tests.release_test
+
+release: export FUSE_RELEASE_VERSION = $(VERSION)
+release:
+	$(PYTHON) scripts/release.py open-pr
 
 test-install:
 	$(PYTHON) -m tests.install_test
