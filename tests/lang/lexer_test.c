@@ -88,7 +88,133 @@ static const ExpectedToken BINDING_TOKENS[] = {
   {TOKEN_EOF, 19, 0},
 };
 
+static const ExpectedToken COMMENT_ONLY_TOKENS[] = {
+  {TOKEN_EOF, 10, 0},
+};
+
+static const ExpectedToken EMPTY_COMMENT_TOKENS[] = {
+  {TOKEN_EOF, 2, 0},
+};
+
+static const ExpectedToken SEPARATED_IDENTIFIER_TOKENS[] = {
+  {TOKEN_IDENTIFIER, 0, 1},
+  {TOKEN_IDENTIFIER, 4, 1},
+  {TOKEN_EOF, 5, 0},
+};
+
+static const ExpectedToken SEPARATED_NUMBER_TOKENS[] = {
+  {TOKEN_NUMBER, 0, 1},
+  {TOKEN_NUMBER, 4, 1},
+  {TOKEN_EOF, 5, 0},
+};
+
+static const ExpectedToken SINGLE_SLASH_TOKENS[] = {
+  {TOKEN_INVALID, 0, 1},
+  {TOKEN_EOF, 1, 0},
+};
+
+static const ExpectedToken TRAILING_COMMENT_TOKENS[] = {
+  {TOKEN_IDENTIFIER, 0, 2},
+  {TOKEN_EOF, 9, 0},
+};
+
+static const ExpectedToken COMMENT_PIPELINE_TOKENS[] = {
+  {TOKEN_IDENTIFIER, 11, 2},
+  {TOKEN_DOT, 21, 1},
+  {TOKEN_IDENTIFIER, 22, 6},
+  {TOKEN_LEFT_PAREN, 28, 1},
+  {TOKEN_RIGHT_PAREN, 29, 1},
+  {TOKEN_EOF, 30, 0},
+};
+
+static const ExpectedToken CRLF_COMMENT_TOKENS[] = {
+  {TOKEN_IDENTIFIER, 0, 2},
+  {TOKEN_DOT, 14, 1},
+  {TOKEN_IDENTIFIER, 15, 6},
+  {TOKEN_LEFT_PAREN, 21, 1},
+  {TOKEN_RIGHT_PAREN, 22, 1},
+  {TOKEN_EOF, 23, 0},
+};
+
+static const ExpectedToken CR_COMMENT_TOKENS[] = {
+  {TOKEN_IDENTIFIER, 0, 2},
+  {TOKEN_DOT, 13, 1},
+  {TOKEN_IDENTIFIER, 14, 6},
+  {TOKEN_LEFT_PAREN, 20, 1},
+  {TOKEN_RIGHT_PAREN, 21, 1},
+  {TOKEN_EOF, 22, 0},
+};
+
+static const ExpectedToken SLASH_TOKENS[] = {
+  {TOKEN_IDENTIFIER, 0, 2},
+  {TOKEN_INVALID, 2, 1},
+  {TOKEN_IDENTIFIER, 3, 6},
+  {TOKEN_LEFT_PAREN, 9, 1},
+  {TOKEN_RIGHT_PAREN, 10, 1},
+  {TOKEN_EOF, 11, 0},
+};
+
 static const LexerTestCase TEST_CASES[] = {
+  {
+    .name = "empty comment at EOF",
+    .source = "//",
+    .expected = EMPTY_COMMENT_TOKENS,
+    .expected_count = ARRAY_LENGTH(EMPTY_COMMENT_TOKENS),
+  },
+  {
+    .name = "comments separate identifiers",
+    .source = "u//\nv",
+    .expected = SEPARATED_IDENTIFIER_TOKENS,
+    .expected_count = ARRAY_LENGTH(SEPARATED_IDENTIFIER_TOKENS),
+  },
+  {
+    .name = "comments separate numbers",
+    .source = "1//\n2",
+    .expected = SEPARATED_NUMBER_TOKENS,
+    .expected_count = ARRAY_LENGTH(SEPARATED_NUMBER_TOKENS),
+  },
+  {
+    .name = "single slash at EOF",
+    .source = "/",
+    .expected = SINGLE_SLASH_TOKENS,
+    .expected_count = ARRAY_LENGTH(SINGLE_SLASH_TOKENS),
+  },
+  {
+    .name = "comment without final newline",
+    .source = "// ignored",
+    .expected = COMMENT_ONLY_TOKENS,
+    .expected_count = ARRAY_LENGTH(COMMENT_ONLY_TOKENS),
+  },
+  {
+    .name = "adjacent trailing comment",
+    .source = "uv// tail",
+    .expected = TRAILING_COMMENT_TOKENS,
+    .expected_count = ARRAY_LENGTH(TRAILING_COMMENT_TOKENS),
+  },
+  {
+    .name = "comments preserve pipeline offsets",
+    .source = "// ignored\nuv// tail\n.center()",
+    .expected = COMMENT_PIPELINE_TOKENS,
+    .expected_count = ARRAY_LENGTH(COMMENT_PIPELINE_TOKENS),
+  },
+  {
+    .name = "CRLF comments",
+    .source = "uv// ignored\r\n.center()",
+    .expected = CRLF_COMMENT_TOKENS,
+    .expected_count = ARRAY_LENGTH(CRLF_COMMENT_TOKENS),
+  },
+  {
+    .name = "CR comments",
+    .source = "uv// ignored\r.center()",
+    .expected = CR_COMMENT_TOKENS,
+    .expected_count = ARRAY_LENGTH(CR_COMMENT_TOKENS),
+  },
+  {
+    .name = "single slash remains invalid",
+    .source = "uv/center()",
+    .expected = SLASH_TOKENS,
+    .expected_count = ARRAY_LENGTH(SLASH_TOKENS),
+  },
   {
     .name = "empty input",
     .source = "",

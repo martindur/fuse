@@ -26,8 +26,26 @@ additional arguments may themselves contain chains.
 Numbers are decimal integers or fractions, optionally preceded by `-`.
 They have type `float`. Identifiers start with an ASCII letter or `_` and
 continue with ASCII letters, digits, or `_`. Whitespace can separate stages,
-so a chain can span multiple lines. Comments and infix operators are not
-part of the current syntax.
+so a chain can span multiple lines. Infix operators are not part of the syntax.
+
+## Comments
+
+`//` starts a comment that continues to the next line break or end of file.
+Comments can appear wherever whitespace is allowed, including between chain
+stages and call arguments:
+
+```text
+// Move the point before measuring it.
+let p = point.shift(0.5); // Reuse this position.
+p
+  // Measure the shifted point.
+  .magnitude()
+  .finish() // Final result.
+```
+
+Comments separate tokens like whitespace; they cannot appear inside an
+identifier or number. Block comments (`/* ... */`) are not supported.
+A program containing only comments still needs a result expression.
 
 ## Bindings
 

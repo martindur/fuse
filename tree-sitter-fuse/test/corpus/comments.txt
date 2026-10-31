@@ -1,0 +1,67 @@
+==================
+Comments around bindings, chain stages, and arguments
+==================
+
+// heading
+let // binding name
+p = uv // position
+  . // stage
+  center(// no arguments
+  ); // binding done
+// next expression
+p.finish(0.5, // amount
+  1.0)// final
+
+---
+
+(source_file
+  (comment)
+  (binding
+    (comment)
+    (identifier)
+    (expression
+      (pipeline
+        (primary
+          (identifier))
+        (comment)
+        (comment)
+        (call
+          (identifier)
+          (comment)))))
+  (comment)
+  (comment)
+  (expression
+    (pipeline
+      (primary
+        (identifier))
+      (call
+        (identifier)
+        (expression
+          (primary
+            (number)))
+        (comment)
+        (expression
+          (primary
+            (number))))))
+  (comment))
+
+==================
+Empty and consecutive comments
+==================
+
+uv//
+// second
+.finish()// trailing
+
+---
+
+(source_file
+  (expression
+    (pipeline
+      (primary
+        (identifier))
+      (comment)
+      (comment)
+      (call
+        (identifier))))
+  (comment))

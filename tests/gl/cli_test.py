@@ -12,6 +12,41 @@ class ShaderTests(CompilerTests):
     binary = Path("build/fusegl").resolve()
     language_id = "fusegl"
 
+    def test_line_comments_preserve_shader_output(self):
+        self.assert_comments_preserve_output(SOURCE)
+
+    def test_comments_preserve_preview_lines_and_diagnostic_positions(self):
+        source = "// shader\nuv // coordinates\n// centered preview follows\n.center() // preview"
+        result = self.run_command("--preview-line", "4", source=source)
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        self.assertIn(b"fragColor = vec4(center(uv), 0.0, 1.0);", result.stdout)
+        result = self.run_command("--preview-line", "3", source=source)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(b"line has no previewable expression", result.stderr)
+        result = self.run_command(source="// shader\nuv // coordinates\n.missing()")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(b"semantic error at 3:2: unknown function", result.stderr)
+
+    def test_completion_ignores_comments_and_preserves_receiver_after_comment(self):
+        for source in ("// uv.", SOURCE + " // uv."):
+            with self.subTest(source=source):
+                self.assertEqual(self.completions(source), {})
+        for source in ("uv // position\n.", "let p = uv // position\n."):
+            with self.subTest(source=source):
+                items = self.completions(source)
+                self.assertTrue({"center", "rotate", "sample"} <= items.keys())
+                self.assertNotIn("fill", items)
+
+    def test_hover_ignores_comments_and_diagnostics_accept_commented_programs(self):
+        source = "// sample\n" + SOURCE
+        packets, responses = self.lsp_session(
+            opened(source), request("textDocument/hover", 2, at("// sam")),
+        )
+        self.assertIsNone(responses[2]["result"])
+        diagnostics = [packet["params"]["diagnostics"] for packet in packets
+                       if packet.get("method") == "textDocument/publishDiagnostics"]
+        self.assertEqual(diagnostics, [[]])
+
     def test_compiler_filter(self):
         result = self.run_command(source=SOURCE)
         self.assertEqual(result.returncode, 0, result.stderr.decode())

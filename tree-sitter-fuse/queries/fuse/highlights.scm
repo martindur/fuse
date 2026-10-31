@@ -10,3 +10,4 @@
 (binding name: (identifier) @variable)
 (identifier) @variable
 (number) @number
+(comment) @comment

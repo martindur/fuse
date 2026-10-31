@@ -1,5 +1,6 @@
 """Shared process/protocol helpers for compiler integration tests."""
 import json
+import re
 import subprocess
 import unittest
 
@@ -31,11 +32,28 @@ def changed(text, version):
 def at(source):
     return {
         "textDocument": {"uri": URI},
-        "position": {"line": 0, "character": len(source)},
+        "position": {
+            "line": source.count("\n"),
+            "character": len(source.rsplit("\n", 1)[-1].encode("utf-16-le")) // 2,
+        },
     }
 
 
 class CompilerTests(unittest.TestCase):
+    def assert_comments_preserve_output(self, source, *arguments):
+        plain = "let asset = " + source + ";\nasset"
+        stages = re.sub(r"\.(?=[A-Za-z_])", "// stage\n.", source)
+        stages = stages.replace("(", "(// arguments\n").replace(",", ",// next argument\n")
+        commented = "// asset\nlet // name\nasset = " + stages + "; // binding\nasset// result"
+        expected = self.run_command(*arguments, source=plain)
+        self.assertEqual(expected.returncode, 0, expected.stderr.decode())
+        for newline in ("\n", "\r\n"):
+            with self.subTest(newline=repr(newline)):
+                actual = self.run_command(*arguments, source=commented.replace("\n", newline))
+                self.assertEqual(actual.returncode, 0, actual.stderr.decode())
+                self.assertEqual(actual.stderr, b"")
+                self.assertEqual(actual.stdout, expected.stdout)
+
     def run_command(self, *arguments, source=""):
         return subprocess.run(
             [str(self.binary), *arguments], input=source.encode(),

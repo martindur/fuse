@@ -318,10 +318,61 @@ cleanup:
   return passed;
 }
 
+static bool test_program_comments(void) {
+  const char *source =
+      "// program\n"
+      "let // binding name\n"
+      "p = uv // input\n"
+      ".center(); // binding\n"
+      "p. // stage\n"
+      "vec4(0.0, // blue\n"
+      "1.0) // result";
+  Program *program = NULL;
+  ParseError error;
+
+  if (!parse_program(source, strlen(source), &program, &error)) {
+    report_failure("program comments", error.message);
+    return false;
+  }
+
+  bool passed = program->binding_count == 1
+      && span_equals(source, program->bindings[0].name, "p")
+      && program->result->kind == EXPR_PIPELINE
+      && span_equals(source, program->result->as.pipeline.stage->as.call.name, "vec4")
+      && program->result->as.pipeline.stage->as.call.arguments.count == 2
+      && span_equals(source,
+          program->result->as.pipeline.stage->as.call.arguments.items[1]->span, "1.0");
+  program_destroy(program);
+  if (passed) {
+    printf("PASS program comments\n");
+  } else {
+    report_failure("program comments", "incorrect AST or source spans");
+  }
+  return passed;
+}
+
 static bool test_failures(void) {
   const char *test_name = "parse failures";
 
   static const FailureCase cases[] = {
+    {
+      .source = "// ignored",
+      .message = "expected expression",
+      .offset = 10,
+      .length = 0,
+    },
+    {
+      .source = "// note\nuv/",
+      .message = "invalid token",
+      .offset = 10,
+      .length = 1,
+    },
+    {
+      .source = "/* block */ uv",
+      .message = "invalid token",
+      .offset = 0,
+      .length = 1,
+    },
     {
       .source = "",
       .message = "expected expression",
@@ -506,7 +557,7 @@ static bool test_program_failures(void) {
 
 int main(void) {
   size_t passed = 0;
-  size_t test_count = 6;
+  size_t test_count = 7;
 
   if (test_identifier()) {
     passed += 1;
@@ -521,6 +572,10 @@ int main(void) {
   }
 
   if (test_program()) {
+    passed += 1;
+  }
+
+  if (test_program_comments()) {
     passed += 1;
   }
 

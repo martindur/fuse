@@ -13,6 +13,9 @@ class TextureTests(CompilerTests):
     binary = Path("build/fusetex").resolve()
     language_id = "fusetex"
 
+    def test_line_comments_preserve_image_output(self):
+        self.assert_comments_preserve_output(SOURCE, "--width", "8", "--height", "4", "--seed", "42")
+
     def render(self, *arguments, source=SOURCE):
         return self.run_command("--width", "8", "--height", "4", *arguments, source=source)
 

@@ -986,14 +986,6 @@ static bool infer_completion_receiver_type(
 
     size_t prefix_length = dot_offset;
 
-    while (prefix_length > 0
-        && (source[prefix_length - 1] == ' '
-            || source[prefix_length - 1] == '\t'
-            || source[prefix_length - 1] == '\r'
-            || source[prefix_length - 1] == '\n')) {
-        prefix_length -= 1;
-    }
-
     if (prefix_length == 0) {
         return false;
     }
@@ -1247,6 +1239,22 @@ static bool send_completion(
     FuseLspPosition position
 )
 {
+    size_t source_length = strlen(document->text);
+    size_t offset = offset_at(document->text, source_length, position);
+    size_t line_start = offset;
+
+    while (line_start > 0
+        && document->text[line_start - 1] != '\n'
+        && document->text[line_start - 1] != '\r') {
+        line_start -= 1;
+    }
+
+    for (size_t index = line_start; index + 1 < offset; index += 1) {
+        if (document->text[index] == '/' && document->text[index + 1] == '/') {
+            return send_response(server, id, "{\"isIncomplete\":false,\"items\":[]}");
+        }
+    }
+
     FILE *result = NULL;
     char *contents = NULL;
     size_t length = 0;

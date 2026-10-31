@@ -12,6 +12,9 @@ class MeshTests(CompilerTests):
     binary = Path("build/fusemesh").resolve()
     language_id = "fusemesh"
 
+    def test_line_comments_preserve_mesh_output(self):
+        self.assert_comments_preserve_output(SOURCE)
+
     def test_obj_output(self):
         result = self.run_command(source=SOURCE)
         self.assertEqual(result.returncode, 0, result.stderr.decode())

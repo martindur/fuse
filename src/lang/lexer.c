@@ -44,7 +44,7 @@ static bool is_identifier_continue(char character) {
     is_digit(character);
 }
 
-static void skip_whitespace(Lexer *lexer) {
+static void skip_ignored(Lexer *lexer) {
   for (;;) {
     switch (peek(lexer)) {
       case ' ':
@@ -52,6 +52,16 @@ static void skip_whitespace(Lexer *lexer) {
       case '\r':
       case '\n':
         advance(lexer);
+        break;
+
+      case '/':
+        if (peek_next(lexer) != '/') {
+          return;
+        }
+
+        while (!is_at_end(lexer) && peek(lexer) != '\n' && peek(lexer) != '\r') {
+          advance(lexer);
+        }
         break;
 
       default:
@@ -83,7 +93,7 @@ void lexer_init(Lexer *lexer, const char *source, size_t length) {
 }
 
 Token lexer_next(Lexer *lexer) {
-  skip_whitespace(lexer);
+  skip_ignored(lexer);
 
   size_t start = lexer->cursor;
 
