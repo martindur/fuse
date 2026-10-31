@@ -65,7 +65,8 @@ or an unrecoverable server error; clean EOF and shutdown/exit return zero.
 ## Verification
 
 `make test` runs the shared native tests, capability native tests, and each
-command's integration tests. Focused targets run only their own dependencies;
+command's integration tests, plus source installer tests using a local archive.
+Focused targets run only their own dependencies;
 `make test-lang` needs neither Python nor libpng.
 
 ```sh
@@ -73,6 +74,7 @@ make test-lang
 make test-fusegl
 make test-fusetex
 make test-fusemesh
+make test-install
 ```
 
 ```sh
@@ -93,6 +95,23 @@ make tree-sitter-parser
 
 Native grammar builds use the checked-in generated C. Reusable queries express
 syntax and bindings; capability symbol knowledge lives in the catalogs.
+
+`make test-shaders` compiles every `.pgl` example and validates the output with
+`glslangValidator` (provided by `glslang-tools` on Debian/Ubuntu). CI runs the
+compiler, installer, grammar, and shader checks on pushes and pull requests.
+
+## Installation and releases
+
+`make install` installs the commands and man pages. The source installer uses
+this target after downloading a release archive. It defaults to the latest
+published GitHub release and accepts `--version TAG` and `--prefix PATH`.
+Installer tests use a local source archive and a substitute curl command;
+they do not access GitHub or install outside a temporary directory.
+
+For a release, select a commit with passing CI, tag it as `vMAJOR.MINOR.PATCH`,
+and publish a GitHub release for that tag. GitHub provides the source archive;
+no binary artifacts are needed. The installer's default requires a published
+release, while `--version` can select any existing version tag.
 
 Install individual commands with `make install-fusegl`, `make install-fusetex`,
 or `make install-fusemesh`. `make install-library` installs the shared C library

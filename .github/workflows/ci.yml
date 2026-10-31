@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libpng-dev glslang-tools shellcheck
+      - name: Test compilers and installer
+        run: make test
+      - name: Check installer shell script
+        run: shellcheck install.sh
+      - name: Validate example shaders
+        run: make test-shaders
+      - name: Install Tree-sitter CLI
+        run: |
+          curl -fsSL https://github.com/tree-sitter/tree-sitter/releases/download/v0.26.9/tree-sitter-linux-x64.gz -o "$RUNNER_TEMP/tree-sitter.gz"
+          gzip -d "$RUNNER_TEMP/tree-sitter.gz"
+          chmod +x "$RUNNER_TEMP/tree-sitter"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - name: Test grammar
+        run: make tree-sitter-test tree-sitter-parser

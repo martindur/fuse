@@ -47,7 +47,7 @@ MANDIR ?= $(PREFIX)/share/man
 DATADIR ?= $(PREFIX)/share/fuse
 INSTALL ?= install
 
-.PHONY: all language fusegl fusetex fusemesh test test-lang test-fusegl test-fusetex test-fusemesh \
+.PHONY: all language fusegl fusetex fusemesh test test-lang test-fusegl test-fusetex test-fusemesh test-install test-shaders \
 	clean install install-library install-fusegl install-fusetex install-fusemesh \
 	install-grammar install-editor tree-sitter-generate tree-sitter-test tree-sitter-parser
 .SECONDARY: $(TEST_OBJECTS)
@@ -90,7 +90,13 @@ $(BUILD_DIR)/tests/%_test: $(OBJECT_DIR)/tests/%_test.o $(LIBRARY)
 	@mkdir -p $(dir $@)
 	$(CC) $(LDFLAGS) $(SANITIZERS) -o $@ $(filter %.o,$^) $(LIBRARY) $(LDLIBS)
 
-test: test-lang test-fusegl test-fusetex test-fusemesh
+test: test-lang test-fusegl test-fusetex test-fusemesh test-install
+
+test-install:
+	$(PYTHON) -m tests.install_test
+
+test-shaders: $(GL_TARGET)
+	$(PYTHON) -m tests.gl.validate_examples "$(abspath $(GL_TARGET))"
 
 test-lang: $(LANG_TEST_TARGETS)
 	@set -e; for test in $(LANG_TEST_TARGETS); do "$$test"; done
@@ -119,7 +125,7 @@ $(PARSER): $(GRAMMAR)/src/parser.c $(GRAMMAR)/src/tree_sitter/parser.h
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARNINGS) -shared -fPIC -I$(GRAMMAR)/src $< -o $@
 
-install: install-fusegl install-fusetex install-fusemesh install-library
+install: install-fusegl install-fusetex install-fusemesh
 
 install-fusegl: $(GL_TARGET)
 	$(INSTALL) -d "$(DESTDIR)$(BINDIR)" "$(DESTDIR)$(MANDIR)/man1"

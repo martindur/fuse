@@ -12,10 +12,31 @@ from small chained transformations.
 Each command reads source from stdin, writes output to stdout, and reports
 errors on stderr. Use `--builtins` to list its functions and globals.
 
-## Build and try it
+## Install
 
 Requires Make, a C17 compiler, an archiver, and a POSIX environment.
 FuseTex also requires libpng and `pkg-config`.
+
+Install the latest release from source:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/martindur/fuse/main/install.sh | sh
+```
+
+The installer also requires curl and tar. It installs the
+commands and man pages under `~/.local`; add `~/.local/bin` to your `PATH`.
+To choose a release or destination, pass `--version v0.1.0` or `--prefix /path`
+to `sh -s --` at the end of the command.
+
+From a checkout:
+
+```sh
+make PREFIX="$HOME/.local" install
+```
+
+The C library and headers can be installed separately with `make install-library`.
+
+## Build and try it
 
 ```sh
 make
@@ -41,15 +62,6 @@ uv
 
 See the [language reference](docs/language.md),
 [capability guide](docs/capabilities.md), and [runnable examples](examples/README.md).
-
-## Install
-
-```sh
-make PREFIX="$HOME/.local" install
-```
-
-Installs the three commands to `~/.local/bin`, plus man pages and the C library
-and headers. Add `~/.local/bin` to your `PATH`.
 
 ## Editors
 
