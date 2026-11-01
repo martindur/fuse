@@ -1,8 +1,8 @@
 #define _POSIX_C_SOURCE 200809L
 
+#include "cli/commands.h"
 #include "builtins.h"
 #include "fuse/help.h"
-#include "fuse/lsp.h"
 #include "render.h"
 
 #include "fuse/lower.h"
@@ -22,17 +22,14 @@ static void usage(FILE *output, const char *program)
         "\n"
         "Evaluate a FuseMesh program and write an OBJ mesh.\n"
         "\n"
-        "Commands:\n"
-        "  lsp               run the language server over stdin/stdout\n"
-        "\n"
         "Options:\n"
         "  --preview-line N  compile the intermediate result at source line N\n"
         "  --builtins         list available functions\n"
         "  -h, --help         show this help\n"
         "\n"
         "Examples:\n"
-        "  fusemesh < mesh.pmesh > mesh.obj\n"
-        "  fusemesh --preview-line 4 < mesh.pmesh > preview.obj\n",
+        "  fuse mesh < mesh.pmesh > mesh.obj\n"
+        "  fuse mesh --preview-line 4 < mesh.pmesh > preview.obj\n",
         program
     );
 }
@@ -94,25 +91,9 @@ static void print_error(
     );
 }
 
-int main(int argument_count, char **arguments)
+int fuse_mesh_main(int argument_count, char **arguments)
 {
     const FuseDialect *dialect = fusemesh_dialect();
-
-    if (argument_count > 1 && strcmp(arguments[1], "lsp") == 0) {
-        if (argument_count == 3
-            && (strcmp(arguments[2], "--help") == 0
-                || strcmp(arguments[2], "-h") == 0)) {
-            puts("Usage: fusemesh lsp\n\nRun the language server over JSON-RPC on stdin/stdout.");
-            return EXIT_SUCCESS;
-        }
-
-        if (argument_count != 2) {
-            usage(stderr, arguments[0]);
-            return EXIT_FAILURE;
-        }
-
-        return fuse_lsp_run(dialect, stdin, stdout, stderr);
-    }
 
     size_t preview_line = 0;
 
@@ -121,13 +102,13 @@ int main(int argument_count, char **arguments)
 
         if (strcmp(option, "--help") == 0
             || strcmp(option, "-h") == 0) {
-            usage(stdout, arguments[0]);
+            usage(stdout, "fuse mesh");
             return EXIT_SUCCESS;
         }
 
         if (strcmp(option, "--builtins") == 0) {
             if (argument_count != 2) {
-                usage(stderr, arguments[0]);
+                usage(stderr, "fuse mesh");
                 return EXIT_FAILURE;
             }
 
@@ -141,7 +122,7 @@ int main(int argument_count, char **arguments)
         if (strcmp(option, "--preview-line") != 0
             || index + 1 >= argument_count
             || !parse_line(arguments[++index], &preview_line)) {
-            usage(stderr, arguments[0]);
+            usage(stderr, "fuse mesh");
             return EXIT_FAILURE;
         }
     }
@@ -151,7 +132,7 @@ int main(int argument_count, char **arguments)
     ssize_t length = getdelim(&source, &capacity, '\0', stdin);
 
     if (length < 0) {
-        fprintf(stderr, "fusemesh: expected a program on stdin\n");
+        fprintf(stderr, "fuse mesh: expected a program on stdin\n");
         free(source);
         return EXIT_FAILURE;
     }
@@ -171,7 +152,7 @@ int main(int argument_count, char **arguments)
             &parse_error
         )) {
         print_error(
-            "fusemesh",
+            "fuse mesh",
             "parse",
             source,
             (size_t)length,
@@ -194,7 +175,7 @@ int main(int argument_count, char **arguments)
                 &preview_error
             )) {
             print_error(
-                "fusemesh",
+                "fuse mesh",
                 "preview",
                 source,
                 (size_t)length,
@@ -211,7 +192,7 @@ int main(int argument_count, char **arguments)
 
     if (!lower_program(selected, &lowered, &lower_error)) {
         print_error(
-            "fusemesh",
+            "fuse mesh",
             "lowering",
             source,
             (size_t)length,
@@ -231,7 +212,7 @@ int main(int argument_count, char **arguments)
             &semantic_error
         )) {
         print_error(
-            "fusemesh",
+            "fuse mesh",
             "semantic",
             source,
             (size_t)length,
@@ -243,7 +224,7 @@ int main(int argument_count, char **arguments)
 
     if (semantic_info.result_type != dialect->required_result_type) {
         print_error(
-            "fusemesh",
+            "fuse mesh",
             "semantic",
             source,
             (size_t)length,
@@ -262,7 +243,7 @@ int main(int argument_count, char **arguments)
             &render_error
         )) {
         print_error(
-            "fusemesh",
+            "fuse mesh",
             "render",
             source,
             (size_t)length,
@@ -273,7 +254,7 @@ int main(int argument_count, char **arguments)
     }
 
     if (!fusemesh_mesh_write_obj(stdout, &mesh)) {
-        perror("fusemesh: failed to write OBJ");
+        perror("fuse mesh: failed to write OBJ");
         goto cleanup;
     }
 

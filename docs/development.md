@@ -7,6 +7,7 @@
 | `include/fuse/` | Shared language and tooling contracts |
 | `src/lang/` | Lexer, AST, parser, lowering, type checking, source selection, help |
 | `src/lsp/` | Shared language server and private JSON support |
+| `src/cli/` | Command dispatch and enabled capability registration |
 | `src/gl/` | Shader catalog, GLSL implementation, and command |
 | `src/tex/` | Texture catalog, evaluator, image storage, PNG output, and command |
 | `src/mesh/` | Geometry catalog, evaluator, mesh storage, OBJ output, and command |
@@ -18,7 +19,7 @@
 Capabilities depend on the frontend and shared tooling. The shared layer does
 not import capability implementations or enumerate their commands. There is
 one source copy and one shared static library, with no vendored self-dependency.
-The root Makefile builds all commands or a selected capability.
+The root Makefile builds one executable with all or selected capabilities.
 
 ## Catalog and dialect contract
 
@@ -54,13 +55,18 @@ refer to source spans. Selection and lowering each return a separately owned
 AST and do not consume their input. Release ASTs and semantic information
 with their corresponding destroy functions.
 
-`fuse_lsp_run` borrows a descriptor and the caller's streams. One server
-process serves one capability, selected by the command. Filename extensions
-and incoming document language IDs do not switch catalogs. The server leaves
-streams open, accepts an optional log stream, and writes only protocol data to
-its output stream. It uses UTF-16 positions and full document updates. Return
-status is nonzero for invalid configuration, premature exit, transport failure,
-or an unrecoverable server error; clean EOF and shutdown/exit return zero.
+`fuse_lsp_run` borrows a list of dialect descriptors and the caller's streams.
+Each dialect supplies a unique language ID and filename extension. On document
+open, a recognized language ID takes precedence over the URI extension; the
+selected capability stays with that document across changes. Unknown types
+receive a diagnostic and no completion or hover results. One process serves
+mixed shader, texture, and geometry documents.
+
+The server leaves streams open, accepts an optional log stream, and writes
+only protocol data to its output stream. It uses UTF-16 positions and full
+updates. Return status is nonzero for invalid configuration, premature exit,
+transport failure, or an unrecoverable server error; clean EOF and shutdown/exit
+return zero.
 
 ## Verification
 
@@ -71,9 +77,10 @@ Focused targets run only their own dependencies;
 
 ```sh
 make test-lang
-make test-fusegl
-make test-fusetex
-make test-fusemesh
+make test-gl
+make test-tex
+make test-mesh
+make test-cli
 make test-install
 make test-release
 ```
@@ -103,7 +110,7 @@ compiler, installer, grammar, and shader checks on pushes and pull requests.
 
 ## Installation and releases
 
-`make install` installs the commands and man pages. The source installer uses
+`make install` installs `fuse` and its man page. The source installer uses
 this target after downloading a release archive. It defaults to the latest
 published GitHub release and accepts `--version TAG` and `--prefix PATH`.
 Installer tests use a local source archive and a substitute curl command;
@@ -117,10 +124,10 @@ To prepare a release, authenticate GitHub CLI (`gh auth login`), start from a
 clean `main` that matches `origin/main`, and run:
 
 ```sh
-make release VERSION=0.1.0
+make release VERSION=0.2.0
 ```
 
-This creates a local `release/v0.1.0` branch, updates the version, collects
+This creates a local `release/v0.2.0` branch, updates the version, collects
 pending fragments into a dated `CHANGELOG.md` entry, and removes those fragments.
 It commits with your Git identity, pushes the branch, and opens a PR using your
 GitHub login. Your checkout stays on the release branch so you can edit the
@@ -130,7 +137,7 @@ fragments land on `main` during review, update the release PR to include them;
 release checks reject unconsumed fragments.
 
 Merging a release PR starts **Publish release**, which runs the shared CI
-checks against the exact merged commit. It then creates `v0.1.0`, publishes
+checks against the exact merged commit. It then creates `v0.2.0`, publishes
 the changelog entry as GitHub release notes, and tests installation from the
 published source archive. GitHub supplies the archive; no binary artifacts
 are needed. Retrying publication preserves an existing tag on the same commit
@@ -141,11 +148,22 @@ the repository token with write permission only in the publishing job. If
 branch protection is enabled, require the CI `test` check before merging.
 
 The installer's default requires a published release; `--version` can select
-any existing version tag. The first release uses `0.1.0`, already recorded in
-the initial metadata. Later releases must advance the version.
+any existing version tag. Choose a version greater than the current `VERSION`.
 
-Install individual commands with `make install-fusegl`, `make install-fusetex`,
-or `make install-fusemesh`. `make install-library` installs the shared C library
-and headers.
+The default package contains all capabilities. Source users can build a subset:
+
+```sh
+make CAPABILITIES=gl
+make CAPABILITIES=gl PREFIX="$HOME/.local" install
+```
+
+This still produces `fuse`, with only `gl` and its LSP catalog. It needs neither
+libpng nor pkg-config. Space-separated selections such as `CAPABILITIES="gl mesh"`
+are supported; unknown or empty selections are rejected. Changing the selection
+in the same build directory rebuilds the dispatcher. `make test` checks the enabled
+capabilities; installer tests run by default only for a full build. The standard
+source installer always builds the full package.
+
+`make install-library` installs the shared C library and headers separately.
 `make install-grammar` installs only the grammar. `PREFIX`, `BINDIR`, `LIBDIR`,
 `INCLUDEDIR`, `MANDIR`, `DATADIR`, and `DESTDIR` control installation paths.

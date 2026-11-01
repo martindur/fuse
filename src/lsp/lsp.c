@@ -26,7 +26,8 @@ typedef struct {
 } FuseLspDocument;
 
 typedef struct {
-    const FuseDialect *dialect;
+    const FuseDialect *const *dialects;
+    size_t dialect_count;
     FuseLspDocument *documents;
     size_t document_count;
     size_t document_capacity;
@@ -69,6 +70,29 @@ static FuseLspDocument *find_document(
         }
     }
 
+    return NULL;
+}
+
+static const FuseDialect *resolve_dialect(
+    const FuseLspServer *server,
+    const char *language_id,
+    const char *uri
+)
+{
+    for (size_t index = 0; language_id != NULL && index < server->dialect_count; index += 1) {
+        if (strcmp(language_id, server->dialects[index]->language_id) == 0) {
+            return server->dialects[index];
+        }
+    }
+    size_t uri_length = strlen(uri);
+    for (size_t index = 0; index < server->dialect_count; index += 1) {
+        const FuseDialect *dialect = server->dialects[index];
+        size_t extension_length = strlen(dialect->file_extension);
+        if (uri_length >= extension_length
+            && strcmp(uri + uri_length - extension_length, dialect->file_extension) == 0) {
+            return dialect;
+        }
+    }
     return NULL;
 }
 
@@ -626,6 +650,10 @@ static bool analyze_document(
 )
 {
     *out_issue = (FuseLspIssue){0};
+    if (document->dialect == NULL) {
+        issue_for_span(out_issue, (SourceSpan){0}, "document type is not supported by this Fuse build");
+        return true;
+    }
     size_t length = strlen(document->text);
     Program *syntax = NULL;
     ParseError parse_error;
@@ -725,7 +753,7 @@ static bool publish_diagnostics(
             end.line,
             end.character
         );
-        write_json_string(params, document->dialect->language_id);
+        write_json_string(params, document->dialect == NULL ? "fuse" : document->dialect->language_id);
         fputs(",\"message\":", params);
         write_json_string(params, issue.message);
         fputc('}', params);
@@ -1162,7 +1190,8 @@ static bool send_hover(
     size_t offset = offset_at(document->text, source_length, position);
     SourceSpan span;
 
-    if (!identifier_at(document->text, source_length, offset, &span)) {
+    if (document->dialect == NULL
+        || !identifier_at(document->text, source_length, offset, &span)) {
         return send_response(server, id, "null");
     }
 
@@ -1239,6 +1268,9 @@ static bool send_completion(
     FuseLspPosition position
 )
 {
+    if (document->dialect == NULL) {
+        return send_response(server, id, "{\"isIncomplete\":false,\"items\":[]}");
+    }
     size_t source_length = strlen(document->text);
     size_t offset = offset_at(document->text, source_length, position);
     size_t line_start = offset;
@@ -1293,7 +1325,8 @@ static bool update_document(
     FuseLspServer *server,
     const char *uri,
     const char *text,
-    int64_t version
+    int64_t version,
+    const FuseDialect *dialect
 )
 {
     FuseLspDocument *document = find_document(server, uri);
@@ -1335,7 +1368,7 @@ static bool update_document(
 
     free(document->text);
     document->text = copy;
-    document->dialect = server->dialect;
+    document->dialect = dialect;
     document->version = version;
     return true;
 }
@@ -1373,7 +1406,7 @@ static bool handle_message(
     if (!fuse_json_parse(body, length, &root)
         || fuse_json_type(root) != FUSE_JSON_OBJECT) {
         if (server->log != NULL) {
-            fprintf(server->log, "%s: invalid JSON message\n", server->dialect->language_id);
+            fprintf(server->log, "fuse: invalid JSON message\n");
         }
         return true;
     }
@@ -1421,7 +1454,7 @@ static bool handle_message(
         }
 
         fputs(prefix, result);
-        write_json_string(result, server->dialect->language_id);
+        write_json_string(result, "fuse");
         fputs("}}", result);
         bool built = !ferror(result);
 
@@ -1460,12 +1493,17 @@ static bool handle_message(
         FuseJsonValue text_document;
         char *uri = NULL;
         char *text = NULL;
+        char *language_id = NULL;
+        bool is_open = strcmp(method, "textDocument/didOpen") == 0;
         bool parsed = json_get_object(params, "textDocument", &text_document)
             && json_get_string(text_document, "uri", &uri);
 
-        if (strcmp(method, "textDocument/didOpen") == 0) {
+        if (is_open) {
             parsed = parsed
                 && json_get_string(text_document, "text", &text);
+            if (parsed) {
+                json_get_string(text_document, "languageId", &language_id);
+            }
         } else {
             FuseJsonValue changes;
             FuseJsonValue first_change;
@@ -1493,11 +1531,15 @@ static bool handle_message(
             }
 
             FuseLspDocument *document = find_document(server, uri);
+            const FuseDialect *dialect = is_open || document == NULL
+                ? resolve_dialect(server, language_id, uri)
+                : document->dialect;
             parsed = update_document(
                 server,
                 uri,
                 text,
-                version
+                version,
+                dialect
             );
             document = find_document(server, uri);
 
@@ -1508,6 +1550,7 @@ static bool handle_message(
 
         free(uri);
         free(text);
+        free(language_id);
         free(method);
         return parsed;
     }
@@ -1617,6 +1660,8 @@ static bool valid_type(ValueType type)
 static bool valid_dialect(const FuseDialect *dialect)
 {
     if (dialect == NULL || dialect->language_id == NULL
+        || dialect->file_extension == NULL || dialect->file_extension[0] != '.'
+        || dialect->file_extension[1] == '\0'
         || dialect->language_id[0] == '\0' || dialect->environment == NULL
         || !valid_type(dialect->required_result_type)) {
         return false;
@@ -1671,18 +1716,32 @@ static bool valid_dialect(const FuseDialect *dialect)
 }
 
 int fuse_lsp_run(
-    const FuseDialect *dialect,
+    const FuseDialect *const *dialects,
+    size_t dialect_count,
     FILE *input,
     FILE *output,
     FILE *log
 )
 {
-    if (!valid_dialect(dialect) || input == NULL || output == NULL) {
+    if (dialects == NULL || dialect_count == 0 || input == NULL || output == NULL) {
         return 1;
     }
 
+    for (size_t index = 0; index < dialect_count; index += 1) {
+        if (!valid_dialect(dialects[index])) {
+            return 1;
+        }
+        for (size_t previous = 0; previous < index; previous += 1) {
+            if (strcmp(dialects[index]->language_id, dialects[previous]->language_id) == 0
+                || strcmp(dialects[index]->file_extension, dialects[previous]->file_extension) == 0) {
+                return 1;
+            }
+        }
+    }
+
     FuseLspServer server = {
-        .dialect = dialect,
+        .dialects = dialects,
+        .dialect_count = dialect_count,
         .output = output,
         .log = log,
     };

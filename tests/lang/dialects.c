@@ -32,6 +32,7 @@ static const LanguageEnvironment POINT_ENVIRONMENT = {
 
 const FuseDialect TEST_POINT_DIALECT = {
     .language_id = "test-point",
+    .file_extension = ".point",
     .environment = &POINT_ENVIRONMENT,
     .required_result_type = VALUE_TYPE_VEC4,
 };
@@ -55,6 +56,7 @@ static const LanguageEnvironment OBJECT_ENVIRONMENT = {
 
 const FuseDialect TEST_OBJECT_DIALECT = {
     .language_id = "test-object",
+    .file_extension = ".object",
     .environment = &OBJECT_ENVIRONMENT,
     .required_result_type = VALUE_TYPE_MESH,
 };

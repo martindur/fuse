@@ -5,11 +5,11 @@ and chains that pass the previous value as the next call's first argument.
 Each capability provides its own functions, globals, execution, and output.
 Run a command with `--builtins` for the authoritative signatures and docs.
 
-## Shaders: fusegl
+## Shaders: fuse gl
 
 ```sh
-fusegl < examples/gl/ring.pgl > ring.frag
-fusegl --preview-line 4 < examples/gl/ring.pgl > preview.frag
+fuse gl < examples/gl/ring.pgl > ring.frag
+fuse gl --preview-line 4 < examples/gl/ring.pgl > preview.frag
 ```
 
 A complete program returns `vec4`. The shader capability provides coordinates,
@@ -19,10 +19,10 @@ texture sampling, animation, shape masks, and color composition. Globals are
 The output is a complete GLSL 330 core fragment shader. Rendering requires a
 host that supplies the documented [shader interface](shader-interface.md).
 
-## Textures: fusetex
+## Textures: fuse tex
 
 ```sh
-fusetex --width 256 --height 256 --seed 42 \
+fuse tex --width 256 --height 256 --seed 42 \
   < examples/tex/clouds.ptex > clouds.png
 ```
 
@@ -35,10 +35,10 @@ The output is an RGBA PNG image that ordinary image tools can open. A period
 argument to `noise`, such as `uv.noise(vec2(3.0, 3.0))`, makes noise tileable
 in noise-coordinate units.
 
-## Geometry: fusemesh
+## Geometry: fuse mesh
 
 ```sh
-fusemesh < examples/mesh/radial.pmesh > radial.obj
+fuse mesh < examples/mesh/radial.pmesh > radial.obj
 ```
 
 A complete program returns `mesh`. The current primitive is a filled disk.
@@ -55,8 +55,8 @@ Each compiler supports `--preview-line N` to select the last expression point
 on a one-based source line. Shader and texture previews accept numeric/vector
 results and convert them to RGBA; geometry previews require a mesh.
 
-Each command also supports `lsp`. Editors choose the command appropriate to
-the file type. The shared engine supplies diagnostics, completion, and hover
-using that capability's catalog. For example, `uv.` offers texture noise in
-FuseTex and texture sampling in FuseGL; `disk().` offers mesh operations in
-FuseMesh. This vocabulary does not require separate language implementations.
+Run `fuse lsp` for diagnostics, completion, and hover across all three file
+types. A recognized document language ID (`fusegl`, `fusetex`, or `fusemesh`)
+selects its capability; otherwise the server uses `.pgl`, `.ptex`, or `.pmesh`.
+For example, `uv.` offers texture noise in texture files and texture sampling
+in shader files; `disk().` offers mesh operations in geometry files.

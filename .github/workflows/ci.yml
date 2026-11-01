@@ -29,6 +29,8 @@ jobs:
           sudo apt-get install -y build-essential pkg-config libpng-dev glslang-tools shellcheck
       - name: Test compilers and installer
         run: make test
+      - name: Test shader-only build
+        run: make BUILD_DIR=build/gl-only CAPABILITIES=gl test
       - name: Check release metadata
         run: |
           python3 scripts/release.py check

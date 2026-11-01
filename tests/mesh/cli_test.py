@@ -9,8 +9,9 @@ SOURCE = "disk().radius(2.0).segments(8).rings(2)"
 
 
 class MeshTests(CompilerTests):
-    binary = Path("build/fusemesh").resolve()
+    binary = Path("build/fuse").resolve()
     language_id = "fusemesh"
+    command = "mesh"
 
     def test_line_comments_preserve_mesh_output(self):
         self.assert_comments_preserve_output(SOURCE)
@@ -31,10 +32,10 @@ class MeshTests(CompilerTests):
         self.assertIn(b"v ", result.stdout)
 
     def test_help_and_catalog(self):
-        for arguments in [("--help",), ("lsp", "--help")]:
+        for arguments in [("--help",), ("-h",)]:
             result = self.run_command(*arguments)
             self.assertEqual(result.returncode, 0)
-            self.assertIn(b"lsp", result.stdout)
+            self.assertIn(b"Usage: fuse mesh", result.stdout)
         result = self.run_command("--builtins")
         names = set(re.findall(r"^  ([a-zA-Z_]\w*)[(:]", result.stdout.decode(), re.MULTILINE))
         self.assertEqual(set(self.completions("")), names)

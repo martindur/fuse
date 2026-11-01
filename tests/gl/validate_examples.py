@@ -6,7 +6,7 @@ import tempfile
 
 
 def main():
-    binary = Path(sys.argv[1] if len(sys.argv) > 1 else "build/fusegl").resolve()
+    binary = Path(sys.argv[1] if len(sys.argv) > 1 else "build/fuse").resolve()
     root = Path(__file__).resolve().parents[2]
     sources = sorted((root / "examples").rglob("*.pgl"))
     with tempfile.TemporaryDirectory(prefix="fuse-shaders-") as directory:
@@ -14,7 +14,7 @@ def main():
         for source in sources:
             print(f"Validating {source.relative_to(root)}", flush=True)
             result = subprocess.run(
-                [str(binary)], input=source.read_bytes(), capture_output=True,
+                [str(binary), "gl"], input=source.read_bytes(), capture_output=True,
                 check=True, timeout=30,
             )
             shader.write_bytes(result.stdout)

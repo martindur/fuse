@@ -1,8 +1,8 @@
 #define _POSIX_C_SOURCE 200809L
 
+#include "cli/commands.h"
 #include "builtins.h"
 #include "fuse/help.h"
-#include "fuse/lsp.h"
 #include "png_write.h"
 #include "render.h"
 
@@ -25,9 +25,6 @@ static void usage(FILE *output, const char *program)
         "\n"
         "Evaluate a FuseTex program and write a PNG image.\n"
         "\n"
-        "Commands:\n"
-        "  lsp               run the language server over stdin/stdout\n"
-        "\n"
         "Options:\n"
         "  --width N          output width in pixels (default: 256)\n"
         "  --height N         output height in pixels (default: 256)\n"
@@ -37,9 +34,9 @@ static void usage(FILE *output, const char *program)
         "  -h, --help         show this help\n"
         "\n"
         "Examples:\n"
-        "  fusetex < texture.ptex > texture.png\n"
-        "  fusetex --width 512 --height 256 < texture.ptex > texture.png\n"
-        "  fusetex --preview-line 3 < texture.ptex > preview.png\n",
+        "  fuse tex < texture.ptex > texture.png\n"
+        "  fuse tex --width 512 --height 256 < texture.ptex > texture.png\n"
+        "  fuse tex --preview-line 3 < texture.ptex > preview.png\n",
         program
     );
 }
@@ -106,25 +103,9 @@ static bool parse_seed(
     return true;
 }
 
-int main(int argument_count, char **arguments)
+int fuse_tex_main(int argument_count, char **arguments)
 {
     const FuseDialect *dialect = fusetex_dialect();
-
-    if (argument_count > 1 && strcmp(arguments[1], "lsp") == 0) {
-        if (argument_count == 3
-            && (strcmp(arguments[2], "--help") == 0
-                || strcmp(arguments[2], "-h") == 0)) {
-            puts("Usage: fusetex lsp\n\nRun the language server over JSON-RPC on stdin/stdout.");
-            return EXIT_SUCCESS;
-        }
-
-        if (argument_count != 2) {
-            usage(stderr, arguments[0]);
-            return EXIT_FAILURE;
-        }
-
-        return fuse_lsp_run(dialect, stdin, stdout, stderr);
-    }
 
     RenderConfig config = {
         .width = 256,
@@ -138,13 +119,13 @@ int main(int argument_count, char **arguments)
 
         if (strcmp(option, "--help") == 0
             || strcmp(option, "-h") == 0) {
-            usage(stdout, arguments[0]);
+            usage(stdout, "fuse tex");
             return EXIT_SUCCESS;
         }
 
         if (strcmp(option, "--builtins") == 0) {
             if (argument_count != 2) {
-                usage(stderr, arguments[0]);
+                usage(stderr, "fuse tex");
                 return EXIT_FAILURE;
             }
 
@@ -160,7 +141,7 @@ int main(int argument_count, char **arguments)
             || strcmp(option, "--seed") == 0
             || strcmp(option, "--preview-line") == 0) {
             if (index + 1 >= argument_count) {
-                usage(stderr, arguments[0]);
+                usage(stderr, "fuse tex");
                 return EXIT_FAILURE;
             }
 
@@ -168,7 +149,7 @@ int main(int argument_count, char **arguments)
 
             if (strcmp(option, "--seed") == 0) {
                 if (!parse_seed(value, &config.seed)) {
-                    fprintf(stderr, "fusetex: invalid seed: %s\n", value);
+                    fprintf(stderr, "fuse tex: invalid seed: %s\n", value);
                     return EXIT_FAILURE;
                 }
             } else {
@@ -185,7 +166,7 @@ int main(int argument_count, char **arguments)
                 if (target == NULL || !parse_unsigned(value, target)) {
                     fprintf(
                         stderr,
-                        "fusetex: invalid %s: %s\n",
+                        "fuse tex: invalid %s: %s\n",
                         strcmp(option, "--preview-line") == 0
                             ? "preview line"
                             : "dimension",
@@ -195,7 +176,7 @@ int main(int argument_count, char **arguments)
                 }
             }
         } else {
-            usage(stderr, arguments[0]);
+            usage(stderr, "fuse tex");
             return EXIT_FAILURE;
         }
     }
@@ -205,7 +186,7 @@ int main(int argument_count, char **arguments)
     ssize_t length = getdelim(&source, &capacity, '\0', stdin);
 
     if (length < 0) {
-        fprintf(stderr, "fusetex: expected a program on stdin\n");
+        fprintf(stderr, "fuse tex: expected a program on stdin\n");
         free(source);
         return EXIT_FAILURE;
     }
@@ -226,7 +207,7 @@ int main(int argument_count, char **arguments)
         )) {
         fprintf(
             stderr,
-            "fusetex: parse error at %zu:%zu: %s\n",
+            "fuse tex: parse error at %zu:%zu: %s\n",
             source_position_at(
                 source,
                 (size_t)length,
@@ -256,7 +237,7 @@ int main(int argument_count, char **arguments)
             )) {
             fprintf(
                 stderr,
-                "fusetex: preview error at %zu:%zu: %s\n",
+                "fuse tex: preview error at %zu:%zu: %s\n",
                 source_position_at(
                     source,
                     (size_t)length,
@@ -280,7 +261,7 @@ int main(int argument_count, char **arguments)
     if (!lower_program(selected, &lowered, &lower_error)) {
         fprintf(
             stderr,
-            "fusetex: lowering error at %zu:%zu: %s\n",
+            "fuse tex: lowering error at %zu:%zu: %s\n",
             source_position_at(
                 source,
                 (size_t)length,
@@ -307,7 +288,7 @@ int main(int argument_count, char **arguments)
         )) {
         fprintf(
             stderr,
-            "fusetex: semantic error at %zu:%zu: %s\n",
+            "fuse tex: semantic error at %zu:%zu: %s\n",
             source_position_at(
                 source,
                 (size_t)length,
@@ -331,7 +312,7 @@ int main(int argument_count, char **arguments)
             ))) {
         fprintf(
             stderr,
-            "fusetex: semantic error at %zu:%zu: %s\n",
+            "fuse tex: semantic error at %zu:%zu: %s\n",
             source_position_at(
                 source,
                 (size_t)length,
@@ -360,7 +341,7 @@ int main(int argument_count, char **arguments)
         )) {
         fprintf(
             stderr,
-            "fusetex: render error at %zu:%zu: %s\n",
+            "fuse tex: render error at %zu:%zu: %s\n",
             source_position_at(
                 source,
                 (size_t)length,
@@ -377,7 +358,7 @@ int main(int argument_count, char **arguments)
     }
 
     if (!png_write(stdout, &image) || fflush(stdout) == EOF) {
-        perror("fusetex: failed to write PNG");
+        perror("fuse tex: failed to write PNG");
         goto cleanup;
     }
 

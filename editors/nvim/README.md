@@ -1,12 +1,12 @@
 # Fuse in Neovim
 
-Install the commands, Neovim integration, and syntax parser:
+Install Fuse, the Neovim integration, and syntax parser:
 
 ```sh
 make PREFIX="$HOME/.local" install install-editor
 ```
 
-Add the runtime and grammar to Neovim's runtime path in your configuration:
+Add `~/.local/bin` to your `PATH`, then configure Neovim:
 
 ```lua
 local data = vim.fn.expand("$HOME/.local/share/fuse")
@@ -16,9 +16,9 @@ require("fuse.lsp").setup()
 ```
 
 The runtime maps `.pgl`, `.ptex`, and `.pmesh` to `fusegl`, `fusetex`, and
-`fusemesh`. All use the shared Fuse highlighter, while each file type starts
-its own compiler's `lsp` command. Files are grouped by Git root where present,
-otherwise by directory.
+`fusemesh`. All use the Fuse highlighter and one `fuse lsp` client per project
+root. The server selects the capability per document. Files are grouped by
+Git root where present, otherwise by directory.
 
 For checkout use, run `make tree-sitter-parser` and configure:
 
@@ -29,15 +29,9 @@ vim.opt.runtimepath:append(repo .. "/tree-sitter-fuse")
 vim.treesitter.language.add("fuse", {
   path = repo .. "/build/tree-sitter/fuse.so",
 })
-require("fuse.lsp").setup({
-  commands = {
-    fusegl = { repo .. "/build/fusegl", "lsp" },
-    fusetex = { repo .. "/build/fusetex", "lsp" },
-    fusemesh = { repo .. "/build/fusemesh", "lsp" },
-  },
-})
+require("fuse.lsp").setup({ command = { repo .. "/build/fuse", "lsp" } })
 ```
 
-Command overrides can be supplied individually. This integration uses native
-Neovim LSP and Tree-sitter facilities. Other editors can launch the same three
-LSP commands and load the shared grammar through their own configuration.
+Other editors can launch the same `fuse lsp` command and configure the three
+language IDs or filename extensions. Selective builds serve only their
+included capabilities.

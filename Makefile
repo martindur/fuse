@@ -2,6 +2,15 @@ CC := cc
 AR := ar
 PYTHON ?= python3
 
+CAPABILITIES ?= gl tex mesh
+ENABLED_CAPABILITIES := $(sort $(CAPABILITIES))
+ifneq ($(filter-out gl tex mesh,$(ENABLED_CAPABILITIES)),)
+$(error Unknown CAPABILITIES: $(filter-out gl tex mesh,$(ENABLED_CAPABILITIES)))
+endif
+ifeq ($(ENABLED_CAPABILITIES),)
+$(error CAPABILITIES must include at least one of gl, tex, mesh)
+endif
+
 BUILD_DIR ?= build
 OBJECT_DIR := $(BUILD_DIR)/obj
 CFLAGS ?= -O2 -g
@@ -13,20 +22,24 @@ PNG_LIBS = $(shell pkg-config --libs libpng 2>/dev/null)
 LANG_SOURCES := src/lang/lexer.c src/lang/ast.c src/lang/ast_dump.c \
 	src/lang/parser.c src/lang/lower.c src/lang/semantic.c src/lang/help.c \
 	src/lang/preview.c src/lsp/lsp.c src/lsp/json.c
-GL_SOURCES := src/gl/main.c src/gl/glsl_emit.c src/gl/glsl_stdlib.c
-TEX_SOURCES := src/tex/main.c src/tex/builtins.c src/tex/evaluate.c \
+GL_SOURCES := src/gl/command.c src/gl/glsl_emit.c src/gl/glsl_stdlib.c
+TEX_SOURCES := src/tex/command.c src/tex/builtins.c src/tex/evaluate.c \
 	src/tex/image.c src/tex/png_write.c src/tex/render.c
-MESH_SOURCES := src/mesh/main.c src/mesh/builtins.c src/mesh/evaluate.c \
+MESH_SOURCES := src/mesh/command.c src/mesh/builtins.c src/mesh/evaluate.c \
 	src/mesh/mesh.c src/mesh/render.c
 LANG_OBJECTS := $(LANG_SOURCES:%.c=$(OBJECT_DIR)/%.o)
 GL_OBJECTS := $(GL_SOURCES:%.c=$(OBJECT_DIR)/%.o)
 TEX_OBJECTS := $(TEX_SOURCES:%.c=$(OBJECT_DIR)/%.o)
 MESH_OBJECTS := $(MESH_SOURCES:%.c=$(OBJECT_DIR)/%.o)
-OBJECTS := $(LANG_OBJECTS) $(GL_OBJECTS) $(TEX_OBJECTS) $(MESH_OBJECTS)
+gl_OBJECTS := $(GL_OBJECTS)
+tex_OBJECTS := $(TEX_OBJECTS)
+mesh_OBJECTS := $(MESH_OBJECTS)
+SELECTED_OBJECTS := $(foreach capability,$(ENABLED_CAPABILITIES),$($(capability)_OBJECTS))
+CLI_OBJECT := $(OBJECT_DIR)/src/cli/main.o
+OBJECTS := $(LANG_OBJECTS) $(GL_OBJECTS) $(TEX_OBJECTS) $(MESH_OBJECTS) $(CLI_OBJECT)
 LIBRARY := $(BUILD_DIR)/libfuse-lang.a
-GL_TARGET := $(BUILD_DIR)/fusegl
-TEX_TARGET := $(BUILD_DIR)/fusetex
-MESH_TARGET := $(BUILD_DIR)/fusemesh
+TARGET := $(BUILD_DIR)/fuse
+CAPABILITY_CONFIG := $(BUILD_DIR)/capabilities
 
 LANG_TEST_NAMES := lexer parser ast_dump lower preview semantic json lsp
 LANG_TEST_TARGETS := $(LANG_TEST_NAMES:%=$(BUILD_DIR)/tests/lang/%_test)
@@ -47,17 +60,14 @@ MANDIR ?= $(PREFIX)/share/man
 DATADIR ?= $(PREFIX)/share/fuse
 INSTALL ?= install
 
-.PHONY: all language fusegl fusetex fusemesh test test-lang test-fusegl test-fusetex test-fusemesh test-install test-shaders \
-	test-release release \
-	clean install install-library install-fusegl install-fusetex install-fusemesh \
-	install-grammar install-editor tree-sitter-generate tree-sitter-test tree-sitter-parser
+.PHONY: all language test test-lang test-gl test-tex test-mesh test-cli test-install test-shaders \
+	test-release release FORCE \
+	clean install install-library install-grammar install-editor \
+	tree-sitter-generate tree-sitter-test tree-sitter-parser
 .SECONDARY: $(TEST_OBJECTS)
 
-all: $(GL_TARGET) $(TEX_TARGET) $(MESH_TARGET)
+all: $(TARGET)
 language: $(LIBRARY)
-fusegl: $(GL_TARGET)
-fusetex: $(TEX_TARGET)
-fusemesh: $(MESH_TARGET)
 
 $(LIBRARY): $(LANG_OBJECTS)
 	@mkdir -p $(dir $@)
@@ -67,23 +77,30 @@ $(OBJECT_DIR)/%.o: %.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) -Iinclude -Isrc $(CFLAGS) $(WARNINGS) $(SANITIZERS) -MMD -MP -c $< -o $@
 
+# Only update the stamp when selection changes, so reused build directories stay correct.
+$(CAPABILITY_CONFIG): FORCE
+	@mkdir -p $(dir $@)
+	@printf '%s\n' '$(ENABLED_CAPABILITIES)' > $@.tmp
+	@cmp -s $@.tmp $@ || cp $@.tmp $@
+	@$(RM) $@.tmp
+
+$(CLI_OBJECT): $(CAPABILITY_CONFIG)
+$(CLI_OBJECT): CPPFLAGS += $(if $(filter gl,$(ENABLED_CAPABILITIES)),-DFUSE_CAP_GL) \
+	$(if $(filter tex,$(ENABLED_CAPABILITIES)),-DFUSE_CAP_TEX) \
+	$(if $(filter mesh,$(ENABLED_CAPABILITIES)),-DFUSE_CAP_MESH)
 $(TEX_OBJECTS): CPPFLAGS += $(PNG_CFLAGS)
 $(OBJECT_DIR)/tests/lang/json_test.o: CPPFLAGS += -Isrc/lsp
 
-$(GL_TARGET): $(GL_OBJECTS) $(LIBRARY)
-	$(CC) $(LDFLAGS) $(SANITIZERS) -o $@ $(GL_OBJECTS) $(LIBRARY) $(LDLIBS)
-
-$(TEX_TARGET): $(TEX_OBJECTS) $(LIBRARY)
-	$(CC) $(LDFLAGS) $(SANITIZERS) -o $@ $(TEX_OBJECTS) $(LIBRARY) $(PNG_LIBS) -lm $(LDLIBS)
-
-$(MESH_TARGET): $(MESH_OBJECTS) $(LIBRARY)
-	$(CC) $(LDFLAGS) $(SANITIZERS) -o $@ $(MESH_OBJECTS) $(LIBRARY) -lm $(LDLIBS)
+$(TARGET): $(CLI_OBJECT) $(SELECTED_OBJECTS) $(LIBRARY)
+	$(CC) $(LDFLAGS) $(SANITIZERS) -o $@ $(CLI_OBJECT) $(SELECTED_OBJECTS) $(LIBRARY) \
+		$(if $(filter tex,$(ENABLED_CAPABILITIES)),$(PNG_LIBS)) \
+		$(if $(filter tex mesh,$(ENABLED_CAPABILITIES)),-lm) $(LDLIBS)
 
 $(BUILD_DIR)/tests/lang/semantic_test $(BUILD_DIR)/tests/lang/lsp_test: $(TEST_DIALECTS)
 $(OBJECT_DIR)/tests/lang/lsp_test.o: CPPFLAGS += -Isrc/lsp
-$(GL_TEST_TARGETS): $(filter-out $(OBJECT_DIR)/src/gl/main.o,$(GL_OBJECTS))
-$(TEX_TEST_TARGETS): $(filter-out $(OBJECT_DIR)/src/tex/main.o,$(TEX_OBJECTS))
-$(MESH_TEST_TARGETS): $(filter-out $(OBJECT_DIR)/src/mesh/main.o,$(MESH_OBJECTS))
+$(GL_TEST_TARGETS): $(filter-out $(OBJECT_DIR)/src/gl/command.o,$(GL_OBJECTS))
+$(TEX_TEST_TARGETS): $(filter-out $(OBJECT_DIR)/src/tex/command.o,$(TEX_OBJECTS))
+$(MESH_TEST_TARGETS): $(filter-out $(OBJECT_DIR)/src/mesh/command.o,$(MESH_OBJECTS))
 $(TEX_TEST_TARGETS): LDLIBS += $(PNG_LIBS) -lm
 $(MESH_TEST_TARGETS): LDLIBS += -lm
 
@@ -91,7 +108,10 @@ $(BUILD_DIR)/tests/%_test: $(OBJECT_DIR)/tests/%_test.o $(LIBRARY)
 	@mkdir -p $(dir $@)
 	$(CC) $(LDFLAGS) $(SANITIZERS) -o $@ $(filter %.o,$^) $(LIBRARY) $(LDLIBS)
 
-test: test-lang test-fusegl test-fusetex test-fusemesh test-install test-release
+test: test-lang $(ENABLED_CAPABILITIES:%=test-%) test-cli test-release
+ifeq ($(ENABLED_CAPABILITIES),gl mesh tex)
+test: test-install
+endif
 
 test-release:
 	$(PYTHON) -m tests.release_test
@@ -103,23 +123,26 @@ release:
 test-install:
 	$(PYTHON) -m tests.install_test
 
-test-shaders: $(GL_TARGET)
-	$(PYTHON) -m tests.gl.validate_examples "$(abspath $(GL_TARGET))"
+test-cli: $(TARGET)
+	$(PYTHON) -m tests.cli_test "$(abspath $(TARGET))" $(ENABLED_CAPABILITIES)
+
+test-shaders: $(TARGET)
+	$(PYTHON) -m tests.gl.validate_examples "$(abspath $(TARGET))"
 
 test-lang: $(LANG_TEST_TARGETS)
 	@set -e; for test in $(LANG_TEST_TARGETS); do "$$test"; done
 
-test-fusegl: $(GL_TARGET) $(GL_TEST_TARGETS)
+test-gl: $(TARGET) $(GL_TEST_TARGETS)
 	@set -e; for test in $(GL_TEST_TARGETS); do "$$test"; done
-	$(PYTHON) -m tests.gl.cli_test "$(abspath $(GL_TARGET))"
+	$(PYTHON) -m tests.gl.cli_test "$(abspath $(TARGET))"
 
-test-fusetex: $(TEX_TARGET) $(TEX_TEST_TARGETS)
+test-tex: $(TARGET) $(TEX_TEST_TARGETS)
 	@set -e; for test in $(TEX_TEST_TARGETS); do "$$test"; done
-	$(PYTHON) -m tests.tex.cli_test "$(abspath $(TEX_TARGET))"
+	$(PYTHON) -m tests.tex.cli_test "$(abspath $(TARGET))"
 
-test-fusemesh: $(MESH_TARGET) $(MESH_TEST_TARGETS)
+test-mesh: $(TARGET) $(MESH_TEST_TARGETS)
 	@set -e; for test in $(MESH_TEST_TARGETS); do "$$test"; done
-	$(PYTHON) -m tests.mesh.cli_test "$(abspath $(MESH_TARGET))"
+	$(PYTHON) -m tests.mesh.cli_test "$(abspath $(TARGET))"
 
 tree-sitter-generate:
 	cd $(GRAMMAR) && tree-sitter generate
@@ -133,22 +156,10 @@ $(PARSER): $(GRAMMAR)/src/parser.c $(GRAMMAR)/src/tree_sitter/parser.h
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARNINGS) -shared -fPIC -I$(GRAMMAR)/src $< -o $@
 
-install: install-fusegl install-fusetex install-fusemesh
-
-install-fusegl: $(GL_TARGET)
+install: $(TARGET)
 	$(INSTALL) -d "$(DESTDIR)$(BINDIR)" "$(DESTDIR)$(MANDIR)/man1"
-	$(INSTALL) -m 755 $(GL_TARGET) "$(DESTDIR)$(BINDIR)/fusegl"
-	$(INSTALL) -m 644 docs/man/fusegl.1 "$(DESTDIR)$(MANDIR)/man1/"
-
-install-fusetex: $(TEX_TARGET)
-	$(INSTALL) -d "$(DESTDIR)$(BINDIR)" "$(DESTDIR)$(MANDIR)/man1"
-	$(INSTALL) -m 755 $(TEX_TARGET) "$(DESTDIR)$(BINDIR)/fusetex"
-	$(INSTALL) -m 644 docs/man/fusetex.1 "$(DESTDIR)$(MANDIR)/man1/"
-
-install-fusemesh: $(MESH_TARGET)
-	$(INSTALL) -d "$(DESTDIR)$(BINDIR)" "$(DESTDIR)$(MANDIR)/man1"
-	$(INSTALL) -m 755 $(MESH_TARGET) "$(DESTDIR)$(BINDIR)/fusemesh"
-	$(INSTALL) -m 644 docs/man/fusemesh.1 "$(DESTDIR)$(MANDIR)/man1/"
+	$(INSTALL) -m 755 $(TARGET) "$(DESTDIR)$(BINDIR)/fuse"
+	$(INSTALL) -m 644 docs/man/fuse.1 "$(DESTDIR)$(MANDIR)/man1/"
 
 install-library: $(LIBRARY)
 	$(INSTALL) -d "$(DESTDIR)$(LIBDIR)" "$(DESTDIR)$(INCLUDEDIR)/fuse"

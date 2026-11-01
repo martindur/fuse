@@ -10,8 +10,9 @@ SOURCE = "uv.multiply(3.0).noise().colorize(rgb(0.2, 0.6, 1.0))"
 
 
 class TextureTests(CompilerTests):
-    binary = Path("build/fusetex").resolve()
+    binary = Path("build/fuse").resolve()
     language_id = "fusetex"
+    command = "tex"
 
     def test_line_comments_preserve_image_output(self):
         self.assert_comments_preserve_output(SOURCE, "--width", "8", "--height", "4", "--seed", "42")
@@ -34,10 +35,10 @@ class TextureTests(CompilerTests):
         self.assertEqual(result.stdout[:8], b"\x89PNG\r\n\x1a\n")
 
     def test_help_and_catalog(self):
-        for arguments in [("--help",), ("lsp", "--help")]:
+        for arguments in [("--help",), ("-h",)]:
             result = self.run_command(*arguments)
             self.assertEqual(result.returncode, 0)
-            self.assertIn(b"lsp", result.stdout)
+            self.assertIn(b"Usage: fuse tex", result.stdout)
         result = self.run_command("--builtins")
         self.assertEqual(result.returncode, 0)
         names = set(re.findall(r"^  ([a-zA-Z_]\w*)[(:]", result.stdout.decode(), re.MULTILINE))

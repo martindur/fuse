@@ -1,10 +1,10 @@
 #define _POSIX_C_SOURCE 200809L
 
+#include "cli/commands.h"
 #include "glsl_emit.h"
 #include "glsl_stdlib.h"
 #include "fuse/help.h"
 #include "fuse/lower.h"
-#include "fuse/lsp.h"
 #include "fuse/parser.h"
 #include "fuse/preview.h"
 #include "fuse/semantic.h"
@@ -20,13 +20,9 @@ static void usage(FILE *output)
 {
     fprintf(
         output,
-        "Usage: fusegl [OPTION]... < source.pgl > shader.glsl\n"
-        "       fusegl lsp\n"
+        "Usage: fuse gl [OPTION]... < source.pgl > shader.glsl\n"
         "\n"
         "Compile a FuseGL program to a GLSL fragment shader.\n"
-        "\n"
-        "Commands:\n"
-        "  lsp               run the language server over stdin/stdout\n"
         "\n"
         "Options:\n"
         "  --preview-line N  compile the intermediate result at source line N\n"
@@ -34,8 +30,8 @@ static void usage(FILE *output)
         "  -h, --help         show this help\n"
         "\n"
         "Examples:\n"
-        "  fusegl < main.pgl > main.frag\n"
-        "  fusegl --preview-line 4 < main.pgl > preview.frag\n"
+        "  fuse gl < main.pgl > main.frag\n"
+        "  fuse gl --preview-line 4 < main.pgl > preview.frag\n"
     );
 }
 
@@ -69,25 +65,9 @@ static bool parse_line(const char *text, size_t *out_line)
     return true;
 }
 
-int main(int argument_count, char **arguments)
+int fuse_gl_main(int argument_count, char **arguments)
 {
     const FuseDialect *dialect = fusegl_dialect();
-
-    if (argument_count > 1 && strcmp(arguments[1], "lsp") == 0) {
-        if (argument_count == 3
-            && (strcmp(arguments[2], "--help") == 0
-                || strcmp(arguments[2], "-h") == 0)) {
-            puts("Usage: fusegl lsp\n\nRun the FuseGL language server over JSON-RPC on stdin/stdout.");
-            return EXIT_SUCCESS;
-        }
-
-        if (argument_count != 2) {
-            usage(stderr);
-            return EXIT_FAILURE;
-        }
-
-        return fuse_lsp_run(dialect, stdin, stdout, stderr);
-    }
 
     size_t preview_line = 0;
 
@@ -135,9 +115,9 @@ int main(int argument_count, char **arguments)
 
     if (length < 0) {
         if (ferror(stdin)) {
-            perror("fusegl: failed to read stdin");
+            perror("fuse gl: failed to read stdin");
         } else {
-            fprintf(stderr, "fusegl: expected an expression on stdin\n");
+            fprintf(stderr, "fuse gl: expected an expression on stdin\n");
         }
 
         free(source);
@@ -159,7 +139,7 @@ int main(int argument_count, char **arguments)
         )) {
         fprintf(
             stderr,
-            "fusegl: parse error at %zu:%zu: %s\n",
+            "fuse gl: parse error at %zu:%zu: %s\n",
             source_position_at(
                 source,
                 (size_t)length,
@@ -189,7 +169,7 @@ int main(int argument_count, char **arguments)
             )) {
             fprintf(
                 stderr,
-                "fusegl: preview error at %zu:%zu: %s\n",
+                "fuse gl: preview error at %zu:%zu: %s\n",
                 source_position_at(
                     source,
                     (size_t)length,
@@ -213,7 +193,7 @@ int main(int argument_count, char **arguments)
     if (!lower_program(selected, &lowered, &lower_error)) {
         fprintf(
             stderr,
-            "fusegl: lowering error at %zu:%zu: %s\n",
+            "fuse gl: lowering error at %zu:%zu: %s\n",
             source_position_at(
                 source,
                 (size_t)length,
@@ -240,7 +220,7 @@ int main(int argument_count, char **arguments)
         )) {
         fprintf(
             stderr,
-            "fusegl: semantic error at %zu:%zu: %s\n",
+            "fuse gl: semantic error at %zu:%zu: %s\n",
             source_position_at(
                 source,
                 (size_t)length,
@@ -264,7 +244,7 @@ int main(int argument_count, char **arguments)
             ))) {
         fprintf(
             stderr,
-            "fusegl: semantic error at %zu:%zu: %s\n",
+            "fuse gl: semantic error at %zu:%zu: %s\n",
             source_position_at(
                 source,
                 (size_t)length,
@@ -288,12 +268,12 @@ int main(int argument_count, char **arguments)
             &semantic_info,
             source
         )) {
-        perror("fusegl: failed to write GLSL");
+        perror("fuse gl: failed to write GLSL");
         goto cleanup;
     }
 
     if (fflush(stdout) == EOF) {
-        perror("fusegl: failed to flush stdout");
+        perror("fuse gl: failed to flush stdout");
         goto cleanup;
     }
 

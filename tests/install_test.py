@@ -73,11 +73,12 @@ else:
 
     def assert_installation(self, prefix, result):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        for command in ("fusegl", "fusetex", "fusemesh"):
-            binary = prefix / "bin" / command
-            self.assertTrue(os.access(binary, os.X_OK))
-            self.assertTrue((prefix / "share/man/man1" / f"{command}.1").is_file())
-            subprocess.run([str(binary), "--help"], check=True, capture_output=True)
+        binary = prefix / "bin/fuse"
+        self.assertTrue(os.access(binary, os.X_OK))
+        self.assertTrue((prefix / "share/man/man1/fuse.1").is_file())
+        for command in ("gl", "tex", "mesh", "lsp"):
+            subprocess.run([str(binary), command, "--help"], check=True, capture_output=True)
+        self.assertEqual({p.name for p in (prefix / "bin").iterdir()}, {"fuse"})
         self.assertFalse((prefix / "include").exists())
         self.assertFalse((prefix / "lib").exists())
         self.assertEqual(list(self.temporary.iterdir()), [])
@@ -97,6 +98,7 @@ else:
         ])
 
     def test_pinned_release_and_prefix_with_spaces(self):
+        self.env["CAPABILITIES"] = "gl"
         prefix = self.root / "custom prefix"
         result = self.run_installer("--version", "v0.1.0", "--prefix", str(prefix))
         self.assert_installation(prefix, result)
