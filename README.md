@@ -8,14 +8,16 @@ from small chained transformations.
 | `fuse gl` | Shader source (`.pgl`) | GLSL 330 fragment shader |
 | `fuse tex` | Texture source (`.ptex`) | PNG image |
 | `fuse mesh` | Geometry source (`.pmesh`) | Wavefront OBJ mesh |
+| `fuse view` | Shader file (`.pgl`) | Live preview window |
 
-Each command reads source from stdin, writes output to stdout, and reports
+Compiler commands read source from stdin, write output to stdout, and report
 errors on stderr. Use `--builtins` to list its functions and globals.
 
 ## Install
 
 Requires Make, a C17 compiler, an archiver, and a POSIX environment.
-The default build also requires libpng and `pkg-config`.
+The default build also requires `pkg-config`, libpng, GLFW 3, and OpenGL
+development files. Viewing requires an OpenGL 3.3-capable display.
 
 Install the latest release from source:
 
@@ -46,7 +48,15 @@ build/fuse tex --width 256 --height 256 --seed 42 \
 build/fuse mesh < examples/mesh/radial.pmesh > build/radial.obj
 ```
 
-Shaders need a [rendering host](docs/shader-interface.md) to display them.
+Preview a shader with live reload:
+
+```sh
+build/fuse view examples/gl/ring.pgl
+```
+
+Save edits to update the image. Space pauses animation; Escape closes the
+window. Errors appear in the terminal while the last working shader keeps
+running. See the [viewer guide](docs/view.md) for options.
 
 Programs chain transformations. For example, this shader draws an orange circle:
 

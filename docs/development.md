@@ -11,8 +11,10 @@
 | `src/gl/` | Shader catalog, GLSL implementation, and command |
 | `src/tex/` | Texture catalog, evaluator, image storage, PNG output, and command |
 | `src/mesh/` | Geometry catalog, evaluator, mesh storage, OBJ output, and command |
+| `src/view/` | Source polling, shader preview, GLFW window, and GPU resources |
 | `tests/lang/` | Shared tests using small fixture catalogs |
 | `tests/{gl,tex,mesh}/` | Capability behavior and command integration tests |
+| `tests/view/` | Source lifecycle, viewer arguments, rendered pixels, and live reload |
 | `tree-sitter-fuse/` | Grammar, generic queries, generated parser, corpus tests |
 | `editors/nvim/` | File associations and compiler/LSP command selection |
 
@@ -46,9 +48,13 @@ belong to the capabilities. Add extensibility only when requirements justify it.
 cc -std=c17 -Iinclude consumer.c build/libfuse-lang.a -o consumer
 ```
 
-The compilation pipeline is `parse_program`, optional
-`preview_program_at_line`, `lower_program`, then `semantic_analyze` with a
-supplied environment. Evaluation or emission belongs to the capability.
+`prepare_program` in `fuse/compile.h` performs parsing, optional one-based
+preview selection, lowering, type checking, and result validation against a
+dialect. It returns an owned `PreparedProgram` containing the lowered AST and
+semantic information. Initialize it to zero and release it with
+`prepared_program_destroy`. Success replaces a previous result; failure
+preserves it. The caller keeps the source buffer alive. Compiler commands and
+the viewer use this pipeline; evaluation and emission remain with each capability.
 
 The source buffer remains alive while its ASTs are used: names and numbers
 refer to source spans. Selection and lowering each return a separately owned
@@ -80,6 +86,7 @@ make test-lang
 make test-gl
 make test-tex
 make test-mesh
+make test-view
 make test-cli
 make test-install
 make test-release
@@ -107,6 +114,19 @@ syntax and bindings; capability symbol knowledge lives in the catalogs.
 `make test-shaders` compiles every `.pgl` example and validates the output with
 `glslangValidator` (provided by `glslang-tools` on Debian/Ubuntu). CI runs the
 compiler, installer, grammar, and shader checks on pushes and pull requests.
+
+`make test-view` checks source changes, atomic saves, deletion recovery, and
+arguments without opening a window. Rendered tests require a graphics display:
+
+```sh
+make test-view-render
+xvfb-run -a env LIBGL_ALWAYS_SOFTWARE=1 make test-view-render
+```
+
+These check pixel output, UVs, time, framebuffer resolution, resizing, and
+preservation of the active program after shader compile/link failures. They
+also launch the viewer and exercise live edits and file deletion/recreation.
+CI runs these under Xvfb and Mesa software rendering.
 
 ## Installation and releases
 
@@ -163,6 +183,10 @@ are supported; unknown or empty selections are rejected. Changing the selection
 in the same build directory rebuilds the dispatcher. `make test` checks the enabled
 capabilities; installer tests run by default only for a full build. The standard
 source installer always builds the full package.
+
+The viewer is included by default and requires `gl`; a minimal preview build is
+`CAPABILITIES="gl view"`. Compiler-only selections continue to avoid GLFW and
+OpenGL dependencies. See the [viewer guide](view.md).
 
 `make install-library` installs the shared C library and headers separately.
 `make install-grammar` installs only the grammar. `PREFIX`, `BINDIR`, `LIBDIR`,

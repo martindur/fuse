@@ -76,7 +76,7 @@ else:
         binary = prefix / "bin/fuse"
         self.assertTrue(os.access(binary, os.X_OK))
         self.assertTrue((prefix / "share/man/man1/fuse.1").is_file())
-        for command in ("gl", "tex", "mesh", "lsp"):
+        for command in ("gl", "tex", "mesh", "view", "lsp"):
             subprocess.run([str(binary), command, "--help"], check=True, capture_output=True)
         self.assertEqual({p.name for p in (prefix / "bin").iterdir()}, {"fuse"})
         self.assertFalse((prefix / "include").exists())
@@ -138,6 +138,15 @@ else:
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("libpng development files not found", result.stderr)
         self.assertIn("apt install", result.stderr)
+        self.assertFalse(self.log.exists())
+
+    def test_missing_windowing_dependency_is_reported_before_download(self):
+        pkg_config = self.bin / "pkg-config"
+        pkg_config.write_text('#!/bin/sh\n[ "$2" != glfw3 ]\n')
+        pkg_config.chmod(0o755)
+        result = self.run_installer()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("GLFW development files not found", result.stderr)
         self.assertFalse(self.log.exists())
 
 

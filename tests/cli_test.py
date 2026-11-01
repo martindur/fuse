@@ -9,7 +9,7 @@ from tests.cli_support import CompilerTests, at, changed, notification, opened, 
 
 class UnifiedTests(CompilerTests):
     binary = Path("build/fuse").resolve()
-    capabilities = {"gl", "tex", "mesh"}
+    capabilities = {"gl", "tex", "mesh", "view"}
 
     def run_command(self, *arguments, source=""):
         return subprocess.run(
@@ -25,7 +25,7 @@ class UnifiedTests(CompilerTests):
             result = self.run_command(*arguments)
             self.assertEqual(result.returncode, 0, result.stderr.decode())
             self.assertEqual(result.stderr, b"")
-            for capability in ("gl", "tex", "mesh"):
+            for capability in ("gl", "tex", "mesh", "view"):
                 self.assertEqual(f"  {capability} ".encode() in result.stdout, capability in self.capabilities)
         for capability in self.capabilities:
             result = self.run_command(capability, "--help")
@@ -37,8 +37,8 @@ class UnifiedTests(CompilerTests):
 
     def test_invalid_and_unavailable_commands(self):
         arguments = [("unknown",), ("--builtins",), ("lsp", "--builtins"), ("--help", "extra")]
-        arguments += [(name,) for name in {"gl", "tex", "mesh"} - self.capabilities]
-        arguments += [(name, "lsp") for name in self.capabilities]
+        arguments += [(name,) for name in {"gl", "tex", "mesh", "view"} - self.capabilities]
+        arguments += [(name, "lsp") for name in self.capabilities & {"gl", "tex", "mesh"}]
         for args in arguments:
             with self.subTest(arguments=args):
                 result = self.run_command(*args)
@@ -79,7 +79,7 @@ class UnifiedTests(CompilerTests):
             self.assertIn("not supported", diagnostic["message"])
 
     def test_mixed_documents_keep_separate_catalogs(self):
-        if self.capabilities != {"gl", "tex", "mesh"}:
+        if not {"gl", "tex", "mesh"} <= self.capabilities:
             self.skipTest("requires all capabilities")
         shader = "file:///tmp/shader.pgl"
         texture = "file:///tmp/texture.ptex"

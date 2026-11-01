@@ -1,15 +1,11 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include "cli/commands.h"
+#include "fuse/compile.h"
 #include "builtins.h"
 #include "fuse/help.h"
 #include "png_write.h"
 #include "render.h"
-
-#include "fuse/lower.h"
-#include "fuse/parser.h"
-#include "fuse/preview.h"
-#include "fuse/semantic.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -191,149 +187,21 @@ int fuse_tex_main(int argument_count, char **arguments)
         return EXIT_FAILURE;
     }
 
-    Program *syntax = NULL;
-    Program *preview = NULL;
-    Program *lowered = NULL;
-    SemanticInfo semantic_info = {0};
+    PreparedProgram prepared = {0};
     Image image = {0};
     int status = EXIT_FAILURE;
-    ParseError parse_error;
-
-    if (!parse_program(
-            source,
-            (size_t)length,
-            &syntax,
-            &parse_error
-        )) {
-        fprintf(
-            stderr,
-            "fuse tex: parse error at %zu:%zu: %s\n",
-            source_position_at(
-                source,
-                (size_t)length,
-                parse_error.span.offset
-            ).line,
-            source_position_at(
-                source,
-                (size_t)length,
-                parse_error.span.offset
-            ).column,
-            parse_error.message
-        );
-        goto cleanup;
-    }
-
-    const Program *selected = syntax;
-
-    if (preview_line != 0) {
-        PreviewError preview_error;
-
-        if (!preview_program_at_line(
-                syntax,
-                source,
-                preview_line,
-                &preview,
-                &preview_error
-            )) {
-            fprintf(
-                stderr,
-                "fuse tex: preview error at %zu:%zu: %s\n",
-                source_position_at(
-                    source,
-                    (size_t)length,
-                    preview_error.span.offset
-                ).line,
-                source_position_at(
-                    source,
-                    (size_t)length,
-                    preview_error.span.offset
-                ).column,
-                preview_error.message
-            );
-            goto cleanup;
-        }
-
-        selected = preview;
-    }
-
-    LowerError lower_error;
-
-    if (!lower_program(selected, &lowered, &lower_error)) {
-        fprintf(
-            stderr,
-            "fuse tex: lowering error at %zu:%zu: %s\n",
-            source_position_at(
-                source,
-                (size_t)length,
-                lower_error.span.offset
-            ).line,
-            source_position_at(
-                source,
-                (size_t)length,
-                lower_error.span.offset
-            ).column,
-            lower_error.message
-        );
-        goto cleanup;
-    }
-
-    SemanticError semantic_error;
-
-    if (!semantic_analyze(
-            lowered,
-            source,
-            dialect->environment,
-            &semantic_info,
-            &semantic_error
-        )) {
-        fprintf(
-            stderr,
-            "fuse tex: semantic error at %zu:%zu: %s\n",
-            source_position_at(
-                source,
-                (size_t)length,
-                semantic_error.span.offset
-            ).line,
-            source_position_at(
-                source,
-                (size_t)length,
-                semantic_error.span.offset
-            ).column,
-            semantic_error.message
-        );
-        goto cleanup;
-    }
-
-    if ((preview_line == 0
-            && semantic_info.result_type != dialect->required_result_type)
-        || (preview_line != 0
-            && !value_type_is_previewable(
-                semantic_info.result_type
-            ))) {
-        fprintf(
-            stderr,
-            "fuse tex: semantic error at %zu:%zu: %s\n",
-            source_position_at(
-                source,
-                (size_t)length,
-                lowered->result->span.offset
-            ).line,
-            source_position_at(
-                source,
-                (size_t)length,
-                lowered->result->span.offset
-            ).column,
-            preview_line == 0
-                ? "program result must be vec4"
-                : "preview result has unsupported type"
-        );
+    CompileError compile_error;
+    if (!prepare_program(source, (size_t)length, dialect, preview_line, &prepared, &compile_error)) {
+        SourcePosition position = source_position_at(source, (size_t)length, compile_error.span.offset);
+        fprintf(stderr, "fuse tex: %s error at %zu:%zu: %s\n", compile_error.kind,
+            position.line, position.column, compile_error.message);
         goto cleanup;
     }
 
     RenderError render_error;
 
     if (!fusetex_render(
-            lowered,
+            prepared.program,
             source,
             &config,
             &image,
@@ -366,10 +234,7 @@ int fuse_tex_main(int argument_count, char **arguments)
 
 cleanup:
     image_destroy(&image);
-    semantic_info_destroy(&semantic_info);
-    program_destroy(lowered);
-    program_destroy(preview);
-    program_destroy(syntax);
+    prepared_program_destroy(&prepared);
     free(source);
     return status;
 }

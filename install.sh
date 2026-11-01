@@ -7,7 +7,7 @@ Usage: sh install.sh [--version TAG] [--prefix PATH]
 
 Build and install Fuse commands and man pages from a GitHub release.
 Defaults: latest release, prefix $HOME/.local.
-Requires: make, cc (C17), ar, libpng, pkg-config, curl, and tar.
+Requires: make, cc (C17), ar, libpng, GLFW 3, OpenGL headers, pkg-config, curl, and tar.
 EOF
 }
 
@@ -19,9 +19,9 @@ fail() {
 dependency_help() {
     cat >&2 <<'EOF'
 Install the build dependencies, then run the installer again:
-  Debian/Ubuntu: sudo apt install build-essential pkg-config libpng-dev curl
-  Fedora:       sudo dnf install gcc make binutils pkgconf-pkg-config libpng-devel curl
-  macOS:        xcode-select --install; brew install pkg-config libpng
+  Debian/Ubuntu: sudo apt install build-essential pkg-config libpng-dev libglfw3-dev libgl1-mesa-dev curl
+  Fedora:       sudo dnf install gcc make binutils pkgconf-pkg-config libpng-devel glfw-devel mesa-libGL-devel curl
+  macOS:        xcode-select --install; brew install pkg-config libpng glfw
 EOF
 }
 
@@ -70,6 +70,14 @@ main() {
         dependency_help
         fail "libpng development files not found by pkg-config"
     fi
+    if ! pkg-config --exists glfw3; then
+        dependency_help
+        fail "GLFW development files not found by pkg-config"
+    fi
+    if [ "$(uname -s)" != Darwin ] && ! pkg-config --exists gl; then
+        dependency_help
+        fail "OpenGL development files not found by pkg-config"
+    fi
 
     repository=https://github.com/martindur/fuse
     if [ -z "$version" ]; then
@@ -93,8 +101,9 @@ main() {
     tar -xzf "$work_dir/source.tar.gz" --strip-components=1 -C "$work_dir/source"
 
     printf 'Building Fuse %s...\n' "$version"
-    make -C "$work_dir/source" CAPABILITIES="gl tex mesh" all
-    make -C "$work_dir/source" CAPABILITIES="gl tex mesh" PREFIX="$prefix" install
+    unset CAPABILITIES MAKEFLAGS MFLAGS
+    make -C "$work_dir/source" all
+    make -C "$work_dir/source" PREFIX="$prefix" install
 
     printf '\nInstalled Fuse %s to %s/bin\n' "$version" "$prefix"
     case ":${PATH:-}:" in

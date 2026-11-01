@@ -1,14 +1,10 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include "cli/commands.h"
+#include "fuse/compile.h"
 #include "builtins.h"
 #include "fuse/help.h"
 #include "render.h"
-
-#include "fuse/lower.h"
-#include "fuse/parser.h"
-#include "fuse/preview.h"
-#include "fuse/semantic.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -137,107 +133,21 @@ int fuse_mesh_main(int argument_count, char **arguments)
         return EXIT_FAILURE;
     }
 
-    Program *syntax = NULL;
-    Program *preview = NULL;
-    Program *lowered = NULL;
-    SemanticInfo semantic_info = {0};
+    PreparedProgram prepared = {0};
     FuseMesh mesh = {0};
     int status = EXIT_FAILURE;
-    ParseError parse_error;
-
-    if (!parse_program(
-            source,
-            (size_t)length,
-            &syntax,
-            &parse_error
-        )) {
-        print_error(
-            "fuse mesh",
-            "parse",
-            source,
-            (size_t)length,
-            parse_error.span,
-            parse_error.message
-        );
-        goto cleanup;
-    }
-
-    const Program *selected = syntax;
-
-    if (preview_line != 0) {
-        PreviewError preview_error;
-
-        if (!preview_program_at_line(
-                syntax,
-                source,
-                preview_line,
-                &preview,
-                &preview_error
-            )) {
-            print_error(
-                "fuse mesh",
-                "preview",
-                source,
-                (size_t)length,
-                preview_error.span,
-                preview_error.message
-            );
-            goto cleanup;
-        }
-
-        selected = preview;
-    }
-
-    LowerError lower_error;
-
-    if (!lower_program(selected, &lowered, &lower_error)) {
-        print_error(
-            "fuse mesh",
-            "lowering",
-            source,
-            (size_t)length,
-            lower_error.span,
-            lower_error.message
-        );
-        goto cleanup;
-    }
-
-    SemanticError semantic_error;
-
-    if (!semantic_analyze(
-            lowered,
-            source,
-            dialect->environment,
-            &semantic_info,
-            &semantic_error
-        )) {
-        print_error(
-            "fuse mesh",
-            "semantic",
-            source,
-            (size_t)length,
-            semantic_error.span,
-            semantic_error.message
-        );
-        goto cleanup;
-    }
-
-    if (semantic_info.result_type != dialect->required_result_type) {
-        print_error(
-            "fuse mesh",
-            "semantic",
-            source,
-            (size_t)length,
-            lowered->result->span,
-            "program result must be a mesh"
-        );
+    CompileError compile_error;
+    if (!prepare_program(source, (size_t)length, dialect, preview_line, &prepared, &compile_error)) {
+        SourcePosition position = source_position_at(source, (size_t)length, compile_error.span.offset);
+        fprintf(stderr, "fuse mesh: %s error at %zu:%zu: %s\n", compile_error.kind,
+            position.line, position.column, compile_error.message);
         goto cleanup;
     }
 
     FuseMeshRenderError render_error;
 
     if (!fusemesh_render(
-            lowered,
+            prepared.program,
             source,
             &mesh,
             &render_error
@@ -262,10 +172,7 @@ int fuse_mesh_main(int argument_count, char **arguments)
 
 cleanup:
     fusemesh_mesh_destroy(&mesh);
-    semantic_info_destroy(&semantic_info);
-    program_destroy(lowered);
-    program_destroy(preview);
-    program_destroy(syntax);
+    prepared_program_destroy(&prepared);
     free(source);
     return status;
 }

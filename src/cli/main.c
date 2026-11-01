@@ -42,6 +42,9 @@ static void usage(FILE *output)
     for (size_t index = 0; index < COMMAND_COUNT; index += 1) {
         fprintf(output, "  %-6s %s\n", COMMANDS[index].name, COMMANDS[index].description);
     }
+#ifdef FUSE_CAP_VIEW
+    fputs("  view   preview and reload a shader\n", output);
+#endif
     fputs("  lsp    run the language server\n\nUse fuse COMMAND --help for command options.\n", output);
 }
 
@@ -57,6 +60,11 @@ int main(int argc, char **argv)
             return COMMANDS[index].run(argc - 1, argv + 1);
         }
     }
+#ifdef FUSE_CAP_VIEW
+    if (strcmp(argv[1], "view") == 0) {
+        return fuse_view_main(argc - 1, argv + 1);
+    }
+#endif
     if (strcmp(argv[1], "lsp") == 0) {
         if (argc == 3 && (strcmp(argv[2], "--help") == 0 || strcmp(argv[2], "-h") == 0)) {
             puts("Usage: fuse lsp\n\nServe Fuse documents over stdin/stdout.\n"

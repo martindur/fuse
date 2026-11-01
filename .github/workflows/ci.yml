@@ -26,11 +26,13 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config libpng-dev glslang-tools shellcheck
+          sudo apt-get install -y build-essential pkg-config libpng-dev libglfw3-dev libgl1-mesa-dev glslang-tools shellcheck xvfb xauth
       - name: Test compilers and installer
         run: make test
       - name: Test shader-only build
         run: make BUILD_DIR=build/gl-only CAPABILITIES=gl test
+      - name: Test rendered preview and live reload
+        run: xvfb-run -a env LIBGL_ALWAYS_SOFTWARE=1 make test-view-render
       - name: Check release metadata
         run: |
           python3 scripts/release.py check

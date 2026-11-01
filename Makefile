@@ -2,13 +2,19 @@ CC := cc
 AR := ar
 PYTHON ?= python3
 
-CAPABILITIES ?= gl tex mesh
+CAPABILITIES ?= gl tex mesh view
 ENABLED_CAPABILITIES := $(sort $(CAPABILITIES))
-ifneq ($(filter-out gl tex mesh,$(ENABLED_CAPABILITIES)),)
-$(error Unknown CAPABILITIES: $(filter-out gl tex mesh,$(ENABLED_CAPABILITIES)))
+ifneq ($(filter-out gl tex mesh view,$(ENABLED_CAPABILITIES)),)
+$(error Unknown CAPABILITIES: $(filter-out gl tex mesh view,$(ENABLED_CAPABILITIES)))
 endif
 ifeq ($(ENABLED_CAPABILITIES),)
-$(error CAPABILITIES must include at least one of gl, tex, mesh)
+$(error CAPABILITIES must include at least one of gl, tex, mesh, view)
+endif
+
+ifneq ($(filter view,$(ENABLED_CAPABILITIES)),)
+ifeq ($(filter gl,$(ENABLED_CAPABILITIES)),)
+$(error The view capability requires gl; use CAPABILITIES="gl view")
+endif
 endif
 
 BUILD_DIR ?= build
@@ -18,15 +24,24 @@ WARNINGS := -std=c17 -Wall -Wextra -Wpedantic -Wshadow
 SANITIZERS ?=
 PNG_CFLAGS = $(shell pkg-config --cflags libpng 2>/dev/null)
 PNG_LIBS = $(shell pkg-config --libs libpng 2>/dev/null)
+VIEW_CFLAGS = $(shell pkg-config --cflags glfw3 2>/dev/null)
+ifeq ($(shell uname -s),Darwin)
+VIEW_LIBS = $(shell pkg-config --libs glfw3 2>/dev/null) -framework OpenGL
+else
+VIEW_CFLAGS += $(shell pkg-config --cflags gl 2>/dev/null)
+VIEW_LIBS = $(shell pkg-config --libs glfw3 gl 2>/dev/null)
+endif
 
 LANG_SOURCES := src/lang/lexer.c src/lang/ast.c src/lang/ast_dump.c \
 	src/lang/parser.c src/lang/lower.c src/lang/semantic.c src/lang/help.c \
-	src/lang/preview.c src/lsp/lsp.c src/lsp/json.c
+	src/lang/preview.c src/lang/compile.c src/lsp/lsp.c src/lsp/json.c
 GL_SOURCES := src/gl/command.c src/gl/glsl_emit.c src/gl/glsl_stdlib.c
 TEX_SOURCES := src/tex/command.c src/tex/builtins.c src/tex/evaluate.c \
 	src/tex/image.c src/tex/png_write.c src/tex/render.c
 MESH_SOURCES := src/mesh/command.c src/mesh/builtins.c src/mesh/evaluate.c \
 	src/mesh/mesh.c src/mesh/render.c
+VIEW_SOURCES := src/view/command.c src/view/assets.c src/view/render.c
+VIEW_OBJECTS := $(VIEW_SOURCES:%.c=$(OBJECT_DIR)/%.o)
 LANG_OBJECTS := $(LANG_SOURCES:%.c=$(OBJECT_DIR)/%.o)
 GL_OBJECTS := $(GL_SOURCES:%.c=$(OBJECT_DIR)/%.o)
 TEX_OBJECTS := $(TEX_SOURCES:%.c=$(OBJECT_DIR)/%.o)
@@ -34,19 +49,23 @@ MESH_OBJECTS := $(MESH_SOURCES:%.c=$(OBJECT_DIR)/%.o)
 gl_OBJECTS := $(GL_OBJECTS)
 tex_OBJECTS := $(TEX_OBJECTS)
 mesh_OBJECTS := $(MESH_OBJECTS)
+view_OBJECTS := $(VIEW_OBJECTS)
 SELECTED_OBJECTS := $(foreach capability,$(ENABLED_CAPABILITIES),$($(capability)_OBJECTS))
 CLI_OBJECT := $(OBJECT_DIR)/src/cli/main.o
-OBJECTS := $(LANG_OBJECTS) $(GL_OBJECTS) $(TEX_OBJECTS) $(MESH_OBJECTS) $(CLI_OBJECT)
+OBJECTS := $(LANG_OBJECTS) $(GL_OBJECTS) $(TEX_OBJECTS) $(MESH_OBJECTS) $(VIEW_OBJECTS) $(CLI_OBJECT)
 LIBRARY := $(BUILD_DIR)/libfuse-lang.a
 TARGET := $(BUILD_DIR)/fuse
 CAPABILITY_CONFIG := $(BUILD_DIR)/capabilities
 
-LANG_TEST_NAMES := lexer parser ast_dump lower preview semantic json lsp
+LANG_TEST_NAMES := lexer parser ast_dump lower preview semantic json lsp compile
 LANG_TEST_TARGETS := $(LANG_TEST_NAMES:%=$(BUILD_DIR)/tests/lang/%_test)
 GL_TEST_TARGETS := $(BUILD_DIR)/tests/gl/semantic_test $(BUILD_DIR)/tests/gl/glsl_emit_test
 TEX_TEST_TARGETS := $(BUILD_DIR)/tests/tex/evaluate_test
 MESH_TEST_TARGETS := $(BUILD_DIR)/tests/mesh/evaluate_test
-TEST_TARGETS := $(LANG_TEST_TARGETS) $(GL_TEST_TARGETS) $(TEX_TEST_TARGETS) $(MESH_TEST_TARGETS)
+VIEW_ASSET_TEST := $(BUILD_DIR)/tests/view/assets_test
+VIEW_RENDER_TEST := $(BUILD_DIR)/tests/view/render_test
+VIEW_CORE_OBJECTS := $(OBJECT_DIR)/src/view/assets.o $(filter-out $(OBJECT_DIR)/src/gl/command.o,$(GL_OBJECTS))
+TEST_TARGETS := $(VIEW_ASSET_TEST) $(VIEW_RENDER_TEST) $(LANG_TEST_TARGETS) $(GL_TEST_TARGETS) $(TEX_TEST_TARGETS) $(MESH_TEST_TARGETS)
 TEST_OBJECTS := $(TEST_TARGETS:$(BUILD_DIR)/%=$(OBJECT_DIR)/%.o)
 TEST_DIALECTS := $(OBJECT_DIR)/tests/lang/dialects.o
 GRAMMAR := tree-sitter-fuse
@@ -60,7 +79,7 @@ MANDIR ?= $(PREFIX)/share/man
 DATADIR ?= $(PREFIX)/share/fuse
 INSTALL ?= install
 
-.PHONY: all language test test-lang test-gl test-tex test-mesh test-cli test-install test-shaders \
+.PHONY: all language test test-lang test-gl test-tex test-mesh test-view test-view-render test-cli test-install test-shaders \
 	test-release release FORCE \
 	clean install install-library install-grammar install-editor \
 	tree-sitter-generate tree-sitter-test tree-sitter-parser
@@ -87,20 +106,26 @@ $(CAPABILITY_CONFIG): FORCE
 $(CLI_OBJECT): $(CAPABILITY_CONFIG)
 $(CLI_OBJECT): CPPFLAGS += $(if $(filter gl,$(ENABLED_CAPABILITIES)),-DFUSE_CAP_GL) \
 	$(if $(filter tex,$(ENABLED_CAPABILITIES)),-DFUSE_CAP_TEX) \
-	$(if $(filter mesh,$(ENABLED_CAPABILITIES)),-DFUSE_CAP_MESH)
+	$(if $(filter mesh,$(ENABLED_CAPABILITIES)),-DFUSE_CAP_MESH) \
+	$(if $(filter view,$(ENABLED_CAPABILITIES)),-DFUSE_CAP_VIEW)
+$(VIEW_OBJECTS) $(OBJECT_DIR)/tests/view/render_test.o: CPPFLAGS += $(VIEW_CFLAGS)
 $(TEX_OBJECTS): CPPFLAGS += $(PNG_CFLAGS)
 $(OBJECT_DIR)/tests/lang/json_test.o: CPPFLAGS += -Isrc/lsp
 
 $(TARGET): $(CLI_OBJECT) $(SELECTED_OBJECTS) $(LIBRARY)
 	$(CC) $(LDFLAGS) $(SANITIZERS) -o $@ $(CLI_OBJECT) $(SELECTED_OBJECTS) $(LIBRARY) \
 		$(if $(filter tex,$(ENABLED_CAPABILITIES)),$(PNG_LIBS)) \
-		$(if $(filter tex mesh,$(ENABLED_CAPABILITIES)),-lm) $(LDLIBS)
+		$(if $(filter tex mesh,$(ENABLED_CAPABILITIES)),-lm) \
+		$(if $(filter view,$(ENABLED_CAPABILITIES)),$(VIEW_LIBS)) $(LDLIBS)
 
-$(BUILD_DIR)/tests/lang/semantic_test $(BUILD_DIR)/tests/lang/lsp_test: $(TEST_DIALECTS)
+$(BUILD_DIR)/tests/lang/semantic_test $(BUILD_DIR)/tests/lang/lsp_test $(BUILD_DIR)/tests/lang/compile_test: $(TEST_DIALECTS)
 $(OBJECT_DIR)/tests/lang/lsp_test.o: CPPFLAGS += -Isrc/lsp
 $(GL_TEST_TARGETS): $(filter-out $(OBJECT_DIR)/src/gl/command.o,$(GL_OBJECTS))
 $(TEX_TEST_TARGETS): $(filter-out $(OBJECT_DIR)/src/tex/command.o,$(TEX_OBJECTS))
 $(MESH_TEST_TARGETS): $(filter-out $(OBJECT_DIR)/src/mesh/command.o,$(MESH_OBJECTS))
+$(VIEW_ASSET_TEST) $(VIEW_RENDER_TEST): $(VIEW_CORE_OBJECTS)
+$(VIEW_RENDER_TEST): $(OBJECT_DIR)/src/view/render.o
+$(VIEW_RENDER_TEST): LDLIBS += $(VIEW_LIBS)
 $(TEX_TEST_TARGETS): LDLIBS += $(PNG_LIBS) -lm
 $(MESH_TEST_TARGETS): LDLIBS += -lm
 
@@ -109,7 +134,7 @@ $(BUILD_DIR)/tests/%_test: $(OBJECT_DIR)/tests/%_test.o $(LIBRARY)
 	$(CC) $(LDFLAGS) $(SANITIZERS) -o $@ $(filter %.o,$^) $(LIBRARY) $(LDLIBS)
 
 test: test-lang $(ENABLED_CAPABILITIES:%=test-%) test-cli test-release
-ifeq ($(ENABLED_CAPABILITIES),gl mesh tex)
+ifeq ($(ENABLED_CAPABILITIES),gl mesh tex view)
 test: test-install
 endif
 
@@ -143,6 +168,14 @@ test-tex: $(TARGET) $(TEX_TEST_TARGETS)
 test-mesh: $(TARGET) $(MESH_TEST_TARGETS)
 	@set -e; for test in $(MESH_TEST_TARGETS); do "$$test"; done
 	$(PYTHON) -m tests.mesh.cli_test "$(abspath $(TARGET))"
+
+test-view: $(TARGET) $(VIEW_ASSET_TEST)
+	$(VIEW_ASSET_TEST)
+	$(PYTHON) -m tests.view.cli_test "$(abspath $(TARGET))"
+
+test-view-render: $(TARGET) $(VIEW_RENDER_TEST)
+	$(VIEW_RENDER_TEST)
+	$(PYTHON) -m tests.view.live_test "$(abspath $(TARGET))"
 
 tree-sitter-generate:
 	cd $(GRAMMAR) && tree-sitter generate

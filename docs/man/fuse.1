@@ -13,6 +13,10 @@ fuse \- compose shaders, textures, and geometry
 [\fB--builtins\fR | \fB--preview-line\fR \fIN\fR]
 .br
 .B fuse lsp
+.br
+.B fuse view
+[\fB--width\fR \fIN\fR] [\fB--height\fR \fIN\fR]
+[\fB--preview-line\fR \fIN\fR] \fIFILE.pgl\fR
 .SH DESCRIPTION
 Fuse composes graphics from chained transformations. Compiler commands read
 source from standard input, write output to standard output, and report
@@ -37,6 +41,13 @@ It provides diagnostics, receiver-aware completion, and hover for mixed
 shader, texture, and geometry documents. A recognized language ID (fusegl,
 fusetex, or fusemesh) selects the capability; otherwise the filename extension
 is used. Unknown types receive a diagnostic and no completion or hover results.
+.TP
+.B view
+Open a resizable shader preview and reload source edits automatically. Supplies
+time, resolution, and UV coordinates using an OpenGL 3.3 core context. Space
+pauses or resumes animation; Escape closes the window. Errors go to standard
+error and leave the last working shader running. Texture inputs are not yet
+supported. The default initial window size is 960 by 640.
 .SH OPTIONS
 .TP
 .B --builtins
@@ -48,10 +59,10 @@ Compile the intermediate result on a one-based source line. Shader and texture
 previews accept numeric or vector values; geometry previews require a mesh.
 .TP
 .BI --width " N"
-Set the texture width in pixels (tex only).
+Set the texture width in pixels (tex), or initial window width (view).
 .TP
 .BI --height " N"
-Set the texture height in pixels (tex only).
+Set the texture height in pixels (tex), or initial window height (view).
 .TP
 .BI --seed " N"
 Set the unsigned noise seed (tex only).
@@ -64,7 +75,10 @@ fuse gl < shader.pgl > shader.frag
 fuse tex --width 512 --height 512 --seed 42 < clouds.ptex > clouds.png
 fuse mesh < disk.pmesh > disk.obj
 fuse gl --preview-line 4 < shader.pgl > preview.frag
+fuse view shader.pgl
 .fi
 .SH EXIT STATUS
 Returns zero on success and nonzero for invalid commands, options, source,
-or output. A selective build only provides its included capabilities.
+or output. The viewer returns nonzero for startup failures; recoverable shader
+errors keep the window running. A selective build only provides its included
+capabilities.

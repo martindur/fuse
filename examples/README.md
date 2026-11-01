@@ -11,14 +11,22 @@ build/fuse mesh < examples/mesh/radial.pmesh > build/radial.obj
 
 `gl/` contains standalone shader examples; `tex/` contains gradients, rings,
 stripes, and noise textures; `mesh/` contains planar and radial-UV disks.
+Preview standalone shaders with live reload:
+
+```sh
+build/fuse view examples/gl/ring.pgl
+```
+
 Images can be opened in an image viewer and OBJ files imported into a mesh
-application. Shaders need a host implementing the [shader interface](../docs/shader-interface.md).
+application. See the [viewer guide](../docs/view.md) for controls and options.
 
 ## Source compositions
 
 `compositions/` contains shaders with procedural texture inputs. Compile each
 texture with FuseTex and the shader with FuseGL, then bind the resulting images
 to the shader's texture slots in your rendering host.
+The first `fuse view` slice supports standalone shaders; texture inputs follow
+in the next slice.
 
 | Directory | Shader | Texture slots | Texture generation |
 | --- | --- | --- | --- |
