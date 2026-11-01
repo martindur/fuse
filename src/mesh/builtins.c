@@ -70,6 +70,7 @@ static const LanguageEnvironment ENVIRONMENT = {
 
 static const FuseDialect DIALECT = {
     .language_id = "fusemesh",
+    .file_extension = ".pmesh",
     .environment = &ENVIRONMENT,
     .required_result_type = VALUE_TYPE_MESH,
 };

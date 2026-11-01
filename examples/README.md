@@ -3,10 +3,10 @@
 From the repository root, build the compilers with `make`, then try:
 
 ```sh
-build/fusegl < examples/gl/ring.pgl > build/ring.frag
-build/fusetex --width 256 --height 256 --seed 42 \
+build/fuse gl < examples/gl/ring.pgl > build/ring.frag
+build/fuse tex --width 256 --height 256 --seed 42 \
   < examples/tex/clouds.ptex > build/clouds.png
-build/fusemesh < examples/mesh/radial.pmesh > build/radial.obj
+build/fuse mesh < examples/mesh/radial.pmesh > build/radial.obj
 ```
 
 `gl/` contains standalone shader examples; `tex/` contains gradients, rings,

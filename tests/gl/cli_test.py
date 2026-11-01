@@ -9,8 +9,9 @@ from tests.cli_support import CompilerTests, URI, opened, changed, at, notificat
 SOURCE = "uv.center().circle(0.2).fill().colorize(rgb(1.0, 0.5, 0.0))"
 
 class ShaderTests(CompilerTests):
-    binary = Path("build/fusegl").resolve()
+    binary = Path("build/fuse").resolve()
     language_id = "fusegl"
+    command = "gl"
 
     def test_line_comments_preserve_shader_output(self):
         self.assert_comments_preserve_output(SOURCE)
@@ -73,7 +74,7 @@ class ShaderTests(CompilerTests):
                 result = self.run_command("--preview-line", line, source=source)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(result.stdout, b"")
-                self.assertIn(b"fusegl:", result.stderr)
+                self.assertIn(b"fuse gl:", result.stderr)
 
     def test_invalid_arguments(self):
         for arguments in [
@@ -87,7 +88,7 @@ class ShaderTests(CompilerTests):
                 result = self.run_command(*arguments, source=SOURCE)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(result.stdout, b"")
-                self.assertIn(b"Usage: fusegl", result.stderr)
+                self.assertIn(b"Usage: fuse gl", result.stderr)
 
     def test_invalid_programs(self):
         for source, error in [
@@ -104,11 +105,11 @@ class ShaderTests(CompilerTests):
                 self.assertIn(error, result.stderr)
 
     def test_help(self):
-        for arguments in [["--help"], ["-h"], ["lsp", "--help"]]:
+        for arguments in [["--help"], ["-h"]]:
             with self.subTest(arguments=arguments):
                 result = self.run_command(*arguments)
                 self.assertEqual(result.returncode, 0)
-                self.assertIn(b"fusegl lsp", result.stdout)
+                self.assertIn(b"Usage: fuse gl", result.stdout)
                 self.assertEqual(result.stderr, b"")
 
     def test_completion_matches_builtin_help(self):
@@ -170,11 +171,11 @@ class ShaderTests(CompilerTests):
     def test_output_failure(self):
         with open("/dev/full", "wb") as output:
             result = subprocess.run(
-                [str(self.binary)], input=SOURCE.encode(), stdout=output,
+                [str(self.binary), "gl"], input=SOURCE.encode(), stdout=output,
                 stderr=subprocess.PIPE, timeout=10,
             )
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn(b"fusegl: failed to", result.stderr)
+        self.assertIn(b"fuse gl: failed to", result.stderr)
 
 
 if __name__ == "__main__":

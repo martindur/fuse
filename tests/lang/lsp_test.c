@@ -61,7 +61,7 @@ static Session run_session(
         }
 
         if (written && fflush(input) == 0 && fseek(input, 0, SEEK_SET) == 0) {
-            session.status = fuse_lsp_run(dialect, input, output, NULL);
+            session.status = fuse_lsp_run(&dialect, 1, input, output, NULL);
         }
     }
 
@@ -185,7 +185,7 @@ static bool test_document_lifecycle(void)
     static const char *const MESSAGES[] = {
         INITIALIZE,
         "{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{"
-            "\"uri\":\"file:///tmp/main.unknown\",\"languageId\":\"unrelated\",\"version\":1,"
+            "\"uri\":\"file:///tmp/main.unknown\",\"languageId\":\"test-point\",\"version\":1,"
             "\"text\":\"point.shift(1.0)\"}}}",
         "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"textDocument/completion\",\"params\":{"
             "\"textDocument\":{\"uri\":\"file:///tmp/main.unknown\"},"
@@ -208,7 +208,7 @@ static bool test_document_lifecycle(void)
     FuseJsonValue completion = result_for(&session, 2);
     FuseJsonValue hover = result_for(&session, 3);
     bool passed = session.status == 0 && session.framed
-        && contains(result_for(&session, 1), "\"name\":\"test-point\"")
+        && contains(result_for(&session, 1), "\"name\":\"fuse\"")
         && contains(diagnostics_for(&session, 0), "program result must be vec4")
         && contains(diagnostics_for(&session, 0), "\"source\":\"test-point\"")
         && contains(completion, "\"label\":\"shift\"")
@@ -239,7 +239,7 @@ static bool test_completion(
     char completion[512];
     snprintf(open, sizeof(open),
         "{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{"
-        "\"uri\":\"untitled:buffer\",\"languageId\":\"ignored\",\"version\":1,\"text\":\"%s\"}}}", source);
+        "\"uri\":\"untitled:buffer\",\"languageId\":\"%s\",\"version\":1,\"text\":\"%s\"}}}", dialect->language_id, source);
     snprintf(completion, sizeof(completion),
         "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"textDocument/completion\",\"params\":{"
         "\"textDocument\":{\"uri\":\"untitled:buffer\"},\"position\":{\"line\":0,\"character\":%zu}}}",
@@ -258,7 +258,7 @@ static bool test_object_diagnostics_and_hover(void)
     static const char *const MESSAGES[] = {
         INITIALIZE,
         "{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{"
-            "\"uri\":\"untitled:object\",\"version\":1,\"text\":\"object().resize(2.0)\"}}}",
+            "\"uri\":\"untitled:object\",\"languageId\":\"test-object\",\"version\":1,\"text\":\"object().resize(2.0)\"}}}",
         "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"textDocument/hover\",\"params\":{"
             "\"textDocument\":{\"uri\":\"untitled:object\"},\"position\":{\"line\":0,\"character\":10}}}",
         "{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didChange\",\"params\":{"
@@ -269,7 +269,7 @@ static bool test_object_diagnostics_and_hover(void)
     Session session = run_session(&TEST_OBJECT_DIALECT, MESSAGES,
         sizeof(MESSAGES) / sizeof(MESSAGES[0]));
     bool passed = check(session.status == 0 && session.framed
-        && contains(result_for(&session, 1), "\"name\":\"test-object\"")
+        && contains(result_for(&session, 1), "\"name\":\"fuse\"")
         && contains(diagnostics_for(&session, 0), "[]")
         && contains(diagnostics_for(&session, 1), "program result must be mesh")
         && contains(result_for(&session, 3), "resize(mesh, float) -> mesh")
@@ -304,7 +304,30 @@ static bool test_configuration_and_lifecycle_errors(void)
     Session broken = run_session(&invalid, NULL, 0);
     passed = check(broken.status != 0, "missing builtin table", &broken) && passed;
     free(broken.output);
-    passed = fuse_lsp_run(NULL, NULL, NULL, NULL) != 0 && passed;
+    invalid = TEST_OBJECT_DIALECT;
+    invalid.file_extension = NULL;
+    Session no_extension = run_session(&invalid, NULL, 0);
+    passed = check(no_extension.status != 0, "missing extension", &no_extension) && passed;
+    free(no_extension.output);
+    passed = fuse_lsp_run(NULL, 0, NULL, NULL, NULL) != 0 && passed;
+
+    FILE *input = tmpfile();
+    FILE *output = tmpfile();
+    if (input == NULL || output == NULL) {
+        passed = false;
+    } else {
+        const FuseDialect *duplicates[] = {&TEST_OBJECT_DIALECT, &TEST_OBJECT_DIALECT};
+        passed = fuse_lsp_run(duplicates, 2, input, output, NULL) != 0 && passed;
+        passed = fuse_lsp_run(duplicates, 0, input, output, NULL) != 0 && passed;
+        const FuseDialect *missing[] = {NULL};
+        passed = fuse_lsp_run(missing, 1, input, output, NULL) != 0 && passed;
+    }
+    if (input != NULL) {
+        fclose(input);
+    }
+    if (output != NULL) {
+        fclose(output);
+    }
     return passed;
 }
 
@@ -325,7 +348,7 @@ static bool test_transport_errors(void)
         FILE *output = tmpfile();
 
         if (input == NULL || output == NULL
-            || fuse_lsp_run(&TEST_OBJECT_DIALECT, input, output, NULL) == 0) {
+            || fuse_lsp_run((const FuseDialect *[]){&TEST_OBJECT_DIALECT}, 1, input, output, NULL) == 0) {
             fprintf(stderr, "FAIL malformed/truncated packet %zu\n", i);
             passed = false;
         }
@@ -347,7 +370,7 @@ static bool test_transport_errors(void)
     } else {
         fprintf(input, "Content-Length: %zu\r\n\r\n%s", strlen(INITIALIZE), INITIALIZE);
         rewind(input);
-        passed = fuse_lsp_run(&TEST_POINT_DIALECT, input, output, NULL) != 0 && passed;
+        passed = fuse_lsp_run((const FuseDialect *[]){&TEST_POINT_DIALECT}, 1, input, output, NULL) != 0 && passed;
     }
 
     if (input != NULL) {

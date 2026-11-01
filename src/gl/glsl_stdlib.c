@@ -417,6 +417,7 @@ static const LanguageEnvironment ENVIRONMENT = {
 
 static const FuseDialect DIALECT = {
     .language_id = "fusegl",
+    .file_extension = ".pgl",
     .environment = &ENVIRONMENT,
     .required_result_type = VALUE_TYPE_VEC4,
 };

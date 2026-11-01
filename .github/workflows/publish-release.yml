@@ -44,6 +44,6 @@ jobs:
       - name: Verify published source installation
         run: |
           sh install.sh --version "v$(cat VERSION)" --prefix "$RUNNER_TEMP/fuse"
-          "$RUNNER_TEMP/fuse/bin/fusegl" --help
-          "$RUNNER_TEMP/fuse/bin/fusetex" --help
-          "$RUNNER_TEMP/fuse/bin/fusemesh" --help
+          "$RUNNER_TEMP/fuse/bin/fuse" gl --help
+          "$RUNNER_TEMP/fuse/bin/fuse" tex --help
+          "$RUNNER_TEMP/fuse/bin/fuse" mesh --help

@@ -1,0 +1,70 @@
+.TH FUSE 1 "November 2026" "Fuse" "User Commands"
+.SH NAME
+fuse \- compose shaders, textures, and geometry
+.SH SYNOPSIS
+.B fuse gl
+[\fB--builtins\fR | \fB--preview-line\fR \fIN\fR]
+.br
+.B fuse tex
+[\fB--width\fR \fIN\fR] [\fB--height\fR \fIN\fR] [\fB--seed\fR \fIN\fR]
+[\fB--preview-line\fR \fIN\fR]
+.br
+.B fuse mesh
+[\fB--builtins\fR | \fB--preview-line\fR \fIN\fR]
+.br
+.B fuse lsp
+.SH DESCRIPTION
+Fuse composes graphics from chained transformations. Compiler commands read
+source from standard input, write output to standard output, and report
+diagnostics on standard error.
+.SH COMMANDS
+.TP
+.B gl
+Compile .pgl source to a GLSL 330 core fragment shader. Complete programs return
+vec4. A rendering host supplies the fuseUv input, u_time and u_resolution
+uniforms, and any used texture inputs tex0 through tex3.
+.TP
+.B tex
+Evaluate .ptex source to an RGBA PNG image. Complete programs return vec4.
+The default width and height are 256 pixels; the default noise seed is zero.
+.TP
+.B mesh
+Evaluate .pmesh source to a Wavefront OBJ mesh. Complete programs return mesh.
+.TP
+.B lsp
+Run the shared language server over JSON-RPC on standard input and output.
+It provides diagnostics, receiver-aware completion, and hover for mixed
+shader, texture, and geometry documents. A recognized language ID (fusegl,
+fusetex, or fusemesh) selects the capability; otherwise the filename extension
+is used. Unknown types receive a diagnostic and no completion or hover results.
+.SH OPTIONS
+.TP
+.B --builtins
+Available on gl, tex, and mesh. Print the command's function signatures,
+globals, and documentation.
+.TP
+.BI --preview-line " N"
+Compile the intermediate result on a one-based source line. Shader and texture
+previews accept numeric or vector values; geometry previews require a mesh.
+.TP
+.BI --width " N"
+Set the texture width in pixels (tex only).
+.TP
+.BI --height " N"
+Set the texture height in pixels (tex only).
+.TP
+.BI --seed " N"
+Set the unsigned noise seed (tex only).
+.TP
+.B -h, --help
+Show available commands or help for a subcommand.
+.SH EXAMPLES
+.nf
+fuse gl < shader.pgl > shader.frag
+fuse tex --width 512 --height 512 --seed 42 < clouds.ptex > clouds.png
+fuse mesh < disk.pmesh > disk.obj
+fuse gl --preview-line 4 < shader.pgl > preview.frag
+.fi
+.SH EXIT STATUS
+Returns zero on success and nonzero for invalid commands, options, source,
+or output. A selective build only provides its included capabilities.

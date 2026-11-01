@@ -93,13 +93,13 @@ main() {
     tar -xzf "$work_dir/source.tar.gz" --strip-components=1 -C "$work_dir/source"
 
     printf 'Building Fuse %s...\n' "$version"
-    make -C "$work_dir/source" all
-    make -C "$work_dir/source" PREFIX="$prefix" install
+    make -C "$work_dir/source" CAPABILITIES="gl tex mesh" all
+    make -C "$work_dir/source" CAPABILITIES="gl tex mesh" PREFIX="$prefix" install
 
     printf '\nInstalled Fuse %s to %s/bin\n' "$version" "$prefix"
     case ":${PATH:-}:" in
         *":$prefix/bin:"*) ;;
-        *) printf 'Add %s/bin to your PATH to use fusegl, fusetex, and fusemesh.\n' "$prefix" ;;
+        *) printf 'Add %s/bin to your PATH to use the installed commands.\n' "$prefix" ;;
     esac
 }
 

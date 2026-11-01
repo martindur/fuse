@@ -14,24 +14,24 @@ def request(method, request_id, params=None):
     return {**notification(method, params), "id": request_id}
 
 
-def opened(text, language_id="fusegl"):
+def opened(text, language_id="fusegl", uri=URI):
     return notification("textDocument/didOpen", {
         "textDocument": {
-            "uri": URI, "languageId": language_id, "version": 1, "text": text,
+            "uri": uri, "languageId": language_id, "version": 1, "text": text,
         },
     })
 
 
-def changed(text, version):
+def changed(text, version, uri=URI):
     return notification("textDocument/didChange", {
-        "textDocument": {"uri": URI, "version": version},
+        "textDocument": {"uri": uri, "version": version},
         "contentChanges": [{"text": text}],
     })
 
 
-def at(source):
+def at(source, uri=URI):
     return {
-        "textDocument": {"uri": URI},
+        "textDocument": {"uri": uri},
         "position": {
             "line": source.count("\n"),
             "character": len(source.rsplit("\n", 1)[-1].encode("utf-16-le")) // 2,
@@ -56,7 +56,7 @@ class CompilerTests(unittest.TestCase):
 
     def run_command(self, *arguments, source=""):
         return subprocess.run(
-            [str(self.binary), *arguments], input=source.encode(),
+            [str(self.binary), self.command, *arguments], input=source.encode(),
             capture_output=True, timeout=10,
         )
 
@@ -86,7 +86,7 @@ class CompilerTests(unittest.TestCase):
             packets.append(json.loads(body[:length]))
             remaining = body[length:]
         responses = {packet["id"]: packet for packet in packets if "id" in packet}
-        self.assertEqual(responses[1]["result"]["serverInfo"]["name"], self.language_id)
+        self.assertEqual(responses[1]["result"]["serverInfo"]["name"], "fuse")
         self.assertIsNone(responses[99]["result"])
         return packets, responses
 

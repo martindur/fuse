@@ -5,9 +5,9 @@ from small chained transformations.
 
 | Command | Input | Output |
 | --- | --- | --- |
-| `fusegl` | Shader source (`.pgl`) | GLSL 330 fragment shader |
-| `fusetex` | Texture source (`.ptex`) | PNG image |
-| `fusemesh` | Geometry source (`.pmesh`) | Wavefront OBJ mesh |
+| `fuse gl` | Shader source (`.pgl`) | GLSL 330 fragment shader |
+| `fuse tex` | Texture source (`.ptex`) | PNG image |
+| `fuse mesh` | Geometry source (`.pmesh`) | Wavefront OBJ mesh |
 
 Each command reads source from stdin, writes output to stdout, and reports
 errors on stderr. Use `--builtins` to list its functions and globals.
@@ -15,7 +15,7 @@ errors on stderr. Use `--builtins` to list its functions and globals.
 ## Install
 
 Requires Make, a C17 compiler, an archiver, and a POSIX environment.
-FuseTex also requires libpng and `pkg-config`.
+The default build also requires libpng and `pkg-config`.
 
 Install the latest release from source:
 
@@ -23,9 +23,9 @@ Install the latest release from source:
 curl -fsSL https://raw.githubusercontent.com/martindur/fuse/main/install.sh | sh
 ```
 
-The installer also requires curl and tar. It installs the
-commands and man pages under `~/.local`; add `~/.local/bin` to your `PATH`.
-To choose a release or destination, pass `--version v0.1.0` or `--prefix /path`
+The installer also requires curl and tar. It installs `fuse` and its man page
+under `~/.local`; add `~/.local/bin` to your `PATH`.
+To choose a release or destination, pass `--version v0.2.0` or `--prefix /path`
 to `sh -s --` at the end of the command.
 
 From a checkout:
@@ -40,13 +40,12 @@ The C library and headers can be installed separately with `make install-library
 
 ```sh
 make
-build/fusegl < examples/gl/ring.pgl > build/ring.frag
-build/fusetex --width 256 --height 256 --seed 42 \
+build/fuse gl < examples/gl/ring.pgl > build/ring.frag
+build/fuse tex --width 256 --height 256 --seed 42 \
   < examples/tex/clouds.ptex > build/clouds.png
-build/fusemesh < examples/mesh/radial.pmesh > build/radial.obj
+build/fuse mesh < examples/mesh/radial.pmesh > build/radial.obj
 ```
 
-To build a single command, use `make fusegl`, `make fusetex`, or `make fusemesh`.
 Shaders need a [rendering host](docs/shader-interface.md) to display them.
 
 Programs chain transformations. For example, this shader draws an orange circle:
@@ -65,9 +64,8 @@ See the [language reference](docs/language.md),
 
 ## Editors
 
-Configure your editor to run `fusegl lsp` for `.pgl`, `fusetex lsp` for `.ptex`,
-or `fusemesh lsp` for `.pmesh`. Each provides diagnostics, completion, and hover
-documentation.
+Configure your editor to run `fuse lsp` for `.pgl`, `.ptex`, and `.pmesh` files.
+One server provides diagnostics, completion, and hover documentation for all three.
 
 For Neovim, see the [setup guide](editors/nvim/README.md) to install and enable
 the optional LSP integration and syntax highlighting.
