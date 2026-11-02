@@ -1,1 +1,0 @@
-Bind procedural texture sources to `fuse view` with `--tex0` through `--tex3`. Shader and texture edits reload independently, preserving the last working result on failure. Textures default to 512 × 512 pixels and seed 42, with options to override both dimensions and seed.
