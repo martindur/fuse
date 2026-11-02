@@ -3,6 +3,7 @@
 
 #include "fuse/compile.h"
 #include "tex/render.h"
+#include "mesh/mesh.h"
 
 typedef struct {
     char *text;
@@ -22,5 +23,7 @@ void view_source_destroy(ViewSource *source);
 bool view_shader_compile(const ViewSource *source, size_t preview_line, char **out_glsl, CompileError *error);
 /* Replaces a zero-initialized image on success; preserves it on failure. */
 bool view_texture_render(const ViewSource *source, size_t preview_line, const RenderConfig *config, Image *out, CompileError *error);
+/* Replaces a zero-initialized mesh on success; preserves it on failure. */
+bool view_mesh_render(const ViewSource *source, size_t preview_line, FuseMesh *out, CompileError *error);
 
 #endif

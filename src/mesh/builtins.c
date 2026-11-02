@@ -1,6 +1,7 @@
 #include "builtins.h"
 
 static const BuiltinSignature BUILTINS[] = {
+    {"show", VALUE_TYPE_MESH, 1, {VALUE_TYPE_MESH}},
     {
         "disk",
         VALUE_TYPE_MESH,
@@ -34,6 +35,7 @@ static const BuiltinSignature BUILTINS[] = {
 };
 
 static const SymbolDocumentation DOCUMENTATION[] = {
+    {"show", "Selects this intermediate mesh in fuse view. The last show() in each file wins; normal compilation returns the mesh unchanged."},
     {
         "disk",
         "Creates a filled disk mesh with centered planar UVs.",
@@ -70,7 +72,7 @@ static const LanguageEnvironment ENVIRONMENT = {
 
 static const FuseDialect DIALECT = {
     .language_id = "fusemesh",
-    .file_extension = ".pmesh",
+    .file_extension = ".fmesh",
     .environment = &ENVIRONMENT,
     .required_result_type = VALUE_TYPE_MESH,
 };

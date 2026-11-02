@@ -12,8 +12,8 @@ $(error CAPABILITIES must include at least one of gl, tex, mesh, view)
 endif
 
 ifneq ($(filter view,$(ENABLED_CAPABILITIES)),)
-ifneq ($(filter gl tex,$(ENABLED_CAPABILITIES)),gl tex)
-$(error The view capability requires gl and tex; use CAPABILITIES="gl tex view")
+ifneq ($(filter gl mesh tex,$(ENABLED_CAPABILITIES)),gl mesh tex)
+$(error The view capability requires gl, tex, and mesh; use CAPABILITIES="gl tex mesh view")
 endif
 endif
 
@@ -40,7 +40,7 @@ TEX_SOURCES := src/tex/command.c src/tex/builtins.c src/tex/evaluate.c \
 	src/tex/image.c src/tex/png_write.c src/tex/render.c
 MESH_SOURCES := src/mesh/command.c src/mesh/builtins.c src/mesh/evaluate.c \
 	src/mesh/mesh.c src/mesh/render.c
-VIEW_SOURCES := src/view/command.c src/view/assets.c src/view/render.c
+VIEW_SOURCES := src/view/command.c src/view/assets.c src/view/render.c src/view/mesh.c
 VIEW_OBJECTS := $(VIEW_SOURCES:%.c=$(OBJECT_DIR)/%.o)
 LANG_OBJECTS := $(LANG_SOURCES:%.c=$(OBJECT_DIR)/%.o)
 GL_OBJECTS := $(GL_SOURCES:%.c=$(OBJECT_DIR)/%.o)
@@ -65,7 +65,8 @@ MESH_TEST_TARGETS := $(BUILD_DIR)/tests/mesh/evaluate_test
 VIEW_ASSET_TEST := $(BUILD_DIR)/tests/view/assets_test
 VIEW_RENDER_TEST := $(BUILD_DIR)/tests/view/render_test
 VIEW_CORE_OBJECTS := $(OBJECT_DIR)/src/view/assets.o $(filter-out $(OBJECT_DIR)/src/gl/command.o,$(GL_OBJECTS)) \
-	$(filter-out $(OBJECT_DIR)/src/tex/command.o $(OBJECT_DIR)/src/tex/png_write.o,$(TEX_OBJECTS))
+	$(filter-out $(OBJECT_DIR)/src/tex/command.o $(OBJECT_DIR)/src/tex/png_write.o,$(TEX_OBJECTS)) \
+	$(filter-out $(OBJECT_DIR)/src/mesh/command.o,$(MESH_OBJECTS))
 TEST_TARGETS := $(VIEW_ASSET_TEST) $(VIEW_RENDER_TEST) $(LANG_TEST_TARGETS) $(GL_TEST_TARGETS) $(TEX_TEST_TARGETS) $(MESH_TEST_TARGETS)
 TEST_OBJECTS := $(TEST_TARGETS:$(BUILD_DIR)/%=$(OBJECT_DIR)/%.o)
 TEST_DIALECTS := $(OBJECT_DIR)/tests/lang/dialects.o
@@ -125,7 +126,7 @@ $(GL_TEST_TARGETS): $(filter-out $(OBJECT_DIR)/src/gl/command.o,$(GL_OBJECTS))
 $(TEX_TEST_TARGETS): $(filter-out $(OBJECT_DIR)/src/tex/command.o,$(TEX_OBJECTS))
 $(MESH_TEST_TARGETS): $(filter-out $(OBJECT_DIR)/src/mesh/command.o,$(MESH_OBJECTS))
 $(VIEW_ASSET_TEST) $(VIEW_RENDER_TEST): $(VIEW_CORE_OBJECTS)
-$(VIEW_RENDER_TEST): $(OBJECT_DIR)/src/view/render.o
+$(VIEW_RENDER_TEST): $(OBJECT_DIR)/src/view/render.o $(OBJECT_DIR)/src/view/mesh.o
 $(VIEW_ASSET_TEST) $(VIEW_RENDER_TEST): LDLIBS += -lm
 $(VIEW_RENDER_TEST): LDLIBS += $(VIEW_LIBS)
 $(TEX_TEST_TARGETS): LDLIBS += $(PNG_LIBS) -lm

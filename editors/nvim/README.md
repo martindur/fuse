@@ -15,7 +15,7 @@ vim.opt.runtimepath:append(data .. "/tree-sitter-fuse")
 require("fuse.lsp").setup()
 ```
 
-The runtime maps `.pgl`, `.ptex`, and `.pmesh` to `fusegl`, `fusetex`, and
+The runtime maps `.fgl`, `.ftex`, and `.fmesh` to `fusegl`, `fusetex`, and
 `fusemesh`. All use the Fuse highlighter and one `fuse lsp` client per project
 root. The server selects the capability per document. Files are grouped by
 Git root where present, otherwise by directory.

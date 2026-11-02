@@ -5,10 +5,10 @@ from small chained transformations.
 
 | Command | Input | Output |
 | --- | --- | --- |
-| `fuse gl` | Shader source (`.pgl`) | GLSL 330 fragment shader |
-| `fuse tex` | Texture source (`.ptex`) | PNG image |
-| `fuse mesh` | Geometry source (`.pmesh`) | Wavefront OBJ mesh |
-| `fuse view` | Shader (`.pgl`) or texture (`.ptex`) file | Live preview window |
+| `fuse gl` | Shader source (`.fgl`) | GLSL 330 fragment shader |
+| `fuse tex` | Texture source (`.ftex`) | PNG image |
+| `fuse mesh` | Geometry source (`.fmesh`) | Wavefront OBJ mesh |
+| `fuse view` | Shader (`.fgl`), texture (`.ftex`), or mesh (`.fmesh`) file | Live preview window |
 
 Compiler commands read source from stdin, write output to stdout, and report
 errors on stderr. Use `--builtins` to list its functions and globals.
@@ -42,24 +42,26 @@ The C library and headers can be installed separately with `make install-library
 
 ```sh
 make
-build/fuse gl < examples/gl/ring.pgl > build/ring.frag
+build/fuse gl < examples/gl/ring.fgl > build/ring.frag
 build/fuse tex --width 256 --height 256 --seed 42 \
-  < examples/tex/clouds.ptex > build/clouds.png
-build/fuse mesh < examples/mesh/radial.pmesh > build/radial.obj
+  < examples/tex/clouds.ftex > build/clouds.png
+build/fuse mesh < examples/mesh/radial.fmesh > build/radial.obj
 ```
 
-Preview Fuse shader and texture source files with live reload:
+Preview Fuse source files with live reload:
 
 ```sh
-build/fuse view examples/gl/ring.pgl
-build/fuse view examples/tex/clouds.ptex
+build/fuse view examples/gl/ring.fgl
+build/fuse view examples/tex/clouds.ftex
+build/fuse view examples/mesh/radial.fmesh
 ```
 
 Save edits to update the image. Space pauses animation; Escape closes the
 window. Errors appear in the terminal while the last working shader keeps
-running. Bind procedural textures with `--tex0 FILE.ptex` through `--tex3 FILE.ptex`;
+running. Bind procedural textures with `--tex0 FILE.ftex` through `--tex3 FILE.ftex`;
 each input reloads independently. Press `1` for the shader or `2`–`5` for texture
-inputs. Add `.show()` to preview an intermediate value in any source.
+inputs. In a mesh preview, `W` toggles wireframe and `U` shows UV colors.
+Add `.show()` to preview an intermediate value in any source.
 See the [viewer guide](docs/view.md) for examples.
 
 Programs chain transformations. For example, this shader draws an orange circle:
@@ -78,7 +80,7 @@ See the [language reference](docs/language.md),
 
 ## Editors
 
-Configure your editor to run `fuse lsp` for `.pgl`, `.ptex`, and `.pmesh` files.
+Configure your editor to run `fuse lsp` for `.fgl`, `.ftex`, and `.fmesh` files.
 One server provides diagnostics, completion, and hover documentation for all three.
 
 For Neovim, see the [setup guide](editors/nvim/README.md) to install and enable

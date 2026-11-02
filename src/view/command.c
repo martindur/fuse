@@ -12,6 +12,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+typedef enum {
+    VIEW_SHADER,
+    VIEW_TEXTURE,
+    VIEW_MESH
+} ViewKind;
+
 typedef struct {
     const char *label;
     const char *path;
@@ -27,28 +33,30 @@ typedef struct {
     size_t preview_line;
     bool paused;
     bool shader_pending;
-    bool texture_only;
+    ViewKind kind;
+    bool wireframe;
     int selected_texture;
 } ViewApp;
 
 static void usage(FILE *output)
 {
-    fputs("Usage: fuse view [OPTION]... FILE.pgl|FILE.ptex\n\n"
-        "Preview Fuse shader (.pgl) and texture (.ptex) source files with live reload.\n\n"
+    fputs("Usage: fuse view [OPTION]... FILE.fgl|FILE.ftex|FILE.fmesh\n\n"
+        "Preview Fuse shader (.fgl), texture (.ftex), and mesh (.fmesh) source files with live reload.\n\n"
         "Options:\n"
         "  --width N           initial window width (default: 960)\n"
         "  --height N          initial window height (default: 640)\n"
         "  --preview-line N    display the intermediate result on a line\n"
-        "  --tex0 FILE.ptex    bind a procedural texture to tex0\n"
-        "  --tex1 FILE.ptex    bind a procedural texture to tex1\n"
-        "  --tex2 FILE.ptex    bind a procedural texture to tex2\n"
-        "  --tex3 FILE.ptex    bind a procedural texture to tex3\n"
+        "  --tex0 FILE.ftex    bind a procedural texture to tex0\n"
+        "  --tex1 FILE.ftex    bind a procedural texture to tex1\n"
+        "  --tex2 FILE.ftex    bind a procedural texture to tex2\n"
+        "  --tex3 FILE.ftex    bind a procedural texture to tex3\n"
         "  --texture-width N   generated texture width (default: 512)\n"
         "  --texture-height N  generated texture height (default: 512)\n"
         "  --seed N            texture noise seed (default: 42)\n"
         "  -h, --help          show this help\n\n"
-        "1: shader; 2-5: supplied tex0-tex3. Space: pause; Escape: close.\n"
-        "Errors go to stderr; the last working shader and textures keep running.\n", output);
+        "Shader: 1 selects shader; 2-5 select tex0-tex3. Space: pause.\n"
+        "Mesh: W toggles wireframe; U shows UV colors. Escape: close.\n"
+        "Errors go to stderr; the last working preview keeps running.\n", output);
 }
 
 static bool parse_unsigned(const char *text, uintmax_t *value)
@@ -98,9 +106,11 @@ static void update_title(const ViewApp *app)
     const char *name = strrchr(app->primary.path, '/');
     name = name == NULL ? app->primary.path : name + 1;
     char title[1024];
-    const char *output = app->texture_only ? "texture"
+    const char *output = app->kind == VIEW_MESH ? (app->wireframe ? "wireframe" : "UV colors")
+        : (app->kind == VIEW_TEXTURE) ? "texture"
         : app->selected_texture < 0 ? "shader" : view_texture_name((size_t)app->selected_texture);
-    const char *controls = app->texture_only ? "" : "1: shader  2-5: textures | ";
+    const char *controls = app->kind == VIEW_MESH ? "W: wireframe  U: UV colors | "
+        : app->kind == VIEW_TEXTURE ? "" : "1: shader  2-5: textures | ";
     snprintf(title, sizeof(title), "Fuse%s%s: %s [%s] | %sSpace: %s | Esc: close",
         has_errors(app) ? " [error]" : "", app->paused ? " [paused]" : "",
         name, output, controls, app->paused ? "resume" : "pause");
@@ -120,7 +130,10 @@ static void on_key(GLFWwindow *window, int key, int scancode, int action, int mo
     } else if (key == GLFW_KEY_SPACE) {
         app->paused = !app->paused;
         update_title(app);
-    } else if (!app->texture_only && key >= GLFW_KEY_1 && key <= GLFW_KEY_5) {
+    } else if (app->kind == VIEW_MESH && (key == GLFW_KEY_W || key == GLFW_KEY_U)) {
+        app->wireframe = key == GLFW_KEY_W ? !app->wireframe : false;
+        update_title(app);
+    } else if (app->kind == VIEW_SHADER && key >= GLFW_KEY_1 && key <= GLFW_KEY_5) {
         int slot = key - GLFW_KEY_2;
         if (slot < 0 || app->textures[slot].path != NULL) {
             app->selected_texture = slot;
@@ -187,10 +200,10 @@ static void reload_shader(ViewApp *app)
 
 static bool reload_texture(ViewApp *app, size_t slot)
 {
-    ViewInput *input = app->texture_only ? &app->primary : &app->textures[slot];
+    ViewInput *input = (app->kind == VIEW_TEXTURE) ? &app->primary : &app->textures[slot];
     Image image = {0};
     CompileError compile_error;
-    if (!view_texture_render(&input->source, app->texture_only ? app->preview_line : 0, &app->texture_config, &image, &compile_error)) {
+    if (!view_texture_render(&input->source, (app->kind == VIEW_TEXTURE) ? app->preview_line : 0, &app->texture_config, &image, &compile_error)) {
         report_compile_error(app, input, &compile_error);
         return false;
     }
@@ -207,6 +220,37 @@ static bool reload_texture(ViewApp *app, size_t slot)
     update_title(app);
     fprintf(stderr, "fuse view: %s: %s: loaded\n", input->label, input->path);
     return true;
+}
+
+static void reload_mesh(ViewApp *app)
+{
+    FuseMesh mesh = {0};
+    CompileError compile_error;
+    if (!view_mesh_render(&app->primary.source, app->preview_line, &mesh, &compile_error)) {
+        report_compile_error(app, &app->primary, &compile_error);
+        return;
+    }
+    ViewRenderError render_error;
+    bool uploaded = view_renderer_set_mesh(&app->renderer, &mesh, &render_error);
+    fusemesh_mesh_destroy(&mesh);
+    if (!uploaded) {
+        char message[4608];
+        snprintf(message, sizeof(message), "%s: %s", app->primary.path, render_error.message);
+        report_error(app, &app->primary, message);
+        return;
+    }
+    app->primary.error[0] = '\0';
+    update_title(app);
+    fprintf(stderr, "fuse view: mesh: %s: loaded\n", app->primary.path);
+}
+
+static void reload_primary(ViewApp *app)
+{
+    switch (app->kind) {
+    case VIEW_SHADER: reload_shader(app); break;
+    case VIEW_TEXTURE: reload_texture(app, 0); break;
+    case VIEW_MESH: reload_mesh(app); break;
+    }
 }
 
 int fuse_view_main(int argc, char **argv)
@@ -269,22 +313,38 @@ int fuse_view_main(int argc, char **argv)
         return EXIT_FAILURE;
     }
     const char *extension = strrchr(app.primary.path, '.');
-    app.texture_only = extension != NULL && strcmp(extension, ".ptex") == 0;
-    if (app.texture_only) {
+    if (extension != NULL && strcmp(extension, ".fgl") == 0) {
+        app.kind = VIEW_SHADER;
+    } else if (extension != NULL && strcmp(extension, ".ftex") == 0) {
+        app.kind = VIEW_TEXTURE;
         app.primary.label = "texture";
         app.selected_texture = 0;
-        for (size_t slot = 0; slot < VIEW_TEXTURE_COUNT; slot += 1) {
-            if (app.textures[slot].path != NULL) {
-                fprintf(stderr, "fuse view: --texN inputs require a shader file\n");
-                return EXIT_FAILURE;
-            }
+    } else if (extension != NULL && strcmp(extension, ".fmesh") == 0) {
+        app.kind = VIEW_MESH;
+        app.primary.label = "mesh";
+    } else {
+        fprintf(stderr, "fuse view: unsupported source extension; expected .fgl, .ftex, or .fmesh\n");
+        return EXIT_FAILURE;
+    }
+    for (size_t slot = 0; slot < VIEW_TEXTURE_COUNT; slot += 1) {
+        if (app.textures[slot].path == NULL) {
+            continue;
+        }
+        const char *texture_extension = strrchr(app.textures[slot].path, '.');
+        if (app.kind != VIEW_SHADER) {
+            fprintf(stderr, "fuse view: --texN inputs require a shader file\n");
+            return EXIT_FAILURE;
+        }
+        if (texture_extension == NULL || strcmp(texture_extension, ".ftex") != 0) {
+            fprintf(stderr, "fuse view: --%s requires a .ftex source file\n", app.textures[slot].label);
+            return EXIT_FAILURE;
         }
     }
     int result = EXIT_FAILURE;
     if (poll_input(&app, &app.primary) == VIEW_SOURCE_ERROR) {
         goto cleanup;
     }
-    bool has_textures = app.texture_only;
+    bool has_textures = (app.kind == VIEW_TEXTURE);
     for (size_t slot = 0; slot < VIEW_TEXTURE_COUNT; slot += 1) {
         if (app.textures[slot].path != NULL) {
             has_textures = true;
@@ -310,11 +370,7 @@ int fuse_view_main(int argc, char **argv)
             reload_texture(&app, slot);
         }
     }
-    if (app.texture_only) {
-        reload_texture(&app, 0);
-    } else {
-        reload_shader(&app);
-    }
+    reload_primary(&app);
     double previous = glfwGetTime();
     double next_poll = previous + 0.2;
     double time = 0.0;
@@ -326,9 +382,6 @@ int fuse_view_main(int argc, char **argv)
         previous = now;
         if (now >= next_poll) {
             bool primary_changed = poll_input(&app, &app.primary) == VIEW_SOURCE_CHANGED;
-            if (primary_changed && app.texture_only) {
-                reload_texture(&app, 0);
-            }
             bool texture_loaded = false;
             for (size_t slot = 0; slot < VIEW_TEXTURE_COUNT; slot += 1) {
                 if (app.textures[slot].path != NULL
@@ -336,9 +389,9 @@ int fuse_view_main(int argc, char **argv)
                     texture_loaded = reload_texture(&app, slot) || texture_loaded;
                 }
             }
-            if (!app.texture_only && (primary_changed
-                    || (texture_loaded && app.shader_pending && app.primary.source.available))) {
-                reload_shader(&app);
+            if (primary_changed || (app.kind == VIEW_SHADER && texture_loaded
+                    && app.shader_pending && app.primary.source.available)) {
+                reload_primary(&app);
             }
             next_poll = now + 0.2;
         }
@@ -347,7 +400,9 @@ int fuse_view_main(int argc, char **argv)
         glfwGetFramebufferSize(app.renderer.window, &framebuffer_width, &framebuffer_height);
         if (framebuffer_width > 0 && framebuffer_height > 0
             && !glfwGetWindowAttrib(app.renderer.window, GLFW_ICONIFIED)) {
-            if (app.selected_texture >= 0) {
+            if (app.kind == VIEW_MESH) {
+                view_renderer_draw_mesh(&app.renderer, framebuffer_width, framebuffer_height, app.wireframe);
+            } else if (app.selected_texture >= 0) {
                 view_renderer_draw_texture(&app.renderer, framebuffer_width, framebuffer_height,
                     (size_t)app.selected_texture);
             } else {

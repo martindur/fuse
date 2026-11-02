@@ -17,7 +17,7 @@ static void usage(FILE *output, const char *program)
 {
     fprintf(
         output,
-        "Usage: %s [OPTION]... < source.ptex > texture.png\n"
+        "Usage: %s [OPTION]... < source.ftex > texture.png\n"
         "\n"
         "Evaluate a FuseTex program and write a PNG image.\n"
         "\n"
@@ -30,9 +30,9 @@ static void usage(FILE *output, const char *program)
         "  -h, --help         show this help\n"
         "\n"
         "Examples:\n"
-        "  fuse tex < texture.ptex > texture.png\n"
-        "  fuse tex --width 512 --height 256 < texture.ptex > texture.png\n"
-        "  fuse tex --preview-line 3 < texture.ptex > preview.png\n",
+        "  fuse tex < texture.ftex > texture.png\n"
+        "  fuse tex --width 512 --height 256 < texture.ftex > texture.png\n"
+        "  fuse tex --preview-line 3 < texture.ftex > preview.png\n",
         program
     );
 }

@@ -210,7 +210,11 @@ static bool evaluate_call(
 
     bool evaluated = false;
 
-    if (call_name_is(evaluator, expression, "disk")
+    if (call_name_is(evaluator, expression, "show")
+        && argument_count == 1 && value_is_mesh(&arguments[0])) {
+        *out_value = arguments[0];
+        evaluated = true;
+    } else if (call_name_is(evaluator, expression, "disk")
         && argument_count == 0) {
         *out_value = (FuseMeshRuntimeValue){
             .type = VALUE_TYPE_MESH,

@@ -24,9 +24,9 @@ class ViewTests(unittest.TestCase):
         for arguments in [(), ("--unknown",), ("--width",), ("--width", "0"),
                           ("--height", "-1"), ("--width", "9999999999999999999999999"),
                           ("--height", "2147483648"), ("--preview-line", "0"),
-                          ("--preview-line", "no"), ("one.pgl", "two.pgl"), ("--",),
-                          ("--tex0",), ("--tex4", "a.ptex"), ("--tex0", "--tex1"),
-                          ("--tex0", "a.ptex", "--tex0", "b.ptex"),
+                          ("--preview-line", "no"), ("one.fgl", "two.fgl"), ("--",),
+                          ("--tex0",), ("--tex4", "a.ftex"), ("--tex0", "--tex1"),
+                          ("--tex0", "a.ftex", "--tex0", "b.ftex"),
                           ("--texture-width", "0"), ("--texture-height", "2147483648"),
                           ("--seed", "-1"), ("--seed", "18446744073709551616")]:
             with self.subTest(arguments=arguments):
@@ -36,14 +36,22 @@ class ViewTests(unittest.TestCase):
                 self.assertIn(b"Usage: fuse view", result.stderr)
 
     def test_standalone_texture_rejects_shader_inputs(self):
-        result = self.run_view("source.ptex", "--tex0", "input.ptex")
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn(b"--texN inputs require a shader file", result.stderr)
-        self.assertNotIn(b"window", result.stderr)
+        for source in ("source.ftex", "source.fmesh"):
+            result = self.run_view(source, "--tex0", "input.ftex")
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(b"--texN inputs require a shader file", result.stderr)
+            self.assertNotIn(b"window", result.stderr)
+
+    def test_unknown_and_legacy_extensions_are_rejected(self):
+        for source in ("source.pgl", "source.ptex", "source.pmesh", "source.glsl", "source.txt"):
+            result = self.run_view(source)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(b"unsupported source extension", result.stderr)
+            self.assertNotIn(b"window", result.stderr)
 
     def test_missing_file_and_directory(self):
         with tempfile.TemporaryDirectory() as directory:
-            for path in (directory, str(Path(directory) / "missing.pgl")):
+            for path in (directory, str(Path(directory) / "missing.fgl")):
                 result = self.run_view(path)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn(b"fuse view:", result.stderr)
@@ -52,7 +60,7 @@ class ViewTests(unittest.TestCase):
 
     def test_nul_source_is_rejected_before_window_creation(self):
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "nul.pgl"
+            path = Path(directory) / "nul.fgl"
             path.write_bytes(b"uv\x00junk")
             result = self.run_view(str(path))
             self.assertNotEqual(result.returncode, 0)
@@ -61,9 +69,11 @@ class ViewTests(unittest.TestCase):
 
     def test_texture_read_errors_require_no_window(self):
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "shader.pgl"
+            path = Path(directory) / "shader.fgl"
             path.write_text("uv.sample(tex0)")
-            for texture in (Path(directory) / "missing.ptex", Path(directory)):
+            texture_directory = Path(directory) / "directory.ftex"
+            texture_directory.mkdir()
+            for texture in (Path(directory) / "missing.ftex", texture_directory):
                 result = self.run_view(str(path), "--tex0", str(texture), "--seed", "0")
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn(b"fuse view: tex0:", result.stderr)

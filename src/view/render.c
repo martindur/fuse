@@ -53,7 +53,7 @@ static GLuint compile_shader(GLenum type, const char *source, ViewRenderError *e
     return shader;
 }
 
-static GLuint link_program(ViewRenderer *renderer, const char *glsl, ViewRenderError *error)
+static GLuint link_program(GLuint vertex_shader, const char *glsl, ViewRenderError *error)
 {
     GLuint fragment = compile_shader(GL_FRAGMENT_SHADER, glsl, error);
     if (fragment == 0) {
@@ -65,7 +65,7 @@ static GLuint link_program(ViewRenderer *renderer, const char *glsl, ViewRenderE
         snprintf(error->message, sizeof(error->message), "cannot allocate shader program");
         return 0;
     }
-    glAttachShader(program, renderer->vertex_shader);
+    glAttachShader(program, vertex_shader);
     glAttachShader(program, fragment);
     glLinkProgram(program);
     glDetachShader(program, fragment);
@@ -79,6 +79,17 @@ static GLuint link_program(ViewRenderer *renderer, const char *glsl, ViewRenderE
         glDeleteProgram(program);
         return 0;
     }
+    return program;
+}
+
+unsigned int view_program_create(const char *vertex, const char *fragment, ViewRenderError *error)
+{
+    GLuint shader = compile_shader(GL_VERTEX_SHADER, vertex, error);
+    if (shader == 0) {
+        return 0;
+    }
+    GLuint program = link_program(shader, fragment, error);
+    glDeleteShader(shader);
     return program;
 }
 
@@ -98,6 +109,7 @@ void view_renderer_destroy(ViewRenderer *renderer)
         if (renderer->vertex_array != 0) {
             glDeleteVertexArrays(1, &renderer->vertex_array);
         }
+        view_renderer_destroy_mesh(renderer);
         glDeleteTextures(VIEW_TEXTURE_COUNT, renderer->textures);
         glfwDestroyWindow(renderer->window);
     }
@@ -138,7 +150,7 @@ bool view_renderer_init(ViewRenderer *renderer, int width, int height, const cha
         view_renderer_destroy(renderer);
         return false;
     }
-    renderer->texture_program = link_program(renderer,
+    renderer->texture_program = link_program(renderer->vertex_shader,
         "#version 330 core\nin vec2 fuseUv; uniform sampler2D u_texture; out vec4 fragColor;\n"
         "void main() { fragColor = texture(u_texture, fuseUv); }", error);
     if (renderer->texture_program == 0) {
@@ -209,7 +221,7 @@ bool view_renderer_set_texture(ViewRenderer *renderer, size_t slot, const Image 
 bool view_renderer_set_shader(ViewRenderer *renderer, const char *glsl, ViewRenderError *error)
 {
     *error = (ViewRenderError){0};
-    GLuint program = link_program(renderer, glsl, error);
+    GLuint program = link_program(renderer->vertex_shader, glsl, error);
     if (program == 0) {
         return false;
     }
@@ -219,7 +231,7 @@ bool view_renderer_set_shader(ViewRenderer *renderer, const char *glsl, ViewRend
         samplers[slot] = glGetUniformLocation(program, name);
         if (samplers[slot] >= 0 && renderer->textures[slot] == 0) {
             snprintf(error->message, sizeof(error->message),
-                "shader requires a loaded %s; provide --%s FILE.ptex and fix any texture errors", name, name);
+                "shader requires a loaded %s; provide --%s FILE.ftex and fix any texture errors", name, name);
             glDeleteProgram(program);
             return false;
         }

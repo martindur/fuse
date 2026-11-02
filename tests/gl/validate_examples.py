@@ -8,7 +8,7 @@ import tempfile
 def main():
     binary = Path(sys.argv[1] if len(sys.argv) > 1 else "build/fuse").resolve()
     root = Path(__file__).resolve().parents[2]
-    sources = sorted((root / "examples").rglob("*.pgl"))
+    sources = sorted((root / "examples").rglob("*.fgl"))
     with tempfile.TemporaryDirectory(prefix="fuse-shaders-") as directory:
         shader = Path(directory) / "example.frag"
         for source in sources:

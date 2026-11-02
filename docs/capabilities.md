@@ -8,8 +8,8 @@ Run a command with `--builtins` for the authoritative signatures and docs.
 ## Shaders: fuse gl
 
 ```sh
-fuse gl < examples/gl/ring.pgl > ring.frag
-fuse gl --preview-line 4 < examples/gl/ring.pgl > preview.frag
+fuse gl < examples/gl/ring.fgl > ring.frag
+fuse gl --preview-line 4 < examples/gl/ring.fgl > preview.frag
 ```
 
 A complete program returns `vec4`. The shader capability provides coordinates,
@@ -23,7 +23,7 @@ host that supplies the documented [shader interface](shader-interface.md).
 
 ```sh
 fuse tex --width 256 --height 256 --seed 42 \
-  < examples/tex/clouds.ptex > clouds.png
+  < examples/tex/clouds.ftex > clouds.png
 ```
 
 A complete program returns `vec4`. Texture functions include seeded noise,
@@ -38,7 +38,7 @@ in noise-coordinate units.
 ## Geometry: fuse mesh
 
 ```sh
-fuse mesh < examples/mesh/radial.pmesh > radial.obj
+fuse mesh < examples/mesh/radial.fmesh > radial.obj
 ```
 
 A complete program returns `mesh`. The current primitive is a filled disk.
@@ -55,13 +55,14 @@ Each compiler supports `--preview-line N` to select the last expression point
 on a one-based source line. Shader and texture previews accept numeric/vector
 results and convert them to RGBA; geometry previews require a mesh.
 
-`fuse view` opens shaders and textures with live reload. In a shader session,
+`fuse view` opens shaders, textures, and meshes with live reload. In a shader session,
 keys `1`–`5` select the shader or a supplied texture input. A `.show()` marker
 selects an intermediate output for its own file; it returns its input unchanged
-during normal shader or texture compilation. See the [viewer guide](view.md).
+during normal compilation. Mesh previews have a fitted front view with
+wireframe and UV-color modes. See the [viewer guide](view.md).
 
 Run `fuse lsp` for diagnostics, completion, and hover across all three file
 types. A recognized document language ID (`fusegl`, `fusetex`, or `fusemesh`)
-selects its capability; otherwise the server uses `.pgl`, `.ptex`, or `.pmesh`.
+selects its capability; otherwise the server uses `.fgl`, `.ftex`, or `.fmesh`.
 For example, `uv.` offers texture noise in texture files and texture sampling
 in shader files; `disk().` offers mesh operations in geometry files.

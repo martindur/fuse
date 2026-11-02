@@ -113,13 +113,13 @@ make tree-sitter-parser
 Native grammar builds use the checked-in generated C. Reusable queries express
 syntax and bindings; capability symbol knowledge lives in the catalogs.
 
-`make test-shaders` compiles every `.pgl` example and validates the output with
+`make test-shaders` compiles every `.fgl` example and validates the output with
 `glslangValidator` (provided by `glslang-tools` on Debian/Ubuntu). CI runs the
 compiler, installer, grammar, and shader checks on pushes and pull requests.
 
 `make test-view` checks source changes, atomic saves, deletion recovery,
-arguments, texture generation, and show() selection without opening a window. Rendered tests
-require a graphics display:
+arguments, texture/mesh generation, and show() selection without opening a window.
+Rendered tests require a graphics display:
 
 ```sh
 make test-view-render
@@ -129,8 +129,10 @@ xvfb-run -a env LIBGL_ALWAYS_SOFTWARE=1 make test-view-render
 These check pixel output, UVs, time, framebuffer resolution, resizing, and
 preservation of the active program after shader compile/link failures. Texture
 checks cover orientation, filtering, sampler slots, replacement, and a complete
-composition. Live tests exercise independent shader/texture edits, standalone
-texture preview, startup error recovery, and file deletion/recreation.
+composition. Mesh checks cover fitted UV colors, aspect ratio, wireframe, and
+preservation after invalid uploads. Live tests exercise independent shader/texture
+edits, standalone texture/mesh previews, startup error recovery, and file
+deletion/recreation.
 CI runs these under Xvfb and Mesa software rendering.
 
 ## Installation and releases
@@ -189,8 +191,8 @@ in the same build directory rebuilds the dispatcher. `make test` checks the enab
 capabilities; installer tests run by default only for a full build. The standard
 source installer always builds the full package.
 
-The viewer is included by default and requires `gl` and `tex`; a minimal preview
-build is `CAPABILITIES="gl tex view"`. Compiler-only selections continue to avoid GLFW and
+The viewer is included by default and requires `gl`, `tex`, and `mesh`.
+Compiler-only selections continue to avoid GLFW and
 OpenGL dependencies. See the [viewer guide](view.md).
 
 `make install-library` installs the shared C library and headers separately.

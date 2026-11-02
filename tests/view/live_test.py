@@ -43,9 +43,9 @@ class LiveViewTests(unittest.TestCase):
     def test_texture_reload_is_independent_and_recovers_from_bad_edits(self):
         with tempfile.TemporaryDirectory(prefix="fuse-textures-") as directory:
             directory = Path(directory)
-            shader = directory / "shader.pgl"
-            tex0 = directory / "first.ptex"
-            tex1 = directory / "second.ptex"
+            shader = directory / "shader.fgl"
+            tex0 = directory / "first.ftex"
+            tex1 = directory / "second.ftex"
             log = directory / "viewer.log"
             shader.write_text("uv.sample(tex0).multiply(uv.sample(tex1))")
             tex0.write_text("vec4(uv, 0.0, 1.0)")
@@ -81,8 +81,8 @@ class LiveViewTests(unittest.TestCase):
     def test_initial_texture_error_recovers_without_editing_shader(self):
         with tempfile.TemporaryDirectory(prefix="fuse-textures-") as directory:
             directory = Path(directory)
-            shader = directory / "shader.pgl"
-            texture = directory / "texture.ptex"
+            shader = directory / "shader.fgl"
+            texture = directory / "texture.ftex"
             log = directory / "viewer.log"
             shader.write_text("uv.sample(tex3)")
             texture.write_text("uv.missing()")
@@ -98,7 +98,7 @@ class LiveViewTests(unittest.TestCase):
     def test_standalone_texture_show_and_recovery(self):
         with tempfile.TemporaryDirectory(prefix="fuse-texture-view-") as directory:
             directory = Path(directory)
-            texture = directory / "texture.ptex"
+            texture = directory / "texture.ftex"
             log = directory / "viewer.log"
             texture.write_text("uv.noise().show().missing()")
             with self.viewer(log, texture, "--texture-width", "8", "--texture-height", "4") as (process, wait):
@@ -116,7 +116,7 @@ class LiveViewTests(unittest.TestCase):
     def test_standalone_texture_explicit_line_overrides_show(self):
         with tempfile.TemporaryDirectory(prefix="fuse-texture-view-") as directory:
             directory = Path(directory)
-            texture = directory / "texture.ptex"
+            texture = directory / "texture.ftex"
             log = directory / "viewer.log"
             texture.write_text("uv\n.missing()\n.show()")
             with self.viewer(log, texture, "--preview-line", "1",
@@ -125,9 +125,43 @@ class LiveViewTests(unittest.TestCase):
                 self.assertNotIn("error", log.read_text())
                 self.assertIsNone(process.poll())
 
+    def test_mesh_reload_show_and_file_recovery(self):
+        with tempfile.TemporaryDirectory(prefix="fuse-mesh-view-") as directory:
+            directory = Path(directory)
+            mesh = directory / "disk.fmesh"
+            log = directory / "viewer.log"
+            source = "disk().segments(8).show().radius(-1.0)"
+            mesh.write_text(source)
+            with self.viewer(log, mesh) as (process, wait):
+                wait(lambda text: f"mesh: {mesh}: loaded" in text)
+                self.assertNotIn("error", log.read_text())
+                mesh.write_text("disk().radius(-1.0)")
+                wait(lambda text: "render error: radius must be positive" in text)
+                self.assertEqual(log.read_text().count(": loaded"), 1)
+                replacement = mesh.with_suffix(".new")
+                replacement.write_text("disk().segments(16).rings(4).uv_radial()")
+                replacement.replace(mesh)
+                wait(lambda text: text.count(": loaded") == 2)
+                mesh.unlink()
+                wait(lambda text: "cannot read source" in text)
+                mesh.write_text(source)
+                wait(lambda text: text.count(": loaded") == 3)
+                self.assertIsNone(process.poll())
+
+    def test_mesh_explicit_line_overrides_show(self):
+        with tempfile.TemporaryDirectory(prefix="fuse-mesh-view-") as directory:
+            directory = Path(directory)
+            mesh = directory / "disk.fmesh"
+            log = directory / "viewer.log"
+            mesh.write_text("disk()\n.radius(-1.0)\n.show()")
+            with self.viewer(log, mesh, "--preview-line", "1") as (process, wait):
+                wait(lambda text: f"mesh: {mesh}: loaded" in text)
+                self.assertNotIn("error", log.read_text())
+                self.assertIsNone(process.poll())
+
     def test_reload_survives_bad_edits_atomic_saves_and_file_deletion(self):
         with tempfile.TemporaryDirectory(prefix="fuse-live-") as directory:
-            path = Path(directory) / "live.pgl"
+            path = Path(directory) / "live.fgl"
             log = Path(directory) / "viewer.log"
             valid = "rgb(0.0, 1.0, 0.0).vec4(1.0)"
             replacement = "rgb(0.0, 0.0, 1.0).vec4(1.0)"

@@ -14,7 +14,7 @@ static void usage(FILE *output, const char *program)
 {
     fprintf(
         output,
-        "Usage: %s [OPTION]... < source.pmesh > mesh.obj\n"
+        "Usage: %s [OPTION]... < source.fmesh > mesh.obj\n"
         "\n"
         "Evaluate a FuseMesh program and write an OBJ mesh.\n"
         "\n"
@@ -24,8 +24,8 @@ static void usage(FILE *output, const char *program)
         "  -h, --help         show this help\n"
         "\n"
         "Examples:\n"
-        "  fuse mesh < mesh.pmesh > mesh.obj\n"
-        "  fuse mesh --preview-line 4 < mesh.pmesh > preview.obj\n",
+        "  fuse mesh < mesh.fmesh > mesh.obj\n"
+        "  fuse mesh --preview-line 4 < mesh.fmesh > preview.obj\n",
         program
     );
 }

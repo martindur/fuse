@@ -1,0 +1,1 @@
+Rename Fuse source extensions to `.fgl`, `.ftex`, and `.fmesh` for shaders, textures, and meshes. Update source files and editor configurations to use the new extensions; the previous Pipe extensions are no longer recognized.

@@ -1,3 +1,3 @@
 vim.filetype.add({
-  extension = { pgl = "fusegl", ptex = "fusetex", pmesh = "fusemesh" },
+  extension = { fgl = "fusegl", ftex = "fusetex", fmesh = "fusemesh" },
 })

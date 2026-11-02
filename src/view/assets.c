@@ -4,6 +4,8 @@
 #include "gl/glsl_emit.h"
 #include "gl/glsl_stdlib.h"
 #include "tex/builtins.h"
+#include "mesh/builtins.h"
+#include "mesh/render.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -132,6 +134,32 @@ bool view_texture_render(const ViewSource *source, size_t preview_line, const Re
         return false;
     }
     image_destroy(out);
+    *out = candidate;
+    return true;
+}
+
+bool view_mesh_render(const ViewSource *source, size_t preview_line, FuseMesh *out, CompileError *error)
+{
+    if (!source->available) {
+        *error = (CompileError){.kind = "read"};
+        snprintf(error->message, sizeof(error->message), "mesh source unavailable");
+        return false;
+    }
+    PreparedProgram prepared = {0};
+    if (!prepare_view_program(source->text, source->length, fusemesh_dialect(), preview_line, &prepared, error)) {
+        return false;
+    }
+    FuseMesh candidate = {0};
+    FuseMeshRenderError render_error;
+    bool rendered = fusemesh_render(prepared.program, source->text, &candidate, &render_error);
+    prepared_program_destroy(&prepared);
+    if (!rendered) {
+        *error = (CompileError){.kind = "render", .span = render_error.span};
+        snprintf(error->message, sizeof(error->message), "%s", render_error.message);
+        fusemesh_mesh_destroy(&candidate);
+        return false;
+    }
+    fusemesh_mesh_destroy(out);
     *out = candidate;
     return true;
 }

@@ -31,6 +31,17 @@ class MeshTests(CompilerTests):
         self.assertEqual(result.returncode, 0, result.stderr.decode())
         self.assertIn(b"v ", result.stdout)
 
+    def test_show_preserves_exported_mesh_and_has_lsp_support(self):
+        source = "disk().segments(8).show().rings(2)"
+        result = self.run_command(source=source)
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        self.assertEqual(result.stdout, self.run_command(source=source.replace(".show()", "")).stdout)
+        packets, responses = self.lsp_session(
+            opened(source, self.language_id), request("textDocument/hover", 2, at("disk().segments(8).sh")),
+        )
+        self.assertIn("show(mesh) -> mesh", responses[2]["result"]["contents"]["value"])
+        self.assertTrue(any(packet.get("params", {}).get("diagnostics") == [] for packet in packets))
+
     def test_help_and_catalog(self):
         for arguments in [("--help",), ("-h",)]:
             result = self.run_command(*arguments)
@@ -39,11 +50,11 @@ class MeshTests(CompilerTests):
         result = self.run_command("--builtins")
         names = set(re.findall(r"^  ([a-zA-Z_]\w*)[(:]", result.stdout.decode(), re.MULTILINE))
         self.assertEqual(set(self.completions("")), names)
-        self.assertEqual(names, {"disk", "radius", "segments", "rings", "uv_radial"})
+        self.assertEqual(names, {"disk", "radius", "segments", "rings", "uv_radial", "show"})
 
     def test_binding_completion_without_globals(self):
         items = self.completions("let m = disk().")
-        self.assertEqual(set(items), {"radius", "segments", "rings", "uv_radial"})
+        self.assertEqual(set(items), {"radius", "segments", "rings", "uv_radial", "show"})
 
     def test_hover_and_diagnostics(self):
         packets, responses = self.lsp_session(

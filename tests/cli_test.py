@@ -63,12 +63,35 @@ class UnifiedTests(CompilerTests):
             self.assertEqual(items[0]["source"], "fuse")
             self.assertIn("not supported", items[0]["message"])
 
+    def test_source_extensions_select_catalog_without_language_id(self):
+        cases = [
+            ("gl", "fgl", "uv.", "sample"),
+            ("tex", "ftex", "uv.", "noise"),
+            ("mesh", "fmesh", "disk().", "radius"),
+        ]
+        for capability, extension, source, name in cases:
+            if capability not in self.capabilities:
+                continue
+            uri = "file:///tmp/source." + extension
+            _, responses = self.lsp_session(
+                opened(source, None, uri),
+                request("textDocument/completion", 2, at(source, uri)),
+            )
+            self.assertIn(name, self.completion_items(responses[2]))
+        for extension in ("pgl", "ptex", "pmesh"):
+            uri = "file:///tmp/source." + extension
+            _, responses = self.lsp_session(
+                opened("uv.", None, uri),
+                request("textDocument/completion", 2, at("uv.", uri)),
+            )
+            self.assertEqual(self.completion_items(responses[2]), set())
+
     def test_unavailable_document_capability(self):
         unavailable = {"gl", "tex", "mesh"} - self.capabilities
         if not unavailable:
             self.skipTest("full build")
         for capability in unavailable:
-            uri = "file:///tmp/missing." + {"gl": "pgl", "tex": "ptex", "mesh": "pmesh"}[capability]
+            uri = "file:///tmp/missing." + {"gl": "fgl", "tex": "ftex", "mesh": "fmesh"}[capability]
             packets, responses = self.lsp_session(
                 opened("uv.", "fuse" + capability, uri),
                 request("textDocument/completion", 2, at("uv.", uri)),
@@ -81,9 +104,9 @@ class UnifiedTests(CompilerTests):
     def test_mixed_documents_keep_separate_catalogs(self):
         if not {"gl", "tex", "mesh"} <= self.capabilities:
             self.skipTest("requires all capabilities")
-        shader = "file:///tmp/shader.pgl"
-        texture = "file:///tmp/texture.ptex"
-        mesh = "file:///tmp/geometry.pmesh"
+        shader = "file:///tmp/shader.fgl"
+        texture = "file:///tmp/texture.ftex"
+        mesh = "file:///tmp/geometry.fmesh"
         packets, responses = self.lsp_session(
             opened("uv.sample(tex0)", "fusegl", shader),
             opened("uv.noise().colorize(rgb(1.0, 0.5, 0.0))", "fusetex", texture),
@@ -107,7 +130,7 @@ class UnifiedTests(CompilerTests):
         self.assertNotIn("noise", gl)
         self.assertIn("noise", tex)
         self.assertNotIn("sample", tex)
-        self.assertEqual(geometry, {"radius", "segments", "rings", "uv_radial"})
+        self.assertEqual(geometry, {"radius", "segments", "rings", "uv_radial", "show"})
         for response, signature in [(5, "sample(vec2, texture)"), (6, "noise(vec2)"), (7, "radius(mesh, float)")]:
             self.assertIn(signature, responses[response]["result"]["contents"]["value"])
         diagnostics = [p["params"] for p in packets if p.get("method") == "textDocument/publishDiagnostics"]
@@ -124,7 +147,7 @@ class UnifiedTests(CompilerTests):
     def test_language_id_precedes_extension_and_extension_is_a_fallback(self):
         if not {"gl", "tex"} <= self.capabilities:
             self.skipTest("requires gl and tex")
-        uri = "file:///tmp/texture.ptex"
+        uri = "file:///tmp/texture.ftex"
         for identity, included, excluded in [("fusegl", "sample", "noise"), ("plaintext", "noise", "sample"),
                                               (None, "noise", "sample")]:
             with self.subTest(identity=identity):

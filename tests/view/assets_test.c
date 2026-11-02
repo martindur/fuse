@@ -28,8 +28,8 @@ int main(void)
     }
     char path[256];
     char replacement[256];
-    snprintf(path, sizeof(path), "%s/shader.pgl", directory);
-    snprintf(replacement, sizeof(replacement), "%s/replacement.pgl", directory);
+    snprintf(path, sizeof(path), "%s/shader.fgl", directory);
+    snprintf(replacement, sizeof(replacement), "%s/replacement.fgl", directory);
     const char *valid = "vec4(uv, 0.0, 1.0)";
     const char *changed = "vec4(uv, 1.0, 1.0)";
     const char *invalid = "uv.missing()";
@@ -38,6 +38,7 @@ int main(void)
     CompileError compile_error;
     char *glsl = NULL;
     Image image = {0};
+    FuseMesh mesh = {0};
     bool passed = true;
     CHECK(write_source(path, valid, strlen(valid)));
     CHECK(view_source_poll(&source, path, error, sizeof(error)) == VIEW_SOURCE_CHANGED);
@@ -143,13 +144,37 @@ int main(void)
         CHECK(strcmp(compile_error.kind, "semantic") == 0 && image.rgba == previous);
     }
 
+    const char *mesh_source = "disk().segments(8).rings(2).show().segments(3)";
+    ViewSource geometry = {.text = (char *)mesh_source, .length = strlen(mesh_source), .available = true};
+    CHECK(view_mesh_render(&geometry, 0, &mesh, &compile_error));
+    CHECK(mesh.vertex_count == 17 && mesh.index_count == 72);
+    float *previous_positions = mesh.positions;
+    const char *bad_meshes[] = {"disk().radius(-1.0)", "1.0.show()", "disk().missing()"};
+    for (size_t index = 0; index < sizeof(bad_meshes) / sizeof(bad_meshes[0]); index += 1) {
+        geometry.text = (char *)bad_meshes[index];
+        geometry.length = strlen(geometry.text);
+        CHECK(!view_mesh_render(&geometry, 0, &mesh, &compile_error));
+        CHECK(mesh.positions == previous_positions && mesh.vertex_count == 17);
+    }
+    geometry.text = "disk().segments(8).rings(2)\n.show()\n.radius(-1.0)";
+    geometry.length = strlen(geometry.text);
+    CHECK(view_mesh_render(&geometry, 0, &mesh, &compile_error));
+    CHECK(mesh.vertex_count == 17);
+    CHECK(view_mesh_render(&geometry, 1, &mesh, &compile_error));
+    CHECK(mesh.vertex_count == 17);
+    geometry.available = false;
+    previous_positions = mesh.positions;
+    CHECK(!view_mesh_render(&geometry, 0, &mesh, &compile_error));
+    CHECK(mesh.positions == previous_positions && strcmp(compile_error.kind, "read") == 0);
+
 cleanup:
+    fusemesh_mesh_destroy(&mesh);
     image_destroy(&image);
     free(glsl);
     view_source_destroy(&source);
     unlink(path);
     unlink(replacement);
     rmdir(directory);
-    printf("%s viewer source lifecycle, compilation, and atomic texture generation\n", passed ? "PASS" : "FAIL");
+    printf("%s viewer source lifecycle, compilation, and atomic texture/mesh generation\n", passed ? "PASS" : "FAIL");
     return passed ? EXIT_SUCCESS : EXIT_FAILURE;
 }

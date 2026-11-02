@@ -17,7 +17,7 @@ static void usage(FILE *output)
 {
     fprintf(
         output,
-        "Usage: fuse gl [OPTION]... < source.pgl > shader.glsl\n"
+        "Usage: fuse gl [OPTION]... < source.fgl > shader.glsl\n"
         "\n"
         "Compile a FuseGL program to a GLSL fragment shader.\n"
         "\n"
@@ -27,8 +27,8 @@ static void usage(FILE *output)
         "  -h, --help         show this help\n"
         "\n"
         "Examples:\n"
-        "  fuse gl < main.pgl > main.frag\n"
-        "  fuse gl --preview-line 4 < main.pgl > preview.frag\n"
+        "  fuse gl < main.fgl > main.frag\n"
+        "  fuse gl --preview-line 4 < main.fgl > preview.frag\n"
     );
 }
 

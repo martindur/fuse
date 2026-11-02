@@ -6,6 +6,7 @@
 #include "view/render.h"
 
 #include <stdio.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -92,6 +93,7 @@ int main(int argc, char **argv)
     ViewRenderError error = {0};
     GLuint framebuffer = 0;
     GLuint color = 0;
+    FuseMesh mesh = {0};
     bool passed = true;
     CHECK(view_renderer_init(&renderer, 64, 64, "Fuse render test", false, &error));
     glGenFramebuffers(1, &framebuffer);
@@ -200,7 +202,7 @@ int main(int argc, char **argv)
 
     ViewSource ring = {0};
     char read_error[256];
-    CHECK(view_source_poll(&ring, "examples/gl/ring.pgl", read_error, sizeof(read_error)) == VIEW_SOURCE_CHANGED);
+    CHECK(view_source_poll(&ring, "examples/gl/ring.fgl", read_error, sizeof(read_error)) == VIEW_SOURCE_CHANGED);
     bool ring_loaded = set_source(&renderer, ring.text, &error);
     view_source_destroy(&ring);
     CHECK(ring_loaded);
@@ -210,10 +212,10 @@ int main(int argc, char **argv)
         CHECK(snapshot(argv[1]));
     }
 
-    CHECK(load_texture(&renderer, 0, "examples/compositions/masked-reveal/mask.ptex", &error));
-    CHECK(load_texture(&renderer, 1, "examples/compositions/masked-reveal/rings.ptex", &error));
+    CHECK(load_texture(&renderer, 0, "examples/compositions/masked-reveal/mask.ftex", &error));
+    CHECK(load_texture(&renderer, 1, "examples/compositions/masked-reveal/rings.ftex", &error));
     ViewSource composition = {0};
-    CHECK(view_source_poll(&composition, "examples/compositions/masked-reveal/masked-reveal.pgl",
+    CHECK(view_source_poll(&composition, "examples/compositions/masked-reveal/masked-reveal.fgl",
         read_error, sizeof(read_error)) == VIEW_SOURCE_CHANGED);
     bool composition_loaded = set_source(&renderer, composition.text, &error);
     view_source_destroy(&composition);
@@ -224,14 +226,76 @@ int main(int argc, char **argv)
         CHECK(snapshot(argv[2]));
     }
 
+    FuseMeshDiskSpec spec = {.radius = 2.0f, .segments = 64, .rings = 4};
+    const char *mesh_error;
+    CHECK(fusemesh_mesh_from_disk(&spec, &mesh, &mesh_error));
+    CHECK(view_renderer_set_mesh(&renderer, &mesh, &error));
+    view_renderer_draw_mesh(&renderer, 128, 128, false);
+    CHECK(pixel_equals(96, 64, 199, 129, 0));
+    CHECK(pixel_equals(0, 0, 31, 31, 31));
+    view_renderer_draw_mesh(&renderer, 256, 128, false);
+    CHECK(pixel_equals(160, 64, 199, 129, 0));
+    CHECK(pixel_equals(192, 64, 31, 31, 31));
+    view_renderer_draw_mesh(&renderer, 128, 256, false);
+    CHECK(pixel_equals(96, 128, 199, 129, 0));
+    GLuint previous_mesh = renderer.mesh.vertex_array;
+    uint32_t first_index = mesh.indices[0];
+    mesh.indices[0] = (uint32_t)mesh.vertex_count;
+    CHECK(!view_renderer_set_mesh(&renderer, &mesh, &error));
+    CHECK(renderer.mesh.vertex_array == previous_mesh);
+    mesh.indices[0] = first_index;
+    mesh.positions[0] = NAN;
+    CHECK(!view_renderer_set_mesh(&renderer, &mesh, &error));
+    CHECK(renderer.mesh.vertex_array == previous_mesh);
+    mesh.positions[0] = 0.0f;
+    view_renderer_draw_mesh(&renderer, 128, 128, false);
+    CHECK(pixel_equals(96, 64, 199, 129, 0));
+    view_renderer_draw_mesh(&renderer, 0, 0, false);
+    CHECK(pixel_equals(96, 64, 199, 129, 0));
+
+    view_renderer_draw_mesh(&renderer, 128, 128, true);
+    unsigned char wire[128 * 128 * 4];
+    glReadPixels(0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, wire);
+    size_t lines = 0;
+    size_t background = 0;
+    for (size_t index = 0; index < 128 * 128; index += 1) {
+        lines += wire[index * 4] > 200 && wire[index * 4 + 1] > 200;
+        background += wire[index * 4] == 31 && wire[index * 4 + 1] == 31;
+    }
+    CHECK(lines > 100 && background > 1000);
+    GLint polygon_modes[2];
+    glGetIntegerv(GL_POLYGON_MODE, polygon_modes);
+    CHECK(polygon_modes[0] == GL_FILL && polygon_modes[1] == GL_FILL);
+    view_renderer_draw_mesh(&renderer, 128, 128, false);
+    CHECK(pixel_equals(96, 64, 199, 129, 0));
+    CHECK(set_source(&renderer, "vec4(0.0, 1.0, 0.0, 1.0)", &error));
+    view_renderer_draw(&renderer, 128, 128, 0.0f);
+    CHECK(pixel_equals(0, 0, 0, 255, 0));
+
+    fusemesh_mesh_destroy(&mesh);
+    spec.uv_mapping = FUSE_MESH_UV_RADIAL;
+    CHECK(fusemesh_mesh_from_disk(&spec, &mesh, &mesh_error));
+    CHECK(view_renderer_set_mesh(&renderer, &mesh, &error));
+    CHECK(renderer.mesh.vertex_array != previous_mesh);
+    view_renderer_draw_mesh(&renderer, 512, 512, false);
+    CHECK(glGetError() == GL_NO_ERROR);
+    if (argc > 3) {
+        CHECK(snapshot(argv[3]));
+    }
+    view_renderer_draw_mesh(&renderer, 512, 512, true);
+    if (argc > 4) {
+        CHECK(snapshot(argv[4]));
+    }
+
 cleanup:
+    fusemesh_mesh_destroy(&mesh);
     if (renderer.window != NULL) {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glDeleteFramebuffers(1, &framebuffer);
         glDeleteTextures(1, &color);
     }
     view_renderer_destroy(&renderer);
-    printf("%s rendered uniforms, texture orientation/filtering/slots, failure recovery, and composition\n",
+    printf("%s rendered uniforms, textures, composition, fitted meshes, wireframe, and failure recovery\n",
         passed ? "PASS" : "FAIL");
     return passed ? EXIT_SUCCESS : EXIT_FAILURE;
 }

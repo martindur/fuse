@@ -1,0 +1,1 @@
+Preview `.fmesh` sources directly with live reload, a fitted front view, and UV colors. Press W to toggle wireframe or U for UV colors. Mesh `.show()` markers select intermediate geometry without changing normal OBJ export; failed edits preserve the last working mesh.
