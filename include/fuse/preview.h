@@ -24,4 +24,8 @@ bool preview_program_at_line(
     PreviewError *out_error
 );
 
+/* Last show() call in source order. Success with NULL means no marker exists. */
+bool preview_program_at_show(const Program *syntax, const char *source,
+    Program **out_preview, PreviewError *out_error);
+
 #endif

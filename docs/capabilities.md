@@ -55,6 +55,11 @@ Each compiler supports `--preview-line N` to select the last expression point
 on a one-based source line. Shader and texture previews accept numeric/vector
 results and convert them to RGBA; geometry previews require a mesh.
 
+`fuse view` opens shaders and textures with live reload. In a shader session,
+keys `1`–`5` select the shader or a supplied texture input. A `.show()` marker
+selects an intermediate output for its own file; it returns its input unchanged
+during normal shader or texture compilation. See the [viewer guide](view.md).
+
 Run `fuse lsp` for diagnostics, completion, and hover across all three file
 types. A recognized document language ID (`fusegl`, `fusetex`, or `fusemesh`)
 selects its capability; otherwise the server uses `.pgl`, `.ptex`, or `.pmesh`.

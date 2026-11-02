@@ -5,6 +5,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 typedef struct {
     size_t width;
@@ -31,5 +32,8 @@ const float *image_pixel(
     size_t x,
     size_t y
 );
+
+/* Shared normalized RGBA conversion for PNG output and GPU texture upload. */
+uint8_t image_channel_to_byte(float value);
 
 #endif

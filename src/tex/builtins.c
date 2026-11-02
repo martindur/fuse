@@ -1,6 +1,10 @@
 #include "builtins.h"
 
 static const BuiltinSignature BUILTINS[] = {
+    {"show", VALUE_TYPE_FLOAT, 1, {VALUE_TYPE_FLOAT}},
+    {"show", VALUE_TYPE_VEC2, 1, {VALUE_TYPE_VEC2}},
+    {"show", VALUE_TYPE_VEC3, 1, {VALUE_TYPE_VEC3}},
+    {"show", VALUE_TYPE_VEC4, 1, {VALUE_TYPE_VEC4}},
     {
         "center",
         VALUE_TYPE_VEC2,
@@ -168,6 +172,7 @@ static const GlobalSignature GLOBALS[] = {
 };
 
 static const SymbolDocumentation DOCUMENTATION[] = {
+    {"show", "Selects this intermediate value in fuse view. The last show() in each file wins; normal compilation returns the value unchanged."},
     {
         "center",
         "Moves UV coordinates so the center of the image is the origin.",

@@ -3,6 +3,7 @@
 #include "assets.h"
 #include "gl/glsl_emit.h"
 #include "gl/glsl_stdlib.h"
+#include "tex/builtins.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -20,18 +21,18 @@ ViewSourceStatus view_source_poll(ViewSource *source, const char *path, char *er
 {
     struct stat status;
     if (stat(path, &status) != 0) {
-        snprintf(error, capacity, "cannot read shader: %s", strerror(errno));
+        snprintf(error, capacity, "cannot read source: %s", strerror(errno));
         source->available = false;
         return VIEW_SOURCE_ERROR;
     }
     if (!S_ISREG(status.st_mode)) {
-        snprintf(error, capacity, "shader path must be a regular file");
+        snprintf(error, capacity, "source path must be a regular file");
         source->available = false;
         return VIEW_SOURCE_ERROR;
     }
     FILE *input = fopen(path, "rb");
     if (input == NULL) {
-        snprintf(error, capacity, "cannot read shader: %s", strerror(errno));
+        snprintf(error, capacity, "cannot read source: %s", strerror(errno));
         source->available = false;
         return VIEW_SOURCE_ERROR;
     }
@@ -46,7 +47,7 @@ ViewSourceStatus view_source_poll(ViewSource *source, const char *path, char *er
         saved_error = errno;
     }
     if (failed) {
-        snprintf(error, capacity, "cannot read shader: %s", strerror(saved_error == 0 ? EIO : saved_error));
+        snprintf(error, capacity, "cannot read source: %s", strerror(saved_error == 0 ? EIO : saved_error));
         free(text);
         source->available = false;
         return VIEW_SOURCE_ERROR;
@@ -57,14 +58,14 @@ ViewSourceStatus view_source_poll(ViewSource *source, const char *path, char *er
             text = malloc(1);
         }
         if (text == NULL) {
-            snprintf(error, capacity, "out of memory reading shader");
+            snprintf(error, capacity, "out of memory reading source");
             source->available = false;
             return VIEW_SOURCE_ERROR;
         }
         text[0] = '\0';
     }
     if (length > 0 && text[length - 1] == '\0') {
-        snprintf(error, capacity, "NUL byte in shader source");
+        snprintf(error, capacity, "NUL byte in source");
         free(text);
         source->available = false;
         return VIEW_SOURCE_ERROR;
@@ -90,7 +91,7 @@ bool view_shader_compile(const ViewSource *source, size_t preview_line, char **o
         return false;
     }
     PreparedProgram prepared = {0};
-    if (!prepare_program(source->text, source->length, fusegl_dialect(), preview_line, &prepared, error)) {
+    if (!prepare_view_program(source->text, source->length, fusegl_dialect(), preview_line, &prepared, error)) {
         return false;
     }
     size_t length = 0;
@@ -107,4 +108,30 @@ bool view_shader_compile(const ViewSource *source, size_t preview_line, char **o
         snprintf(error->message, sizeof(error->message), "cannot generate GLSL");
     }
     return emitted;
+}
+
+bool view_texture_render(const ViewSource *source, size_t preview_line, const RenderConfig *config, Image *out, CompileError *error)
+{
+    if (!source->available) {
+        *error = (CompileError){.kind = "read"};
+        snprintf(error->message, sizeof(error->message), "texture source unavailable");
+        return false;
+    }
+    PreparedProgram prepared = {0};
+    if (!prepare_view_program(source->text, source->length, fusetex_dialect(), preview_line, &prepared, error)) {
+        return false;
+    }
+    Image candidate = {0};
+    RenderError render_error;
+    bool rendered = fusetex_render(prepared.program, source->text, config, &candidate, &render_error);
+    prepared_program_destroy(&prepared);
+    if (!rendered) {
+        *error = (CompileError){.kind = "render", .span = render_error.span};
+        snprintf(error->message, sizeof(error->message), "%s", render_error.message);
+        image_destroy(&candidate);
+        return false;
+    }
+    image_destroy(out);
+    *out = candidate;
+    return true;
 }

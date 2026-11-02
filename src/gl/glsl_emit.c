@@ -104,6 +104,10 @@ static bool emit_expression(
         );
 
     case EXPR_CALL:
+        if (span_equals_text(source, expression->as.call.name, "show")) {
+            return expression->as.call.arguments.count == 1
+                && emit_expression(output, expression->as.call.arguments.items[0], source);
+        }
         if (span_equals_text(source, expression->as.call.name, "r")) {
             return emit_channel_call(output, expression, source, "r");
         }

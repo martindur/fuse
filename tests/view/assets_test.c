@@ -37,6 +37,7 @@ int main(void)
     char error[256];
     CompileError compile_error;
     char *glsl = NULL;
+    Image image = {0};
     bool passed = true;
     CHECK(write_source(path, valid, strlen(valid)));
     CHECK(view_source_poll(&source, path, error, sizeof(error)) == VIEW_SOURCE_CHANGED);
@@ -78,12 +79,77 @@ int main(void)
     CHECK(strcmp(compile_error.kind, "parse") == 0);
     CHECK(view_source_poll(&source, directory, error, sizeof(error)) == VIEW_SOURCE_ERROR);
 
+    const char *gradient = "vec4(uv, 0.0, 1.0)";
+    CHECK(write_source(path, gradient, strlen(gradient)));
+    CHECK(view_source_poll(&source, path, error, sizeof(error)) == VIEW_SOURCE_CHANGED);
+    RenderConfig config = {.width = 4, .height = 2, .seed = 42};
+    CHECK(view_texture_render(&source, 0, &config, &image, &compile_error));
+    CHECK(image.width == 4 && image.height == 2);
+    CHECK(image_channel_to_byte(image_pixel(&image, 0, 0)[0]) == 32);
+    CHECK(image_channel_to_byte(image_pixel(&image, 0, 0)[1]) == 64);
+    CHECK(image_channel_to_byte(image_pixel(&image, 3, 1)[0]) == 223);
+    CHECK(image_channel_to_byte(image_pixel(&image, 3, 1)[1]) == 191);
+    float *previous = image.rgba;
+    config.width = 0;
+    CHECK(!view_texture_render(&source, 0, &config, &image, &compile_error));
+    CHECK(image.rgba == previous && strcmp(compile_error.kind, "render") == 0);
+    config.width = 4;
+    CHECK(write_source(path, invalid, strlen(invalid)));
+    CHECK(view_source_poll(&source, path, error, sizeof(error)) == VIEW_SOURCE_CHANGED);
+    CHECK(!view_texture_render(&source, 0, &config, &image, &compile_error));
+    CHECK(image.rgba == previous && strcmp(compile_error.kind, "semantic") == 0);
+
+    const char *noise = "uv.multiply(4.5).noise().colorize(rgb(1.0, 1.0, 1.0))";
+    CHECK(write_source(path, noise, strlen(noise)));
+    CHECK(view_source_poll(&source, path, error, sizeof(error)) == VIEW_SOURCE_CHANGED);
+    CHECK(view_texture_render(&source, 0, &config, &image, &compile_error));
+    float pixels[4 * 2 * 4];
+    memcpy(pixels, image.rgba, sizeof(pixels));
+    CHECK(view_texture_render(&source, 0, &config, &image, &compile_error));
+    CHECK(memcmp(pixels, image.rgba, sizeof(pixels)) == 0);
+    config.seed = 43;
+    CHECK(view_texture_render(&source, 0, &config, &image, &compile_error));
+    CHECK(memcmp(pixels, image.rgba, sizeof(pixels)) != 0);
+
+    struct {
+        const char *text;
+        size_t line;
+        int red;
+        int green;
+    } previews[] = {
+        {"0.25.show().missing()", 0, 64, 64},
+        {"vec2(0.25, 0.75).show().missing()", 0, 64, 191},
+        {"rgb(0.25, 0.75, 0.0).show().missing()", 0, 64, 191},
+        {"vec4(0.25, 0.75, 0.0, 1.0).show().missing()", 0, 64, 191},
+        {"0.25.show().add(0.5).show().missing()", 0, 191, 191},
+        {"let v = 0.25;\nlet mask = v.show().missing();\nmask.missing()", 0, 64, 64},
+        {"0.25\n.show()\n.add(0.5)\n.show()", 1, 64, 64},
+        {"show(0.25).missing()", 0, 64, 64},
+        {"0.25.add(show(0.5)).colorize(rgb(1.0, 1.0, 1.0))", 0, 128, 128},
+    };
+    for (size_t index = 0; index < sizeof(previews) / sizeof(previews[0]); index += 1) {
+        ViewSource preview_source = {.text = (char *)previews[index].text,
+            .length = strlen(previews[index].text), .available = true};
+        CHECK(view_texture_render(&preview_source, previews[index].line, &config, &image, &compile_error));
+        CHECK(image_channel_to_byte(image.rgba[0]) == previews[index].red);
+        CHECK(image_channel_to_byte(image.rgba[1]) == previews[index].green);
+    }
+    const char *bad_show[] = {"uv.show(1.0)", "show()", "show(uv, uv)"};
+    previous = image.rgba;
+    for (size_t index = 0; index < sizeof(bad_show) / sizeof(bad_show[0]); index += 1) {
+        ViewSource preview_source = {.text = (char *)bad_show[index],
+            .length = strlen(bad_show[index]), .available = true};
+        CHECK(!view_texture_render(&preview_source, 0, &config, &image, &compile_error));
+        CHECK(strcmp(compile_error.kind, "semantic") == 0 && image.rgba == previous);
+    }
+
 cleanup:
+    image_destroy(&image);
     free(glsl);
     view_source_destroy(&source);
     unlink(path);
     unlink(replacement);
     rmdir(directory);
-    printf("%s viewer source polling, atomic saves, deletion recovery, and compilation\n", passed ? "PASS" : "FAIL");
+    printf("%s viewer source lifecycle, compilation, and atomic texture generation\n", passed ? "PASS" : "FAIL");
     return passed ? EXIT_SUCCESS : EXIT_FAILURE;
 }

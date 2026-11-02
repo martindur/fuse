@@ -22,11 +22,12 @@ void prepared_program_destroy(PreparedProgram *prepared)
     }
 }
 
-bool prepare_program(
+static bool prepare(
     const char *source,
     size_t length,
     const FuseDialect *dialect,
     size_t preview_line,
+    bool use_show,
     PreparedProgram *out,
     CompileError *error
 )
@@ -64,6 +65,15 @@ bool prepare_program(
             goto cleanup;
         }
         selected = preview;
+    } else if (use_show) {
+        PreviewError preview_error;
+        if (!preview_program_at_show(syntax, source, &preview, &preview_error)) {
+            set_error(error, "preview", preview_error.span, preview_error.message);
+            goto cleanup;
+        }
+        if (preview != NULL) {
+            selected = preview;
+        }
     }
     LowerError lower_error;
     if (!lower_program(selected, &prepared.program, &lower_error)) {
@@ -78,7 +88,7 @@ bool prepare_program(
     }
 
     ValueType result = prepared.semantic_info.result_type;
-    bool numeric_preview = preview_line != 0 && value_type_is_previewable(dialect->required_result_type);
+    bool numeric_preview = preview != NULL && value_type_is_previewable(dialect->required_result_type);
     if (numeric_preview ? !value_type_is_previewable(result) : result != dialect->required_result_type) {
         set_error(error, "semantic", prepared.program->result->span,
             numeric_preview ? "preview result has unsupported type" : "");
@@ -98,4 +108,16 @@ cleanup:
     program_destroy(preview);
     program_destroy(syntax);
     return success;
+}
+
+bool prepare_program(const char *source, size_t length, const FuseDialect *dialect,
+    size_t preview_line, PreparedProgram *out, CompileError *error)
+{
+    return prepare(source, length, dialect, preview_line, false, out, error);
+}
+
+bool prepare_view_program(const char *source, size_t length, const FuseDialect *dialect,
+    size_t preview_line, PreparedProgram *out, CompileError *error)
+{
+    return prepare(source, length, dialect, preview_line, true, out, error);
 }

@@ -35,4 +35,8 @@ bool prepare_program(
 
 void prepared_program_destroy(PreparedProgram *prepared);
 
+/* Viewer policy: explicit line, otherwise last show(), otherwise full program. */
+bool prepare_view_program(const char *source, size_t length, const FuseDialect *dialect,
+    size_t preview_line, PreparedProgram *out, CompileError *error);
+
 #endif

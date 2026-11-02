@@ -16,7 +16,10 @@ fuse \- compose shaders, textures, and geometry
 .br
 .B fuse view
 [\fB--width\fR \fIN\fR] [\fB--height\fR \fIN\fR]
-[\fB--preview-line\fR \fIN\fR] \fIFILE.pgl\fR
+[\fB--preview-line\fR \fIN\fR]
+[\fB--tex0\fR \fIFILE.ptex\fR] ... [\fB--tex3\fR \fIFILE.ptex\fR]
+[\fB--texture-width\fR \fIN\fR] [\fB--texture-height\fR \fIN\fR]
+[\fB--seed\fR \fIN\fR] \fIFILE.pgl|FILE.ptex\fR
 .SH DESCRIPTION
 Fuse composes graphics from chained transformations. Compiler commands read
 source from standard input, write output to standard output, and report
@@ -43,11 +46,16 @@ fusetex, or fusemesh) selects the capability; otherwise the filename extension
 is used. Unknown types receive a diagnostic and no completion or hover results.
 .TP
 .B view
-Open a resizable shader preview and reload source edits automatically. Supplies
+Preview Fuse shader (.pgl) and texture (.ptex) source files with live reload. Supplies
 time, resolution, and UV coordinates using an OpenGL 3.3 core context. Space
 pauses or resumes animation; Escape closes the window. Errors go to standard
-error and leave the last working shader running. Texture inputs are not yet
-supported. The default initial window size is 960 by 640.
+error and leave the last working shader and textures running. Bind procedural
+texture sources with --tex0 through --tex3; each input reloads independently.
+The default initial window size is 960 by 640. Press 1 for the shader or 2 through
+5 for supplied tex0 through tex3 inputs. Switching preserves playback state.
+The last show() call in each file selects its viewer output; normal compilation
+treats show() as an identity function. An explicit --preview-line overrides
+markers in the directly opened file.
 .SH OPTIONS
 .TP
 .B --builtins
@@ -65,7 +73,17 @@ Set the texture width in pixels (tex), or initial window width (view).
 Set the texture height in pixels (tex), or initial window height (view).
 .TP
 .BI --seed " N"
-Set the unsigned noise seed (tex only).
+Set the unsigned noise seed (tex default: zero; view default: 42).
+.TP
+.BI --tex0 " FILE.ptex"
+Bind a procedural texture source to tex0 (view). Also accepts --tex1, --tex2,
+and --tex3. Paths are relative to the working directory.
+.TP
+.BI --texture-width " N"
+Set generated texture width in pixels (view, default: 512).
+.TP
+.BI --texture-height " N"
+Set generated texture height in pixels (view, default: 512).
 .TP
 .B -h, --help
 Show available commands or help for a subcommand.
@@ -76,9 +94,10 @@ fuse tex --width 512 --height 512 --seed 42 < clouds.ptex > clouds.png
 fuse mesh < disk.pmesh > disk.obj
 fuse gl --preview-line 4 < shader.pgl > preview.frag
 fuse view shader.pgl
+fuse view clouds.ptex
 .fi
 .SH EXIT STATUS
 Returns zero on success and nonzero for invalid commands, options, source,
-or output. The viewer returns nonzero for startup failures; recoverable shader
+or output. The viewer returns nonzero for startup failures; recoverable source
 errors keep the window running. A selective build only provides its included
 capabilities.

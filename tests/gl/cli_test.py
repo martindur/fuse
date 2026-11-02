@@ -16,6 +16,18 @@ class ShaderTests(CompilerTests):
     def test_line_comments_preserve_shader_output(self):
         self.assert_comments_preserve_output(SOURCE)
 
+    def test_show_is_identity_for_every_numeric_type(self):
+        for source in ["0.25.show().colorize(rgb(1.0, 0.5, 0.0))",
+                       "uv.show().circle(0.2).fill().colorize(rgb(1.0, 0.5, 0.0))",
+                       "0.25.colorize(rgb(1.0, 0.5, 0.0).show())",
+                       SOURCE + ".show()"]:
+            with self.subTest(source=source):
+                result = self.run_command(source=source)
+                self.assertEqual(result.returncode, 0, result.stderr.decode())
+                self.assertEqual(result.stdout,
+                                 self.run_command(source=source.replace(".show()", "")).stdout)
+        self.assertIn("show", self.completions("uv."))
+
     def test_comments_preserve_preview_lines_and_diagnostic_positions(self):
         source = "// shader\nuv // coordinates\n// centered preview follows\n.center() // preview"
         result = self.run_command("--preview-line", "4", source=source)

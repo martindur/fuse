@@ -36,6 +36,32 @@ static bool pixel_equals(int x, int y, int r, int g, int b)
     return true;
 }
 
+static bool set_texture(ViewRenderer *renderer, size_t slot, const char *text,
+    size_t width, size_t height, ViewRenderError *error)
+{
+    ViewSource source = {.text = (char *)text, .length = strlen(text), .available = true};
+    RenderConfig config = {.width = width, .height = height, .seed = 42};
+    CompileError compile_error;
+    Image image = {0};
+    if (!view_texture_render(&source, 0, &config, &image, &compile_error)) {
+        fprintf(stderr, "texture failed: %s\n", compile_error.message);
+        return false;
+    }
+    bool loaded = view_renderer_set_texture(renderer, slot, &image, error);
+    image_destroy(&image);
+    return loaded;
+}
+
+static bool load_texture(ViewRenderer *renderer, size_t slot, const char *path, ViewRenderError *error)
+{
+    ViewSource source = {0};
+    char read_error[256];
+    bool loaded = view_source_poll(&source, path, read_error, sizeof(read_error)) == VIEW_SOURCE_CHANGED
+        && set_texture(renderer, slot, source.text, 512, 512, error);
+    view_source_destroy(&source);
+    return loaded;
+}
+
 static bool snapshot(const char *path)
 {
     unsigned char *pixels = malloc(512 * 512 * 3);
@@ -118,6 +144,60 @@ int main(int argc, char **argv)
     view_renderer_draw(&renderer, width, height, 0.0f);
     CHECK(pixel_equals(0, 0, (int)(width * 255.0f / 512.0f), (int)(height * 255.0f / 512.0f), 0));
 
+    CHECK(set_texture(&renderer, 0, "vec4(uv, 0.0, 1.0)", 4, 2, &error));
+    CHECK(set_source(&renderer, "uv.sample(tex0)", &error));
+    view_renderer_draw(&renderer, 4, 2, 0.0f);
+    CHECK(pixel_equals(0, 0, 32, 64, 0));
+    CHECK(pixel_equals(3, 1, 223, 191, 0));
+    CHECK(set_source(&renderer, "vec2(-1.0, 2.0).sample(tex0)", &error));
+    view_renderer_draw(&renderer, 1, 1, 0.0f);
+    CHECK(pixel_equals(0, 0, 32, 191, 0));
+    CHECK(set_source(&renderer, "vec2(0.5, 0.5).sample(tex0)", &error));
+    view_renderer_draw(&renderer, 1, 1, 0.0f);
+    CHECK(pixel_equals(0, 0, 128, 128, 0));
+
+    CHECK(set_texture(&renderer, 1, "vec4(0.0, 1.0, 0.0, 1.0)", 1, 1, &error));
+    CHECK(set_texture(&renderer, 3, "vec4(0.0, 0.0, 1.0, 1.0)", 1, 1, &error));
+    CHECK(set_source(&renderer, "uv.sample(tex1).blend_add(uv.sample(tex3)).multiply(vec4(0.5, 0.5, 0.5, 1.0))", &error));
+    view_renderer_draw(&renderer, 4, 2, 0.0f);
+    CHECK(pixel_equals(0, 0, 0, 128, 128));
+    previous = renderer.program;
+    CHECK(!set_source(&renderer, "uv.sample(tex2)", &error));
+    CHECK(strstr(error.message, "--tex2") != NULL && renderer.program == previous);
+    GLuint previous_texture = renderer.textures[1];
+    float white[] = {1, 1, 1, 1};
+    Image invalid_image = {.width = (size_t)renderer.texture_limit + 1, .height = 1, .rgba = white};
+    CHECK(!view_renderer_set_texture(&renderer, 1, &invalid_image, &error));
+    CHECK(renderer.textures[1] == previous_texture);
+    CHECK(!view_renderer_set_texture(&renderer, VIEW_TEXTURE_COUNT, &invalid_image, &error));
+    view_renderer_draw(&renderer, 4, 2, 0.0f);
+    CHECK(pixel_equals(0, 0, 0, 128, 128));
+    CHECK(set_texture(&renderer, 1, "vec4(2.0, -1.0, 0.0, 1.0)", 1, 1, &error));
+    CHECK(renderer.program == previous);
+    view_renderer_draw(&renderer, 4, 2, 0.0f);
+    CHECK(pixel_equals(0, 0, 128, 0, 128));
+    CHECK(set_source(&renderer, "uv.sample(tex1).blend_add(uv.sample(tex3)).multiply(vec4(0.5, 0.5, 0.5, 1.0))", &error));
+    view_renderer_draw(&renderer, 4, 2, 0.0f);
+    CHECK(pixel_equals(0, 0, 128, 0, 128));
+
+    CHECK(set_texture(&renderer, 0,
+        "vec4(1.0, 0.0, 0.0, 1.0).show().multiply(vec4(0.0, 1.0, 0.0, 1.0))", 4, 2, &error));
+    CHECK(set_source(&renderer,
+        "uv.sample(tex0).multiply(vec4(0.5, 1.0, 1.0, 1.0)).show().missing()", &error));
+    previous = renderer.program;
+    view_renderer_draw(&renderer, 4, 2, 1.0f);
+    CHECK(pixel_equals(0, 0, 128, 0, 0));
+    view_renderer_draw_texture(&renderer, 4, 2, 0);
+    CHECK(pixel_equals(0, 0, 255, 0, 0));
+    view_renderer_draw_texture(&renderer, 4, 2, 3);
+    CHECK(pixel_equals(0, 0, 0, 0, 255));
+    CHECK(renderer.program == previous);
+    view_renderer_draw(&renderer, 4, 2, 2.0f);
+    CHECK(pixel_equals(0, 0, 128, 0, 0));
+    CHECK(set_source(&renderer, "uv.show().missing()", &error));
+    view_renderer_draw(&renderer, 4, 2, 0.0f);
+    CHECK(pixel_equals(0, 0, 32, 64, 0));
+
     ViewSource ring = {0};
     char read_error[256];
     CHECK(view_source_poll(&ring, "examples/gl/ring.pgl", read_error, sizeof(read_error)) == VIEW_SOURCE_CHANGED);
@@ -130,6 +210,20 @@ int main(int argc, char **argv)
         CHECK(snapshot(argv[1]));
     }
 
+    CHECK(load_texture(&renderer, 0, "examples/compositions/masked-reveal/mask.ptex", &error));
+    CHECK(load_texture(&renderer, 1, "examples/compositions/masked-reveal/rings.ptex", &error));
+    ViewSource composition = {0};
+    CHECK(view_source_poll(&composition, "examples/compositions/masked-reveal/masked-reveal.pgl",
+        read_error, sizeof(read_error)) == VIEW_SOURCE_CHANGED);
+    bool composition_loaded = set_source(&renderer, composition.text, &error);
+    view_source_destroy(&composition);
+    CHECK(composition_loaded);
+    view_renderer_draw(&renderer, 512, 512, 1.0f);
+    CHECK(glGetError() == GL_NO_ERROR);
+    if (argc > 2) {
+        CHECK(snapshot(argv[2]));
+    }
+
 cleanup:
     if (renderer.window != NULL) {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -137,6 +231,7 @@ cleanup:
         glDeleteTextures(1, &color);
     }
     view_renderer_destroy(&renderer);
-    printf("%s rendered UVs/time/resolution, resize, failure preservation, and recovery\n", passed ? "PASS" : "FAIL");
+    printf("%s rendered uniforms, texture orientation/filtering/slots, failure recovery, and composition\n",
+        passed ? "PASS" : "FAIL");
     return passed ? EXIT_SUCCESS : EXIT_FAILURE;
 }

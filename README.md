@@ -8,7 +8,7 @@ from small chained transformations.
 | `fuse gl` | Shader source (`.pgl`) | GLSL 330 fragment shader |
 | `fuse tex` | Texture source (`.ptex`) | PNG image |
 | `fuse mesh` | Geometry source (`.pmesh`) | Wavefront OBJ mesh |
-| `fuse view` | Shader file (`.pgl`) | Live preview window |
+| `fuse view` | Shader (`.pgl`) or texture (`.ptex`) file | Live preview window |
 
 Compiler commands read source from stdin, write output to stdout, and report
 errors on stderr. Use `--builtins` to list its functions and globals.
@@ -48,15 +48,19 @@ build/fuse tex --width 256 --height 256 --seed 42 \
 build/fuse mesh < examples/mesh/radial.pmesh > build/radial.obj
 ```
 
-Preview a shader with live reload:
+Preview Fuse shader and texture source files with live reload:
 
 ```sh
 build/fuse view examples/gl/ring.pgl
+build/fuse view examples/tex/clouds.ptex
 ```
 
 Save edits to update the image. Space pauses animation; Escape closes the
 window. Errors appear in the terminal while the last working shader keeps
-running. See the [viewer guide](docs/view.md) for options.
+running. Bind procedural textures with `--tex0 FILE.ptex` through `--tex3 FILE.ptex`;
+each input reloads independently. Press `1` for the shader or `2`–`5` for texture
+inputs. Add `.show()` to preview an intermediate value in any source.
+See the [viewer guide](docs/view.md) for examples.
 
 Programs chain transformations. For example, this shader draws an orange circle:
 

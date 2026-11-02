@@ -34,6 +34,22 @@ class TextureTests(CompilerTests):
         self.assertEqual(result.returncode, 0, result.stderr.decode())
         self.assertEqual(result.stdout[:8], b"\x89PNG\r\n\x1a\n")
 
+    def test_show_is_identity_for_every_numeric_type(self):
+        for source in ["0.25.show().colorize(rgb(1.0, 0.5, 0.0))",
+                       "uv.show().noise().colorize(rgb(1.0, 0.5, 0.0))",
+                       "0.25.colorize(rgb(1.0, 0.5, 0.0).show())",
+                       SOURCE + ".show()"]:
+            with self.subTest(source=source):
+                result = self.render(source=source)
+                self.assertEqual(result.returncode, 0, result.stderr.decode())
+                self.assertEqual(result.stdout, self.render(source=source.replace(".show()", "")).stdout)
+        self.assertIn("show", self.completions("uv.noise()."))
+        _, responses = self.lsp_session(
+            opened("uv.show()", self.language_id),
+            request("textDocument/hover", 2, at("uv.sh")),
+        )
+        self.assertIn("normal compilation", responses[2]["result"]["contents"]["value"])
+
     def test_help_and_catalog(self):
         for arguments in [("--help",), ("-h",)]:
             result = self.run_command(*arguments)

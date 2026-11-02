@@ -2,5 +2,5 @@ uv
 .center()
 .aspect()
 .circle(time.oscillate(0.15, 0.4))
-.stroke(0.025)
-.colorize(rgb(1.0, 0.25, 0.05))
+.stroke(0.05)
+.colorize(rgb(1.0, time.oscillate(0.5, 1.0), 0.05))

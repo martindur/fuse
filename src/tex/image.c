@@ -1,5 +1,6 @@
 #include "image.h"
 
+#include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -118,4 +119,17 @@ const float *image_pixel(
     }
 
     return &image->rgba[(y * image->width + x) * 4];
+}
+
+uint8_t image_channel_to_byte(float value)
+{
+    if (!isfinite(value) || value <= 0.0f) {
+        return 0;
+    }
+
+    if (value >= 1.0f) {
+        return 255;
+    }
+
+    return (uint8_t)(value * 255.0f + 0.5f);
 }

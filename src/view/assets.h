@@ -2,6 +2,7 @@
 #define FUSE_VIEW_ASSETS_H
 
 #include "fuse/compile.h"
+#include "tex/render.h"
 
 typedef struct {
     char *text;
@@ -19,5 +20,7 @@ typedef enum {
 ViewSourceStatus view_source_poll(ViewSource *source, const char *path, char *error, size_t capacity);
 void view_source_destroy(ViewSource *source);
 bool view_shader_compile(const ViewSource *source, size_t preview_line, char **out_glsl, CompileError *error);
+/* Replaces a zero-initialized image on success; preserves it on failure. */
+bool view_texture_render(const ViewSource *source, size_t preview_line, const RenderConfig *config, Image *out, CompileError *error);
 
 #endif

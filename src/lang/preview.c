@@ -1,6 +1,7 @@
 #include "fuse/preview.h"
 
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 
 typedef struct {
@@ -257,6 +258,54 @@ static Expr *clone_expression(
     return clone;
 }
 
+static bool build_preview(const Program *syntax, const PreviewPoint *point,
+    Program **out_preview, PreviewError *out_error)
+{
+    Program *preview = program_create();
+
+    if (preview == NULL) {
+        out_error->message = "out of memory";
+        return false;
+    }
+
+    for (size_t index = 0;
+         index < point->visible_bindings;
+         index += 1) {
+        Expr *initializer = clone_expression(
+            syntax->bindings[index].initializer,
+            out_error
+        );
+
+        if (initializer == NULL
+            || !program_add_binding(
+                preview,
+                syntax->bindings[index].name,
+                initializer
+            )) {
+            expr_destroy(initializer);
+            program_destroy(preview);
+            set_error(
+                out_error,
+                syntax->bindings[index].name,
+                "out of memory"
+            );
+            return false;
+        }
+    }
+
+    Expr *result = clone_expression(point->expression, out_error);
+
+    if (result == NULL || !program_set_result(preview, result)) {
+        expr_destroy(result);
+        program_destroy(preview);
+        set_error(out_error, point->expression->span, "out of memory");
+        return false;
+    }
+
+    *out_preview = preview;
+    return true;
+}
+
 bool preview_program_at_line(
     const Program *syntax,
     const char *source,
@@ -314,47 +363,44 @@ bool preview_program_at_line(
         return false;
     }
 
-    Program *preview = program_create();
+    return build_preview(syntax, &point, out_preview, out_error);
+}
 
-    if (preview == NULL) {
-        out_error->message = "out of memory";
+static void find_show_points(const Expr *expression, const char *source,
+    size_t visible_bindings, PreviewPoint *point)
+{
+    if (expression->kind == EXPR_PIPELINE) {
+        find_show_points(expression->as.pipeline.input, source, visible_bindings, point);
+    }
+    const Expr *call = expression->kind == EXPR_PIPELINE ? expression->as.pipeline.stage : expression;
+    if (call == NULL || call->kind != EXPR_CALL) {
+        return;
+    }
+    SourceSpan name = call->as.call.name;
+    if (name.length == 4 && memcmp(source + name.offset, "show", 4) == 0) {
+        consider_point(point, expression, visible_bindings, name.offset, 0, SIZE_MAX);
+    }
+    for (size_t index = 0; index < call->as.call.arguments.count; index += 1) {
+        find_show_points(call->as.call.arguments.items[index], source, visible_bindings, point);
+    }
+}
+
+bool preview_program_at_show(const Program *syntax, const char *source,
+    Program **out_preview, PreviewError *out_error)
+{
+    if (out_preview == NULL || out_error == NULL) {
         return false;
     }
-
-    for (size_t index = 0;
-         index < point.visible_bindings;
-         index += 1) {
-        Expr *initializer = clone_expression(
-            syntax->bindings[index].initializer,
-            out_error
-        );
-
-        if (initializer == NULL
-            || !program_add_binding(
-                preview,
-                syntax->bindings[index].name,
-                initializer
-            )) {
-            expr_destroy(initializer);
-            program_destroy(preview);
-            set_error(
-                out_error,
-                syntax->bindings[index].name,
-                "out of memory"
-            );
-            return false;
-        }
-    }
-
-    Expr *result = clone_expression(point.expression, out_error);
-
-    if (result == NULL || !program_set_result(preview, result)) {
-        expr_destroy(result);
-        program_destroy(preview);
-        set_error(out_error, point.expression->span, "out of memory");
+    *out_preview = NULL;
+    *out_error = (PreviewError){0};
+    if (syntax == NULL || syntax->result == NULL || source == NULL) {
+        out_error->message = "invalid preview input";
         return false;
     }
-
-    *out_preview = preview;
-    return true;
+    PreviewPoint point = {0};
+    for (size_t index = 0; index < syntax->binding_count; index += 1) {
+        find_show_points(syntax->bindings[index].initializer, source, index, &point);
+    }
+    find_show_points(syntax->result, source, syntax->binding_count, &point);
+    return !point.found || build_preview(syntax, &point, out_preview, out_error);
 }

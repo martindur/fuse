@@ -43,7 +43,7 @@ static void usage(FILE *output)
         fprintf(output, "  %-6s %s\n", COMMANDS[index].name, COMMANDS[index].description);
     }
 #ifdef FUSE_CAP_VIEW
-    fputs("  view   preview and reload a shader\n", output);
+    fputs("  view   preview Fuse shader and texture source files\n", output);
 #endif
     fputs("  lsp    run the language server\n\nUse fuse COMMAND --help for command options.\n", output);
 }

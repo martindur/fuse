@@ -382,7 +382,12 @@ static bool evaluate_call(
 
     bool resolved = false;
 
-    if (call_name_is(evaluator, expression, "center")
+    if (call_name_is(evaluator, expression, "show")
+        && argument_count == 1
+        && value_type_is_previewable(arguments[0].type)) {
+        *out_value = arguments[0];
+        resolved = true;
+    } else if (call_name_is(evaluator, expression, "center")
         && argument_count == 1
         && value_is_vec2(&arguments[0])) {
         resolved = value_set_vec2(

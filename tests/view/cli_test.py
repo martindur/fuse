@@ -24,12 +24,22 @@ class ViewTests(unittest.TestCase):
         for arguments in [(), ("--unknown",), ("--width",), ("--width", "0"),
                           ("--height", "-1"), ("--width", "9999999999999999999999999"),
                           ("--height", "2147483648"), ("--preview-line", "0"),
-                          ("--preview-line", "no"), ("one.pgl", "two.pgl"), ("--",)]:
+                          ("--preview-line", "no"), ("one.pgl", "two.pgl"), ("--",),
+                          ("--tex0",), ("--tex4", "a.ptex"), ("--tex0", "--tex1"),
+                          ("--tex0", "a.ptex", "--tex0", "b.ptex"),
+                          ("--texture-width", "0"), ("--texture-height", "2147483648"),
+                          ("--seed", "-1"), ("--seed", "18446744073709551616")]:
             with self.subTest(arguments=arguments):
                 result = self.run_view(*arguments)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(result.stdout, b"")
                 self.assertIn(b"Usage: fuse view", result.stderr)
+
+    def test_standalone_texture_rejects_shader_inputs(self):
+        result = self.run_view("source.ptex", "--tex0", "input.ptex")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(b"--texN inputs require a shader file", result.stderr)
+        self.assertNotIn(b"window", result.stderr)
 
     def test_missing_file_and_directory(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -48,6 +58,17 @@ class ViewTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn(b"NUL byte", result.stderr)
             self.assertNotIn(b"window", result.stderr)
+
+    def test_texture_read_errors_require_no_window(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "shader.pgl"
+            path.write_text("uv.sample(tex0)")
+            for texture in (Path(directory) / "missing.ptex", Path(directory)):
+                result = self.run_view(str(path), "--tex0", str(texture), "--seed", "0")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(b"fuse view: tex0:", result.stderr)
+                self.assertNotIn(b"Usage:", result.stderr)
+                self.assertNotIn(b"window", result.stderr)
 
 
 if __name__ == "__main__":

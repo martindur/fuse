@@ -1,23 +1,9 @@
 #include "png_write.h"
 
-#include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
 
 #include <png.h>
-
-static uint8_t to_byte(float value)
-{
-    if (!isfinite(value) || value <= 0.0f) {
-        return 0;
-    }
-
-    if (value >= 1.0f) {
-        return 255;
-    }
-
-    return (uint8_t)(value * 255.0f + 0.5f);
-}
 
 bool png_write(FILE *output, const Image *image)
 {
@@ -84,10 +70,10 @@ bool png_write(FILE *output, const Image *image)
         const float *source = image_pixel(image, 0, source_y);
 
         for (size_t x = 0; x < image->width; x += 1) {
-            row[x * 4 + 0] = to_byte(source[x * 4 + 0]);
-            row[x * 4 + 1] = to_byte(source[x * 4 + 1]);
-            row[x * 4 + 2] = to_byte(source[x * 4 + 2]);
-            row[x * 4 + 3] = to_byte(source[x * 4 + 3]);
+            row[x * 4 + 0] = image_channel_to_byte(source[x * 4 + 0]);
+            row[x * 4 + 1] = image_channel_to_byte(source[x * 4 + 1]);
+            row[x * 4 + 2] = image_channel_to_byte(source[x * 4 + 2]);
+            row[x * 4 + 3] = image_channel_to_byte(source[x * 4 + 3]);
         }
 
         png_write_row(png, row);
