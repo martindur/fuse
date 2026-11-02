@@ -11,3 +11,7 @@
 (identifier) @variable
 (number) @number
 (comment) @comment
+
+((call function: (identifier) @function.builtin.fuse)
+  (#eq? @function.builtin.fuse "show")
+  (#set! priority 110))

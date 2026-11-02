@@ -20,6 +20,9 @@ The runtime maps `.pgl`, `.ptex`, and `.pmesh` to `fusegl`, `fusetex`, and
 root. The server selects the capability per document. Files are grouped by
 Git root where present, otherwise by directory.
 
+`show()` uses the `@function.builtin.fuse` highlight, linked to `Keyword` by
+default. Override that group in your colorscheme to customize inspection markers.
+
 For checkout use, run `make tree-sitter-parser` and configure:
 
 ```lua
