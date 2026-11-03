@@ -1,1 +1,0 @@
-Rename Fuse to Grafic, including the `grafic` CLI, C library and headers, language server, and editor integration. Source files now use `.gfrag`, `.gtex`, and `.gmesh`; update existing files and editor configurations to the new names. Generated shaders use `graficUv` as their UV input.
