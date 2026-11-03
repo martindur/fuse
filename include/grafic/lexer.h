@@ -1,7 +1,7 @@
-#ifndef FUSE_LEXER_H
-#define FUSE_LEXER_H
+#ifndef GRAFIC_LEXER_H
+#define GRAFIC_LEXER_H
 
-#include "fuse/source.h"
+#include "grafic/source.h"
 
 #include <stddef.h>
 

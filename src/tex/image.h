@@ -1,5 +1,5 @@
-#ifndef FUSE_TEX_IMAGE_H
-#define FUSE_TEX_IMAGE_H
+#ifndef GRAFIC_TEX_IMAGE_H
+#define GRAFIC_TEX_IMAGE_H
 
 #include "evaluate.h"
 

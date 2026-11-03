@@ -1,7 +1,7 @@
-#ifndef FUSE_VIEW_ASSETS_H
-#define FUSE_VIEW_ASSETS_H
+#ifndef GRAFIC_VIEW_ASSETS_H
+#define GRAFIC_VIEW_ASSETS_H
 
-#include "fuse/compile.h"
+#include "grafic/compile.h"
 #include "tex/render.h"
 #include "mesh/mesh.h"
 
@@ -24,6 +24,6 @@ bool view_shader_compile(const ViewSource *source, size_t preview_line, char **o
 /* Replaces a zero-initialized image on success; preserves it on failure. */
 bool view_texture_render(const ViewSource *source, size_t preview_line, const RenderConfig *config, Image *out, CompileError *error);
 /* Replaces a zero-initialized mesh on success; preserves it on failure. */
-bool view_mesh_render(const ViewSource *source, size_t preview_line, FuseMesh *out, CompileError *error);
+bool view_mesh_render(const ViewSource *source, size_t preview_line, GraficMesh *out, CompileError *error);
 
 #endif

@@ -9,8 +9,8 @@ SOURCE = "disk().radius(2.0).segments(8).rings(2)"
 
 
 class MeshTests(CompilerTests):
-    binary = Path("build/fuse").resolve()
-    language_id = "fusemesh"
+    binary = Path("build/grafic").resolve()
+    language_id = "graficmesh"
     command = "mesh"
 
     def test_line_comments_preserve_mesh_output(self):
@@ -46,7 +46,7 @@ class MeshTests(CompilerTests):
         for arguments in [("--help",), ("-h",)]:
             result = self.run_command(*arguments)
             self.assertEqual(result.returncode, 0)
-            self.assertIn(b"Usage: fuse mesh", result.stdout)
+            self.assertIn(b"Usage: grafic mesh", result.stdout)
         result = self.run_command("--builtins")
         names = set(re.findall(r"^  ([a-zA-Z_]\w*)[(:]", result.stdout.decode(), re.MULTILINE))
         self.assertEqual(set(self.completions("")), names)
@@ -63,7 +63,7 @@ class MeshTests(CompilerTests):
         text = responses[2]["result"]["contents"]["value"]
         self.assertIn("disk() -> mesh", text)
         self.assertIn("filled disk", text)
-        self.assertIn("```fusemesh", text)
+        self.assertIn("```graficmesh", text)
         self.assertTrue(any(packet.get("params", {}).get("diagnostics") == [] for packet in packets))
         packets, _ = self.lsp_session(opened("1.0", self.language_id))
         diagnostic = next(packet["params"]["diagnostics"][0] for packet in packets

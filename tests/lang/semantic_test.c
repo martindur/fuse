@@ -1,7 +1,7 @@
 #include "dialects.h"
-#include "fuse/lower.h"
-#include "fuse/parser.h"
-#include "fuse/semantic.h"
+#include "grafic/lower.h"
+#include "grafic/parser.h"
+#include "grafic/semantic.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -10,7 +10,7 @@
 
 typedef struct {
     const char *source;
-    const FuseDialect *dialect;
+    const GraficDialect *dialect;
     ValueType result;
     const char *error;
 } SemanticCase;

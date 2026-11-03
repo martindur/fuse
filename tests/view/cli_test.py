@@ -7,7 +7,7 @@ import unittest
 
 
 class ViewTests(unittest.TestCase):
-    binary = Path("build/fuse").resolve()
+    binary = Path("build/grafic").resolve()
 
     def run_view(self, *arguments):
         return subprocess.run([str(self.binary), "view", *arguments], capture_output=True, timeout=10)
@@ -16,7 +16,7 @@ class ViewTests(unittest.TestCase):
         for option in ("--help", "-h"):
             result = self.run_view(option)
             self.assertEqual(result.returncode, 0)
-            self.assertIn(b"Usage: fuse view", result.stdout)
+            self.assertIn(b"Usage: grafic view", result.stdout)
             self.assertIn(b"Space", result.stdout)
             self.assertEqual(result.stderr, b"")
 
@@ -24,20 +24,20 @@ class ViewTests(unittest.TestCase):
         for arguments in [(), ("--unknown",), ("--width",), ("--width", "0"),
                           ("--height", "-1"), ("--width", "9999999999999999999999999"),
                           ("--height", "2147483648"), ("--preview-line", "0"),
-                          ("--preview-line", "no"), ("one.fgl", "two.fgl"), ("--",),
-                          ("--tex0",), ("--tex4", "a.ftex"), ("--tex0", "--tex1"),
-                          ("--tex0", "a.ftex", "--tex0", "b.ftex"),
+                          ("--preview-line", "no"), ("one.gfrag", "two.gfrag"), ("--",),
+                          ("--tex0",), ("--tex4", "a.gtex"), ("--tex0", "--tex1"),
+                          ("--tex0", "a.gtex", "--tex0", "b.gtex"),
                           ("--texture-width", "0"), ("--texture-height", "2147483648"),
                           ("--seed", "-1"), ("--seed", "18446744073709551616")]:
             with self.subTest(arguments=arguments):
                 result = self.run_view(*arguments)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(result.stdout, b"")
-                self.assertIn(b"Usage: fuse view", result.stderr)
+                self.assertIn(b"Usage: grafic view", result.stderr)
 
     def test_standalone_texture_rejects_shader_inputs(self):
-        for source in ("source.ftex", "source.fmesh"):
-            result = self.run_view(source, "--tex0", "input.ftex")
+        for source in ("source.gtex", "source.gmesh"):
+            result = self.run_view(source, "--tex0", "input.gtex")
             self.assertNotEqual(result.returncode, 0)
             self.assertIn(b"--texN inputs require a shader file", result.stderr)
             self.assertNotIn(b"window", result.stderr)
@@ -51,16 +51,16 @@ class ViewTests(unittest.TestCase):
 
     def test_missing_file_and_directory(self):
         with tempfile.TemporaryDirectory() as directory:
-            for path in (directory, str(Path(directory) / "missing.fgl")):
+            for path in (directory, str(Path(directory) / "missing.gfrag")):
                 result = self.run_view(path)
                 self.assertNotEqual(result.returncode, 0)
-                self.assertIn(b"fuse view:", result.stderr)
+                self.assertIn(b"grafic view:", result.stderr)
                 self.assertEqual(result.stdout, b"")
                 self.assertNotIn(b"window", result.stderr)
 
     def test_nul_source_is_rejected_before_window_creation(self):
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "nul.fgl"
+            path = Path(directory) / "nul.gfrag"
             path.write_bytes(b"uv\x00junk")
             result = self.run_view(str(path))
             self.assertNotEqual(result.returncode, 0)
@@ -69,14 +69,14 @@ class ViewTests(unittest.TestCase):
 
     def test_texture_read_errors_require_no_window(self):
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "shader.fgl"
+            path = Path(directory) / "shader.gfrag"
             path.write_text("uv.sample(tex0)")
-            texture_directory = Path(directory) / "directory.ftex"
+            texture_directory = Path(directory) / "directory.gtex"
             texture_directory.mkdir()
-            for texture in (Path(directory) / "missing.ftex", texture_directory):
+            for texture in (Path(directory) / "missing.gtex", texture_directory):
                 result = self.run_view(str(path), "--tex0", str(texture), "--seed", "0")
                 self.assertNotEqual(result.returncode, 0)
-                self.assertIn(b"fuse view: tex0:", result.stderr)
+                self.assertIn(b"grafic view: tex0:", result.stderr)
                 self.assertNotIn(b"Usage:", result.stderr)
                 self.assertNotIn(b"window", result.stderr)
 

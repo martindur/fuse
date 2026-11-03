@@ -1,13 +1,13 @@
-#ifndef FUSEGL_GLSL_STDLIB_H
-#define FUSEGL_GLSL_STDLIB_H
+#ifndef GRAFICGL_GLSL_STDLIB_H
+#define GRAFICGL_GLSL_STDLIB_H
 
-#include "fuse/dialect.h"
+#include "grafic/dialect.h"
 
 #include <stdbool.h>
 #include <stdio.h>
 
 bool glsl_stdlib_emit(FILE *output);
 
-const FuseDialect *fusegl_dialect(void);
+const GraficDialect *graficgl_dialect(void);
 
 #endif

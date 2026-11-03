@@ -1,8 +1,8 @@
-#ifndef FUSEGL_GLSL_EMIT_H
-#define FUSEGL_GLSL_EMIT_H
+#ifndef GRAFICGL_GLSL_EMIT_H
+#define GRAFICGL_GLSL_EMIT_H
 
-#include "fuse/ast.h"
-#include "fuse/semantic.h"
+#include "grafic/ast.h"
+#include "grafic/semantic.h"
 
 #include <stdbool.h>
 #include <stdio.h>

@@ -1,5 +1,5 @@
-#ifndef FUSE_TEX_PNG_WRITE_H
-#define FUSE_TEX_PNG_WRITE_H
+#ifndef GRAFIC_TEX_PNG_WRITE_H
+#define GRAFIC_TEX_PNG_WRITE_H
 
 #include "image.h"
 

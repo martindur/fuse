@@ -43,8 +43,8 @@ jobs:
           sudo apt-get install -y build-essential pkg-config libpng-dev libglfw3-dev libgl1-mesa-dev
       - name: Verify published source installation
         run: |
-          sh install.sh --version "v$(cat VERSION)" --prefix "$RUNNER_TEMP/fuse"
-          "$RUNNER_TEMP/fuse/bin/fuse" gl --help
-          "$RUNNER_TEMP/fuse/bin/fuse" tex --help
-          "$RUNNER_TEMP/fuse/bin/fuse" mesh --help
-          "$RUNNER_TEMP/fuse/bin/fuse" view --help
+          sh install.sh --version "v$(cat VERSION)" --prefix "$RUNNER_TEMP/grafic"
+          "$RUNNER_TEMP/grafic/bin/grafic" gl --help
+          "$RUNNER_TEMP/grafic/bin/grafic" tex --help
+          "$RUNNER_TEMP/grafic/bin/grafic" mesh --help
+          "$RUNNER_TEMP/grafic/bin/grafic" view --help

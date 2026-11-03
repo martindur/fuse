@@ -1,9 +1,9 @@
-#ifndef FUSE_SEMANTIC_H
-#define FUSE_SEMANTIC_H
+#ifndef GRAFIC_SEMANTIC_H
+#define GRAFIC_SEMANTIC_H
 
-#include "fuse/ast.h"
-#include "fuse/builtins.h"
-#include "fuse/value_type.h"
+#include "grafic/ast.h"
+#include "grafic/builtins.h"
+#include "grafic/value_type.h"
 
 #include <stdbool.h>
 #include <stddef.h>

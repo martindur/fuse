@@ -1,5 +1,5 @@
-#include "fuse/preview.h"
-#include "fuse/parser.h"
+#include "grafic/preview.h"
+#include "grafic/parser.h"
 
 #include <stdbool.h>
 #include <stddef.h>

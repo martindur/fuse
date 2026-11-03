@@ -12,6 +12,6 @@
 (number) @number
 (comment) @comment
 
-((call function: (identifier) @function.builtin.fuse)
-  (#eq? @function.builtin.fuse "show")
+((call function: (identifier) @function.builtin.grafic)
+  (#eq? @function.builtin.grafic "show")
   (#set! priority 110))

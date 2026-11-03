@@ -1,11 +1,11 @@
 {
   "grammars": [
     {
-      "name": "fuse",
-      "camelcase": "Fuse",
-      "scope": "source.fuse",
+      "name": "grafic",
+      "camelcase": "Grafic",
+      "scope": "source.grafic",
       "file-types": [],
-      "injection-regex": "^fuse$"
+      "injection-regex": "^grafic$"
     }
   ],
   "metadata": {

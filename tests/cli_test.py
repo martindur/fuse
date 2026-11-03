@@ -8,7 +8,7 @@ from tests.cli_support import CompilerTests, at, changed, notification, opened, 
 
 
 class UnifiedTests(CompilerTests):
-    binary = Path("build/fuse").resolve()
+    binary = Path("build/grafic").resolve()
     capabilities = {"gl", "tex", "mesh", "view"}
 
     def run_command(self, *arguments, source=""):
@@ -30,10 +30,10 @@ class UnifiedTests(CompilerTests):
         for capability in self.capabilities:
             result = self.run_command(capability, "--help")
             self.assertEqual(result.returncode, 0)
-            self.assertIn(f"Usage: fuse {capability}".encode(), result.stdout)
+            self.assertIn(f"Usage: grafic {capability}".encode(), result.stdout)
         result = self.run_command("lsp", "--help")
         self.assertEqual(result.returncode, 0)
-        self.assertIn(b"Usage: fuse lsp", result.stdout)
+        self.assertIn(b"Usage: grafic lsp", result.stdout)
 
     def test_invalid_and_unavailable_commands(self):
         arguments = [("unknown",), ("--builtins",), ("lsp", "--builtins"), ("--help", "extra")]
@@ -60,14 +60,14 @@ class UnifiedTests(CompilerTests):
                        if p.get("method") == "textDocument/publishDiagnostics"]
         self.assertEqual(len(diagnostics), 2)
         for items in diagnostics:
-            self.assertEqual(items[0]["source"], "fuse")
+            self.assertEqual(items[0]["source"], "grafic")
             self.assertIn("not supported", items[0]["message"])
 
     def test_source_extensions_select_catalog_without_language_id(self):
         cases = [
-            ("gl", "fgl", "uv.", "sample"),
-            ("tex", "ftex", "uv.", "noise"),
-            ("mesh", "fmesh", "disk().", "radius"),
+            ("gl", "gfrag", "uv.", "sample"),
+            ("tex", "gtex", "uv.", "noise"),
+            ("mesh", "gmesh", "disk().", "radius"),
         ]
         for capability, extension, source, name in cases:
             if capability not in self.capabilities:
@@ -91,9 +91,9 @@ class UnifiedTests(CompilerTests):
         if not unavailable:
             self.skipTest("full build")
         for capability in unavailable:
-            uri = "file:///tmp/missing." + {"gl": "fgl", "tex": "ftex", "mesh": "fmesh"}[capability]
+            uri = "file:///tmp/missing." + {"gl": "gfrag", "tex": "gtex", "mesh": "gmesh"}[capability]
             packets, responses = self.lsp_session(
-                opened("uv.", "fuse" + capability, uri),
+                opened("uv.", "grafic" + capability, uri),
                 request("textDocument/completion", 2, at("uv.", uri)),
             )
             self.assertEqual(self.completion_items(responses[2]), set())
@@ -104,13 +104,13 @@ class UnifiedTests(CompilerTests):
     def test_mixed_documents_keep_separate_catalogs(self):
         if not {"gl", "tex", "mesh"} <= self.capabilities:
             self.skipTest("requires all capabilities")
-        shader = "file:///tmp/shader.fgl"
-        texture = "file:///tmp/texture.ftex"
-        mesh = "file:///tmp/geometry.fmesh"
+        shader = "file:///tmp/shader.gfrag"
+        texture = "file:///tmp/texture.gtex"
+        mesh = "file:///tmp/geometry.gmesh"
         packets, responses = self.lsp_session(
-            opened("uv.sample(tex0)", "fusegl", shader),
-            opened("uv.noise().colorize(rgb(1.0, 0.5, 0.0))", "fusetex", texture),
-            opened("disk().radius(2.0)", "fusemesh", mesh),
+            opened("uv.sample(tex0)", "graficgl", shader),
+            opened("uv.noise().colorize(rgb(1.0, 0.5, 0.0))", "grafictex", texture),
+            opened("disk().radius(2.0)", "graficmesh", mesh),
             request("textDocument/completion", 2, at("uv.", shader)),
             request("textDocument/completion", 3, at("uv.", texture)),
             request("textDocument/completion", 4, at("disk().", mesh)),
@@ -135,7 +135,7 @@ class UnifiedTests(CompilerTests):
             self.assertIn(signature, responses[response]["result"]["contents"]["value"])
         diagnostics = [p["params"] for p in packets if p.get("method") == "textDocument/publishDiagnostics"]
         self.assertTrue(all(p["diagnostics"] == [] for p in diagnostics[:3]))
-        for packet, identity in zip(diagnostics[3:6], ["fusegl", "fusetex", "fusemesh"]):
+        for packet, identity in zip(diagnostics[3:6], ["graficgl", "grafictex", "graficmesh"]):
             self.assertEqual(packet["diagnostics"][0]["source"], identity)
         self.assertIn("unknown function", diagnostics[3]["diagnostics"][0]["message"])
         self.assertIn("unknown function", diagnostics[4]["diagnostics"][0]["message"])
@@ -147,8 +147,8 @@ class UnifiedTests(CompilerTests):
     def test_language_id_precedes_extension_and_extension_is_a_fallback(self):
         if not {"gl", "tex"} <= self.capabilities:
             self.skipTest("requires gl and tex")
-        uri = "file:///tmp/texture.ftex"
-        for identity, included, excluded in [("fusegl", "sample", "noise"), ("plaintext", "noise", "sample"),
+        uri = "file:///tmp/texture.gtex"
+        for identity, included, excluded in [("graficgl", "sample", "noise"), ("plaintext", "noise", "sample"),
                                               (None, "noise", "sample")]:
             with self.subTest(identity=identity):
                 _, responses = self.lsp_session(
@@ -164,10 +164,10 @@ class UnifiedTests(CompilerTests):
             self.skipTest("requires gl and tex")
         uri = "untitled:asset"
         _, responses = self.lsp_session(
-            opened("uv.", "fusetex", uri),
+            opened("uv.", "grafictex", uri),
             request("textDocument/completion", 2, at("uv.", uri)),
             notification("textDocument/didClose", {"textDocument": {"uri": uri}}),
-            opened("uv.", "fusegl", uri),
+            opened("uv.", "graficgl", uri),
             request("textDocument/completion", 3, at("uv.", uri)),
         )
         self.assertIn("noise", self.completion_items(responses[2]))

@@ -7,7 +7,7 @@
 typedef struct {
     const Program *program;
     const char *source;
-    FuseMeshEvalError *error;
+    GraficMeshEvalError *error;
 } Evaluator;
 
 static bool span_equals_text(
@@ -74,12 +74,12 @@ static bool parse_number(
     return valid;
 }
 
-static bool value_is_number(const FuseMeshRuntimeValue *value)
+static bool value_is_number(const GraficMeshRuntimeValue *value)
 {
     return value->type == VALUE_TYPE_FLOAT;
 }
 
-static bool value_is_mesh(const FuseMeshRuntimeValue *value)
+static bool value_is_mesh(const GraficMeshRuntimeValue *value)
 {
     return value->type == VALUE_TYPE_MESH;
 }
@@ -87,17 +87,17 @@ static bool value_is_mesh(const FuseMeshRuntimeValue *value)
 static bool evaluate_expression(
     Evaluator *evaluator,
     const Expr *expression,
-    const FuseMeshRuntimeValue *bindings,
+    const GraficMeshRuntimeValue *bindings,
     size_t visible_bindings,
-    FuseMeshRuntimeValue *out_value
+    GraficMeshRuntimeValue *out_value
 );
 
 static bool resolve_identifier(
     Evaluator *evaluator,
     SourceSpan name,
-    const FuseMeshRuntimeValue *bindings,
+    const GraficMeshRuntimeValue *bindings,
     size_t visible_bindings,
-    FuseMeshRuntimeValue *out_value
+    GraficMeshRuntimeValue *out_value
 )
 {
     for (size_t index = visible_bindings;
@@ -135,7 +135,7 @@ static bool call_name_is(
 static bool parse_subdivision(
     Evaluator *evaluator,
     const Expr *expression,
-    const FuseMeshRuntimeValue *value,
+    const GraficMeshRuntimeValue *value,
     size_t minimum,
     size_t maximum,
     const char *message,
@@ -173,13 +173,13 @@ static bool parse_subdivision(
 static bool evaluate_call(
     Evaluator *evaluator,
     const Expr *expression,
-    const FuseMeshRuntimeValue *bindings,
+    const GraficMeshRuntimeValue *bindings,
     size_t visible_bindings,
-    FuseMeshRuntimeValue *out_value
+    GraficMeshRuntimeValue *out_value
 )
 {
     size_t argument_count = expression->as.call.arguments.count;
-    FuseMeshRuntimeValue *arguments = NULL;
+    GraficMeshRuntimeValue *arguments = NULL;
 
     if (argument_count > 0) {
         if (argument_count > SIZE_MAX / sizeof(*arguments)) {
@@ -216,7 +216,7 @@ static bool evaluate_call(
         evaluated = true;
     } else if (call_name_is(evaluator, expression, "disk")
         && argument_count == 0) {
-        *out_value = (FuseMeshRuntimeValue){
+        *out_value = (GraficMeshRuntimeValue){
             .type = VALUE_TYPE_MESH,
             .disk = {
                 .radius = 1.0f,
@@ -255,8 +255,8 @@ static bool evaluate_call(
                 evaluator,
                 expression,
                 &arguments[1],
-                FUSE_MESH_MIN_SEGMENTS,
-                FUSE_MESH_MAX_SEGMENTS,
+                GRAFIC_MESH_MIN_SEGMENTS,
+                GRAFIC_MESH_MAX_SEGMENTS,
                 "segments must be between 3 and 4096",
                 &count
             )) {
@@ -273,8 +273,8 @@ static bool evaluate_call(
                 evaluator,
                 expression,
                 &arguments[1],
-                FUSE_MESH_MIN_RINGS,
-                FUSE_MESH_MAX_RINGS,
+                GRAFIC_MESH_MIN_RINGS,
+                GRAFIC_MESH_MAX_RINGS,
                 "rings must be between 1 and 4096",
                 &count
             )) {
@@ -286,7 +286,7 @@ static bool evaluate_call(
         && argument_count == 1
         && value_is_mesh(&arguments[0])) {
         *out_value = arguments[0];
-        out_value->disk.uv_mapping = FUSE_MESH_UV_RADIAL;
+        out_value->disk.uv_mapping = GRAFIC_MESH_UV_RADIAL;
         evaluated = true;
     }
 
@@ -305,9 +305,9 @@ static bool evaluate_call(
 static bool evaluate_expression(
     Evaluator *evaluator,
     const Expr *expression,
-    const FuseMeshRuntimeValue *bindings,
+    const GraficMeshRuntimeValue *bindings,
     size_t visible_bindings,
-    FuseMeshRuntimeValue *out_value
+    GraficMeshRuntimeValue *out_value
 )
 {
     switch (expression->kind) {
@@ -355,26 +355,26 @@ static bool evaluate_expression(
     return false;
 }
 
-bool fusemesh_evaluate_program(
+bool graficmesh_evaluate_program(
     const Program *program,
     const char *source,
-    FuseMeshDiskSpec *out_spec,
-    FuseMeshEvalError *out_error
+    GraficMeshDiskSpec *out_spec,
+    GraficMeshEvalError *out_error
 )
 {
     if (out_spec == NULL || out_error == NULL) {
         return false;
     }
 
-    *out_spec = (FuseMeshDiskSpec){0};
-    *out_error = (FuseMeshEvalError){0};
+    *out_spec = (GraficMeshDiskSpec){0};
+    *out_error = (GraficMeshEvalError){0};
 
     if (program == NULL || program->result == NULL || source == NULL) {
         out_error->message = "invalid evaluation input";
         return false;
     }
 
-    FuseMeshRuntimeValue *bindings = NULL;
+    GraficMeshRuntimeValue *bindings = NULL;
 
     if (program->binding_count > 0) {
         if (program->binding_count > SIZE_MAX / sizeof(*bindings)) {
@@ -412,7 +412,7 @@ bool fusemesh_evaluate_program(
         }
     }
 
-    FuseMeshRuntimeValue result = {0};
+    GraficMeshRuntimeValue result = {0};
 
     if (evaluated
         && !evaluate_expression(

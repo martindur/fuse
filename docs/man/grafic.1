@@ -1,52 +1,52 @@
-.TH FUSE 1 "November 2026" "Fuse" "User Commands"
+.TH GRAFIC 1 "November 2026" "Grafic" "User Commands"
 .SH NAME
-fuse \- compose shaders, textures, and geometry
+grafic \- compose shaders, textures, and geometry
 .SH SYNOPSIS
-.B fuse gl
+.B grafic gl
 [\fB--builtins\fR | \fB--preview-line\fR \fIN\fR]
 .br
-.B fuse tex
+.B grafic tex
 [\fB--width\fR \fIN\fR] [\fB--height\fR \fIN\fR] [\fB--seed\fR \fIN\fR]
 [\fB--preview-line\fR \fIN\fR]
 .br
-.B fuse mesh
+.B grafic mesh
 [\fB--builtins\fR | \fB--preview-line\fR \fIN\fR]
 .br
-.B fuse lsp
+.B grafic lsp
 .br
-.B fuse view
+.B grafic view
 [\fB--width\fR \fIN\fR] [\fB--height\fR \fIN\fR]
 [\fB--preview-line\fR \fIN\fR]
-[\fB--tex0\fR \fIFILE.ftex\fR] ... [\fB--tex3\fR \fIFILE.ftex\fR]
+[\fB--tex0\fR \fIFILE.gtex\fR] ... [\fB--tex3\fR \fIFILE.gtex\fR]
 [\fB--texture-width\fR \fIN\fR] [\fB--texture-height\fR \fIN\fR]
-[\fB--seed\fR \fIN\fR] \fIFILE.fgl|FILE.ftex|FILE.fmesh\fR
+[\fB--seed\fR \fIN\fR] \fIFILE.gfrag|FILE.gtex|FILE.gmesh\fR
 .SH DESCRIPTION
-Fuse composes graphics from chained transformations. Compiler commands read
+Grafic composes graphics from chained transformations. Compiler commands read
 source from standard input, write output to standard output, and report
 diagnostics on standard error.
 .SH COMMANDS
 .TP
 .B gl
-Compile .fgl source to a GLSL 330 core fragment shader. Complete programs return
-vec4. A rendering host supplies the fuseUv input, u_time and u_resolution
+Compile .gfrag source to a GLSL 330 core fragment shader. Complete programs return
+vec4. A rendering host supplies the graficUv input, u_time and u_resolution
 uniforms, and any used texture inputs tex0 through tex3.
 .TP
 .B tex
-Evaluate .ftex source to an RGBA PNG image. Complete programs return vec4.
+Evaluate .gtex source to an RGBA PNG image. Complete programs return vec4.
 The default width and height are 256 pixels; the default noise seed is zero.
 .TP
 .B mesh
-Evaluate .fmesh source to a Wavefront OBJ mesh. Complete programs return mesh.
+Evaluate .gmesh source to a Wavefront OBJ mesh. Complete programs return mesh.
 .TP
 .B lsp
 Run the shared language server over JSON-RPC on standard input and output.
 It provides diagnostics, receiver-aware completion, and hover for mixed
-shader, texture, and geometry documents. A recognized language ID (fusegl,
-fusetex, or fusemesh) selects the capability; otherwise the filename extension
+shader, texture, and geometry documents. A recognized language ID (graficgl,
+grafictex, or graficmesh) selects the capability; otherwise the filename extension
 is used. Unknown types receive a diagnostic and no completion or hover results.
 .TP
 .B view
-Preview Fuse shader (.fgl), texture (.ftex), and mesh (.fmesh) sources with live reload. Supplies
+Preview Grafic shader (.gfrag), texture (.gtex), and mesh (.gmesh) sources with live reload. Supplies
 time, resolution, and UV coordinates using an OpenGL 3.3 core context. Space
 pauses or resumes animation; Escape closes the window. Errors go to standard
 error and leave the last working shader and textures running. Bind procedural
@@ -77,7 +77,7 @@ Set the texture height in pixels (tex), or initial window height (view).
 .BI --seed " N"
 Set the unsigned noise seed (tex default: zero; view default: 42).
 .TP
-.BI --tex0 " FILE.ftex"
+.BI --tex0 " FILE.gtex"
 Bind a procedural texture source to tex0 (view). Also accepts --tex1, --tex2,
 and --tex3. Paths are relative to the working directory.
 .TP
@@ -91,13 +91,13 @@ Set generated texture height in pixels (view, default: 512).
 Show available commands or help for a subcommand.
 .SH EXAMPLES
 .nf
-fuse gl < shader.fgl > shader.frag
-fuse tex --width 512 --height 512 --seed 42 < clouds.ftex > clouds.png
-fuse mesh < disk.fmesh > disk.obj
-fuse gl --preview-line 4 < shader.fgl > preview.frag
-fuse view shader.fgl
-fuse view clouds.ftex
-fuse view disk.fmesh
+grafic gl < shader.gfrag > shader.frag
+grafic tex --width 512 --height 512 --seed 42 < clouds.gtex > clouds.png
+grafic mesh < disk.gmesh > disk.obj
+grafic gl --preview-line 4 < shader.gfrag > preview.frag
+grafic view shader.gfrag
+grafic view clouds.gtex
+grafic view disk.gmesh
 .fi
 .SH EXIT STATUS
 Returns zero on success and nonzero for invalid commands, options, source,

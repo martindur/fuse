@@ -22,14 +22,14 @@ static bool write_source(const char *path, const char *text, size_t length)
 
 int main(void)
 {
-    char directory[] = "/tmp/fuse-view-assets-XXXXXX";
+    char directory[] = "/tmp/grafic-view-assets-XXXXXX";
     if (mkdtemp(directory) == NULL) {
         return EXIT_FAILURE;
     }
     char path[256];
     char replacement[256];
-    snprintf(path, sizeof(path), "%s/shader.fgl", directory);
-    snprintf(replacement, sizeof(replacement), "%s/replacement.fgl", directory);
+    snprintf(path, sizeof(path), "%s/shader.gfrag", directory);
+    snprintf(replacement, sizeof(replacement), "%s/replacement.gfrag", directory);
     const char *valid = "vec4(uv, 0.0, 1.0)";
     const char *changed = "vec4(uv, 1.0, 1.0)";
     const char *invalid = "uv.missing()";
@@ -38,7 +38,7 @@ int main(void)
     CompileError compile_error;
     char *glsl = NULL;
     Image image = {0};
-    FuseMesh mesh = {0};
+    GraficMesh mesh = {0};
     bool passed = true;
     CHECK(write_source(path, valid, strlen(valid)));
     CHECK(view_source_poll(&source, path, error, sizeof(error)) == VIEW_SOURCE_CHANGED);
@@ -168,7 +168,7 @@ int main(void)
     CHECK(mesh.positions == previous_positions && strcmp(compile_error.kind, "read") == 0);
 
 cleanup:
-    fusemesh_mesh_destroy(&mesh);
+    graficmesh_mesh_destroy(&mesh);
     image_destroy(&image);
     free(glsl);
     view_source_destroy(&source);

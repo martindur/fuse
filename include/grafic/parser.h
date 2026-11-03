@@ -1,7 +1,7 @@
-#ifndef FUSE_PARSER_H
-#define FUSE_PARSER_H
+#ifndef GRAFIC_PARSER_H
+#define GRAFIC_PARSER_H
 
-#include "fuse/ast.h"
+#include "grafic/ast.h"
 
 #include <stdbool.h>
 #include <stddef.h>

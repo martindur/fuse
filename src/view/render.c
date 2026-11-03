@@ -16,10 +16,10 @@ const char *view_texture_name(size_t slot)
 
 static const char VERTEX_SHADER[] =
     "#version 330 core\n"
-    "out vec2 fuseUv;\n"
+    "out vec2 graficUv;\n"
     "void main() {\n"
     "  vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);\n"
-    "  fuseUv = p;\n"
+    "  graficUv = p;\n"
     "  gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);\n"
     "}\n";
 
@@ -151,8 +151,8 @@ bool view_renderer_init(ViewRenderer *renderer, int width, int height, const cha
         return false;
     }
     renderer->texture_program = link_program(renderer->vertex_shader,
-        "#version 330 core\nin vec2 fuseUv; uniform sampler2D u_texture; out vec4 fragColor;\n"
-        "void main() { fragColor = texture(u_texture, fuseUv); }", error);
+        "#version 330 core\nin vec2 graficUv; uniform sampler2D u_texture; out vec4 fragColor;\n"
+        "void main() { fragColor = texture(u_texture, graficUv); }", error);
     if (renderer->texture_program == 0) {
         view_renderer_destroy(renderer);
         return false;
@@ -231,7 +231,7 @@ bool view_renderer_set_shader(ViewRenderer *renderer, const char *glsl, ViewRend
         samplers[slot] = glGetUniformLocation(program, name);
         if (samplers[slot] >= 0 && renderer->textures[slot] == 0) {
             snprintf(error->message, sizeof(error->message),
-                "shader requires a loaded %s; provide --%s FILE.ftex and fix any texture errors", name, name);
+                "shader requires a loaded %s; provide --%s FILE.gtex and fix any texture errors", name, name);
             glDeleteProgram(program);
             return false;
         }

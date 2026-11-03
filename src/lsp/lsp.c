@@ -1,14 +1,14 @@
 #define _POSIX_C_SOURCE 200809L
 
-#include "fuse/lsp.h"
+#include "grafic/lsp.h"
 
 #include "json.h"
 
-#include "fuse/lexer.h"
-#include "fuse/lower.h"
-#include "fuse/parser.h"
-#include "fuse/semantic.h"
-#include "fuse/value_type.h"
+#include "grafic/lexer.h"
+#include "grafic/lower.h"
+#include "grafic/parser.h"
+#include "grafic/semantic.h"
+#include "grafic/value_type.h"
 
 #include <errno.h>
 #include <inttypes.h>
@@ -21,34 +21,34 @@
 typedef struct {
     char *uri;
     char *text;
-    const FuseDialect *dialect;
+    const GraficDialect *dialect;
     int64_t version;
-} FuseLspDocument;
+} GraficLspDocument;
 
 typedef struct {
-    const FuseDialect *const *dialects;
+    const GraficDialect *const *dialects;
     size_t dialect_count;
-    FuseLspDocument *documents;
+    GraficLspDocument *documents;
     size_t document_count;
     size_t document_capacity;
     FILE *output;
     FILE *log;
     bool shutdown_requested;
     bool exit_requested;
-} FuseLspServer;
+} GraficLspServer;
 
 typedef struct {
     SourceSpan span;
     const char *message;
     char result_message[64];
-} FuseLspIssue;
+} GraficLspIssue;
 
 typedef struct {
     size_t line;
     size_t character;
-} FuseLspPosition;
+} GraficLspPosition;
 
-static void document_destroy(FuseLspDocument *document)
+static void document_destroy(GraficLspDocument *document)
 {
     if (document == NULL) {
         return;
@@ -56,11 +56,11 @@ static void document_destroy(FuseLspDocument *document)
 
     free(document->uri);
     free(document->text);
-    *document = (FuseLspDocument){0};
+    *document = (GraficLspDocument){0};
 }
 
-static FuseLspDocument *find_document(
-    FuseLspServer *server,
+static GraficLspDocument *find_document(
+    GraficLspServer *server,
     const char *uri
 )
 {
@@ -73,8 +73,8 @@ static FuseLspDocument *find_document(
     return NULL;
 }
 
-static const FuseDialect *resolve_dialect(
-    const FuseLspServer *server,
+static const GraficDialect *resolve_dialect(
+    const GraficLspServer *server,
     const char *language_id,
     const char *uri
 )
@@ -86,7 +86,7 @@ static const FuseDialect *resolve_dialect(
     }
     size_t uri_length = strlen(uri);
     for (size_t index = 0; index < server->dialect_count; index += 1) {
-        const FuseDialect *dialect = server->dialects[index];
+        const GraficDialect *dialect = server->dialects[index];
         size_t extension_length = strlen(dialect->file_extension);
         if (uri_length >= extension_length
             && strcmp(uri + uri_length - extension_length, dialect->file_extension) == 0) {
@@ -97,47 +97,47 @@ static const FuseDialect *resolve_dialect(
 }
 
 static bool json_get_string(
-    FuseJsonValue object,
+    GraficJsonValue object,
     const char *key,
     char **out_string
 )
 {
-    FuseJsonValue value;
+    GraficJsonValue value;
 
-    return fuse_json_object_get(object, key, &value)
-        && fuse_json_string_copy(value, out_string);
+    return grafic_json_object_get(object, key, &value)
+        && grafic_json_string_copy(value, out_string);
 }
 
 static bool json_get_object(
-    FuseJsonValue object,
+    GraficJsonValue object,
     const char *key,
-    FuseJsonValue *out_value
+    GraficJsonValue *out_value
 )
 {
-    return fuse_json_object_get(object, key, out_value)
-        && fuse_json_type(*out_value) == FUSE_JSON_OBJECT;
+    return grafic_json_object_get(object, key, out_value)
+        && grafic_json_type(*out_value) == GRAFIC_JSON_OBJECT;
 }
 
 static bool json_get_array(
-    FuseJsonValue object,
+    GraficJsonValue object,
     const char *key,
-    FuseJsonValue *out_value
+    GraficJsonValue *out_value
 )
 {
-    return fuse_json_object_get(object, key, out_value)
-        && fuse_json_type(*out_value) == FUSE_JSON_ARRAY;
+    return grafic_json_object_get(object, key, out_value)
+        && grafic_json_type(*out_value) == GRAFIC_JSON_ARRAY;
 }
 
 static bool json_get_size(
-    FuseJsonValue object,
+    GraficJsonValue object,
     const char *key,
     size_t *out_value
 )
 {
-    FuseJsonValue value;
+    GraficJsonValue value;
 
-    if (!fuse_json_object_get(object, key, &value)
-        || fuse_json_type(value) != FUSE_JSON_NUMBER
+    if (!grafic_json_object_get(object, key, &value)
+        || grafic_json_type(value) != GRAFIC_JSON_NUMBER
         || value.length == 0) {
         return false;
     }
@@ -168,11 +168,11 @@ static bool json_get_size(
 }
 
 static bool json_get_position(
-    FuseJsonValue object,
-    FuseLspPosition *out_position
+    GraficJsonValue object,
+    GraficLspPosition *out_position
 )
 {
-    FuseJsonValue position;
+    GraficJsonValue position;
 
     return json_get_object(object, "position", &position)
         && json_get_size(position, "line", &out_position->line)
@@ -259,8 +259,8 @@ static bool write_packet(
 }
 
 static bool send_response(
-    FuseLspServer *server,
-    FuseJsonValue id,
+    GraficLspServer *server,
+    GraficJsonValue id,
     const char *result
 )
 {
@@ -293,8 +293,8 @@ static bool send_response(
 }
 
 static bool send_error(
-    FuseLspServer *server,
-    FuseJsonValue id,
+    GraficLspServer *server,
+    GraficJsonValue id,
     int code,
     const char *message
 )
@@ -331,7 +331,7 @@ static bool send_error(
 }
 
 static bool send_notification(
-    FuseLspServer *server,
+    GraficLspServer *server,
     const char *method,
     const char *params
 )
@@ -462,13 +462,13 @@ static PacketStatus read_packet(
     return PACKET_READY;
 }
 
-static FuseLspPosition position_at(
+static GraficLspPosition position_at(
     const char *source,
     size_t length,
     size_t offset
 )
 {
-    FuseLspPosition position = {0};
+    GraficLspPosition position = {0};
 
     if (offset > length) {
         offset = length;
@@ -557,7 +557,7 @@ static size_t utf8_codepoint_at(
 static size_t offset_at(
     const char *source,
     size_t length,
-    FuseLspPosition position
+    GraficLspPosition position
 )
 {
     size_t offset = 0;
@@ -633,7 +633,7 @@ static bool identifier_at(
 }
 
 static void issue_for_span(
-    FuseLspIssue *issue,
+    GraficLspIssue *issue,
     SourceSpan span,
     const char *message
 )
@@ -645,13 +645,13 @@ static void issue_for_span(
 }
 
 static bool analyze_document(
-    const FuseLspDocument *document,
-    FuseLspIssue *out_issue
+    const GraficLspDocument *document,
+    GraficLspIssue *out_issue
 )
 {
-    *out_issue = (FuseLspIssue){0};
+    *out_issue = (GraficLspIssue){0};
     if (document->dialect == NULL) {
-        issue_for_span(out_issue, (SourceSpan){0}, "document type is not supported by this Fuse build");
+        issue_for_span(out_issue, (SourceSpan){0}, "document type is not supported by this Grafic build");
         return true;
     }
     size_t length = strlen(document->text);
@@ -707,11 +707,11 @@ static bool analyze_document(
 }
 
 static bool publish_diagnostics(
-    FuseLspServer *server,
-    const FuseLspDocument *document
+    GraficLspServer *server,
+    const GraficLspDocument *document
 )
 {
-    FuseLspIssue issue;
+    GraficLspIssue issue;
     analyze_document(document, &issue);
     FILE *params = NULL;
     char *contents = NULL;
@@ -727,7 +727,7 @@ static bool publish_diagnostics(
     fputs(",\"diagnostics\":[", params);
 
     if (issue.message != NULL) {
-        FuseLspPosition start = position_at(
+        GraficLspPosition start = position_at(
             document->text,
             strlen(document->text),
             issue.span.offset
@@ -738,7 +738,7 @@ static bool publish_diagnostics(
             end_offset += issue.span.length;
         }
 
-        FuseLspPosition end = position_at(
+        GraficLspPosition end = position_at(
             document->text,
             strlen(document->text),
             end_offset
@@ -753,7 +753,7 @@ static bool publish_diagnostics(
             end.line,
             end.character
         );
-        write_json_string(params, document->dialect == NULL ? "fuse" : document->dialect->language_id);
+        write_json_string(params, document->dialect == NULL ? "grafic" : document->dialect->language_id);
         fputs(",\"message\":", params);
         write_json_string(params, issue.message);
         fputc('}', params);
@@ -993,8 +993,8 @@ static bool completion_dot_offset(
 }
 
 static bool infer_completion_receiver_type(
-    const FuseLspDocument *document,
-    FuseLspPosition position,
+    const GraficLspDocument *document,
+    GraficLspPosition position,
     ValueType *out_type
 )
 {
@@ -1180,10 +1180,10 @@ static bool write_hover_markdown(
 }
 
 static bool send_hover(
-    FuseLspServer *server,
-    FuseJsonValue id,
-    const FuseLspDocument *document,
-    FuseLspPosition position
+    GraficLspServer *server,
+    GraficJsonValue id,
+    const GraficLspDocument *document,
+    GraficLspPosition position
 )
 {
     size_t source_length = strlen(document->text);
@@ -1262,10 +1262,10 @@ static bool send_hover(
 }
 
 static bool send_completion(
-    FuseLspServer *server,
-    FuseJsonValue id,
-    const FuseLspDocument *document,
-    FuseLspPosition position
+    GraficLspServer *server,
+    GraficJsonValue id,
+    const GraficLspDocument *document,
+    GraficLspPosition position
 )
 {
     if (document->dialect == NULL) {
@@ -1322,21 +1322,21 @@ static bool send_completion(
 }
 
 static bool update_document(
-    FuseLspServer *server,
+    GraficLspServer *server,
     const char *uri,
     const char *text,
     int64_t version,
-    const FuseDialect *dialect
+    const GraficDialect *dialect
 )
 {
-    FuseLspDocument *document = find_document(server, uri);
+    GraficLspDocument *document = find_document(server, uri);
 
     if (document == NULL) {
         if (server->document_count == server->document_capacity) {
             size_t capacity = server->document_capacity == 0
                 ? 8
                 : server->document_capacity * 2;
-            FuseLspDocument *documents = realloc(
+            GraficLspDocument *documents = realloc(
                 server->documents,
                 capacity * sizeof(*documents)
             );
@@ -1350,7 +1350,7 @@ static bool update_document(
         }
 
         document = &server->documents[server->document_count++];
-        *document = (FuseLspDocument){0};
+        *document = (GraficLspDocument){0};
         document->uri = strdup(uri);
 
         if (document->uri == NULL) {
@@ -1374,7 +1374,7 @@ static bool update_document(
 }
 
 static void remove_document(
-    FuseLspServer *server,
+    GraficLspServer *server,
     const char *uri
 )
 {
@@ -1396,31 +1396,31 @@ static void remove_document(
 }
 
 static bool handle_message(
-    FuseLspServer *server,
+    GraficLspServer *server,
     const char *body,
     size_t length
 )
 {
-    FuseJsonValue root;
+    GraficJsonValue root;
 
-    if (!fuse_json_parse(body, length, &root)
-        || fuse_json_type(root) != FUSE_JSON_OBJECT) {
+    if (!grafic_json_parse(body, length, &root)
+        || grafic_json_type(root) != GRAFIC_JSON_OBJECT) {
         if (server->log != NULL) {
-            fprintf(server->log, "fuse: invalid JSON message\n");
+            fprintf(server->log, "grafic: invalid JSON message\n");
         }
         return true;
     }
 
-    FuseJsonValue id = {0};
+    GraficJsonValue id = {0};
     char *method = NULL;
-    bool has_id = fuse_json_object_get(root, "id", &id);
+    bool has_id = grafic_json_object_get(root, "id", &id);
 
     if (!json_get_string(root, "method", &method)) {
         return true;
     }
 
-    FuseJsonValue params = {0};
-    fuse_json_object_get(root, "params", &params);
+    GraficJsonValue params = {0};
+    grafic_json_object_get(root, "params", &params);
 
     if (server->shutdown_requested && strcmp(method, "exit") != 0) {
         bool handled = !has_id
@@ -1454,7 +1454,7 @@ static bool handle_message(
         }
 
         fputs(prefix, result);
-        write_json_string(result, "fuse");
+        write_json_string(result, "grafic");
         fputs("}}", result);
         bool built = !ferror(result);
 
@@ -1490,7 +1490,7 @@ static bool handle_message(
 
     if (strcmp(method, "textDocument/didOpen") == 0
         || strcmp(method, "textDocument/didChange") == 0) {
-        FuseJsonValue text_document;
+        GraficJsonValue text_document;
         char *uri = NULL;
         char *text = NULL;
         char *language_id = NULL;
@@ -1505,33 +1505,33 @@ static bool handle_message(
                 json_get_string(text_document, "languageId", &language_id);
             }
         } else {
-            FuseJsonValue changes;
-            FuseJsonValue first_change;
+            GraficJsonValue changes;
+            GraficJsonValue first_change;
             parsed = parsed
                 && json_get_array(params, "contentChanges", &changes)
-                && fuse_json_array_first(changes, &first_change)
+                && grafic_json_array_first(changes, &first_change)
                 && json_get_string(first_change, "text", &text);
         }
 
         if (parsed) {
-            FuseJsonValue version_value;
+            GraficJsonValue version_value;
             int64_t version = 0;
 
-            if (fuse_json_object_get(
+            if (grafic_json_object_get(
                     text_document,
                     "version",
                     &version_value
                 )) {
                 char *version_text = NULL;
 
-                if (fuse_json_string_copy(version_value, &version_text)) {
+                if (grafic_json_string_copy(version_value, &version_text)) {
                     version = strtoll(version_text, NULL, 10);
                     free(version_text);
                 }
             }
 
-            FuseLspDocument *document = find_document(server, uri);
-            const FuseDialect *dialect = is_open || document == NULL
+            GraficLspDocument *document = find_document(server, uri);
+            const GraficDialect *dialect = is_open || document == NULL
                 ? resolve_dialect(server, language_id, uri)
                 : document->dialect;
             parsed = update_document(
@@ -1556,7 +1556,7 @@ static bool handle_message(
     }
 
     if (strcmp(method, "textDocument/didClose") == 0) {
-        FuseJsonValue text_document;
+        GraficJsonValue text_document;
         char *uri = NULL;
         bool parsed = json_get_object(params, "textDocument", &text_document)
             && json_get_string(text_document, "uri", &uri);
@@ -1590,13 +1590,13 @@ static bool handle_message(
     }
 
     if (strcmp(method, "textDocument/hover") == 0) {
-        FuseJsonValue text_document;
+        GraficJsonValue text_document;
         char *uri = NULL;
-        FuseLspPosition position;
+        GraficLspPosition position;
         bool parsed = json_get_object(params, "textDocument", &text_document)
             && json_get_string(text_document, "uri", &uri)
             && json_get_position(params, &position);
-        FuseLspDocument *document = parsed
+        GraficLspDocument *document = parsed
             ? find_document(server, uri)
             : NULL;
 
@@ -1612,13 +1612,13 @@ static bool handle_message(
     }
 
     if (strcmp(method, "textDocument/completion") == 0) {
-        FuseJsonValue text_document;
+        GraficJsonValue text_document;
         char *uri = NULL;
-        FuseLspPosition position;
+        GraficLspPosition position;
         bool parsed = json_get_object(params, "textDocument", &text_document)
             && json_get_string(text_document, "uri", &uri)
             && json_get_position(params, &position);
-        FuseLspDocument *document = parsed
+        GraficLspDocument *document = parsed
             ? find_document(server, uri)
             : NULL;
 
@@ -1643,7 +1643,7 @@ static bool handle_message(
     return handled;
 }
 
-static void server_destroy(FuseLspServer *server)
+static void server_destroy(GraficLspServer *server)
 {
     for (size_t index = 0; index < server->document_count; index += 1) {
         document_destroy(&server->documents[index]);
@@ -1657,7 +1657,7 @@ static bool valid_type(ValueType type)
     return type >= VALUE_TYPE_FLOAT && type <= VALUE_TYPE_MESH;
 }
 
-static bool valid_dialect(const FuseDialect *dialect)
+static bool valid_dialect(const GraficDialect *dialect)
 {
     if (dialect == NULL || dialect->language_id == NULL
         || dialect->file_extension == NULL || dialect->file_extension[0] != '.'
@@ -1715,8 +1715,8 @@ static bool valid_dialect(const FuseDialect *dialect)
     return true;
 }
 
-int fuse_lsp_run(
-    const FuseDialect *const *dialects,
+int grafic_lsp_run(
+    const GraficDialect *const *dialects,
     size_t dialect_count,
     FILE *input,
     FILE *output,
@@ -1739,7 +1739,7 @@ int fuse_lsp_run(
         }
     }
 
-    FuseLspServer server = {
+    GraficLspServer server = {
         .dialects = dialects,
         .dialect_count = dialect_count,
         .output = output,

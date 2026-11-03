@@ -9,7 +9,7 @@ import unittest
 
 
 class LiveViewTests(unittest.TestCase):
-    binary = Path("build/fuse").resolve()
+    binary = Path("build/grafic").resolve()
 
     @contextmanager
     def viewer(self, log, *arguments):
@@ -41,11 +41,11 @@ class LiveViewTests(unittest.TestCase):
                 self.assertEqual(output, b"")
 
     def test_texture_reload_is_independent_and_recovers_from_bad_edits(self):
-        with tempfile.TemporaryDirectory(prefix="fuse-textures-") as directory:
+        with tempfile.TemporaryDirectory(prefix="grafic-textures-") as directory:
             directory = Path(directory)
-            shader = directory / "shader.fgl"
-            tex0 = directory / "first.ftex"
-            tex1 = directory / "second.ftex"
+            shader = directory / "shader.gfrag"
+            tex0 = directory / "first.gtex"
+            tex1 = directory / "second.gtex"
             log = directory / "viewer.log"
             shader.write_text("uv.sample(tex0).multiply(uv.sample(tex1))")
             tex0.write_text("vec4(uv, 0.0, 1.0)")
@@ -79,10 +79,10 @@ class LiveViewTests(unittest.TestCase):
                 self.assertIsNone(process.poll())
 
     def test_initial_texture_error_recovers_without_editing_shader(self):
-        with tempfile.TemporaryDirectory(prefix="fuse-textures-") as directory:
+        with tempfile.TemporaryDirectory(prefix="grafic-textures-") as directory:
             directory = Path(directory)
-            shader = directory / "shader.fgl"
-            texture = directory / "texture.ftex"
+            shader = directory / "shader.gfrag"
+            texture = directory / "texture.gtex"
             log = directory / "viewer.log"
             shader.write_text("uv.sample(tex3)")
             texture.write_text("uv.missing()")
@@ -96,9 +96,9 @@ class LiveViewTests(unittest.TestCase):
                 self.assertIsNone(process.poll())
 
     def test_standalone_texture_show_and_recovery(self):
-        with tempfile.TemporaryDirectory(prefix="fuse-texture-view-") as directory:
+        with tempfile.TemporaryDirectory(prefix="grafic-texture-view-") as directory:
             directory = Path(directory)
-            texture = directory / "texture.ftex"
+            texture = directory / "texture.gtex"
             log = directory / "viewer.log"
             texture.write_text("uv.noise().show().missing()")
             with self.viewer(log, texture, "--texture-width", "8", "--texture-height", "4") as (process, wait):
@@ -114,9 +114,9 @@ class LiveViewTests(unittest.TestCase):
                 self.assertIsNone(process.poll())
 
     def test_standalone_texture_explicit_line_overrides_show(self):
-        with tempfile.TemporaryDirectory(prefix="fuse-texture-view-") as directory:
+        with tempfile.TemporaryDirectory(prefix="grafic-texture-view-") as directory:
             directory = Path(directory)
-            texture = directory / "texture.ftex"
+            texture = directory / "texture.gtex"
             log = directory / "viewer.log"
             texture.write_text("uv\n.missing()\n.show()")
             with self.viewer(log, texture, "--preview-line", "1",
@@ -126,9 +126,9 @@ class LiveViewTests(unittest.TestCase):
                 self.assertIsNone(process.poll())
 
     def test_mesh_reload_show_and_file_recovery(self):
-        with tempfile.TemporaryDirectory(prefix="fuse-mesh-view-") as directory:
+        with tempfile.TemporaryDirectory(prefix="grafic-mesh-view-") as directory:
             directory = Path(directory)
-            mesh = directory / "disk.fmesh"
+            mesh = directory / "disk.gmesh"
             log = directory / "viewer.log"
             source = "disk().segments(8).show().radius(-1.0)"
             mesh.write_text(source)
@@ -149,9 +149,9 @@ class LiveViewTests(unittest.TestCase):
                 self.assertIsNone(process.poll())
 
     def test_mesh_explicit_line_overrides_show(self):
-        with tempfile.TemporaryDirectory(prefix="fuse-mesh-view-") as directory:
+        with tempfile.TemporaryDirectory(prefix="grafic-mesh-view-") as directory:
             directory = Path(directory)
-            mesh = directory / "disk.fmesh"
+            mesh = directory / "disk.gmesh"
             log = directory / "viewer.log"
             mesh.write_text("disk()\n.radius(-1.0)\n.show()")
             with self.viewer(log, mesh, "--preview-line", "1") as (process, wait):
@@ -160,8 +160,8 @@ class LiveViewTests(unittest.TestCase):
                 self.assertIsNone(process.poll())
 
     def test_reload_survives_bad_edits_atomic_saves_and_file_deletion(self):
-        with tempfile.TemporaryDirectory(prefix="fuse-live-") as directory:
-            path = Path(directory) / "live.fgl"
+        with tempfile.TemporaryDirectory(prefix="grafic-live-") as directory:
+            path = Path(directory) / "live.gfrag"
             log = Path(directory) / "viewer.log"
             valid = "rgb(0.0, 1.0, 0.0).vec4(1.0)"
             replacement = "rgb(0.0, 0.0, 1.0).vec4(1.0)"

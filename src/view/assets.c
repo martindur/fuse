@@ -93,7 +93,7 @@ bool view_shader_compile(const ViewSource *source, size_t preview_line, char **o
         return false;
     }
     PreparedProgram prepared = {0};
-    if (!prepare_view_program(source->text, source->length, fusegl_dialect(), preview_line, &prepared, error)) {
+    if (!prepare_view_program(source->text, source->length, graficgl_dialect(), preview_line, &prepared, error)) {
         return false;
     }
     size_t length = 0;
@@ -120,12 +120,12 @@ bool view_texture_render(const ViewSource *source, size_t preview_line, const Re
         return false;
     }
     PreparedProgram prepared = {0};
-    if (!prepare_view_program(source->text, source->length, fusetex_dialect(), preview_line, &prepared, error)) {
+    if (!prepare_view_program(source->text, source->length, grafictex_dialect(), preview_line, &prepared, error)) {
         return false;
     }
     Image candidate = {0};
     RenderError render_error;
-    bool rendered = fusetex_render(prepared.program, source->text, config, &candidate, &render_error);
+    bool rendered = grafictex_render(prepared.program, source->text, config, &candidate, &render_error);
     prepared_program_destroy(&prepared);
     if (!rendered) {
         *error = (CompileError){.kind = "render", .span = render_error.span};
@@ -138,7 +138,7 @@ bool view_texture_render(const ViewSource *source, size_t preview_line, const Re
     return true;
 }
 
-bool view_mesh_render(const ViewSource *source, size_t preview_line, FuseMesh *out, CompileError *error)
+bool view_mesh_render(const ViewSource *source, size_t preview_line, GraficMesh *out, CompileError *error)
 {
     if (!source->available) {
         *error = (CompileError){.kind = "read"};
@@ -146,20 +146,20 @@ bool view_mesh_render(const ViewSource *source, size_t preview_line, FuseMesh *o
         return false;
     }
     PreparedProgram prepared = {0};
-    if (!prepare_view_program(source->text, source->length, fusemesh_dialect(), preview_line, &prepared, error)) {
+    if (!prepare_view_program(source->text, source->length, graficmesh_dialect(), preview_line, &prepared, error)) {
         return false;
     }
-    FuseMesh candidate = {0};
-    FuseMeshRenderError render_error;
-    bool rendered = fusemesh_render(prepared.program, source->text, &candidate, &render_error);
+    GraficMesh candidate = {0};
+    GraficMeshRenderError render_error;
+    bool rendered = graficmesh_render(prepared.program, source->text, &candidate, &render_error);
     prepared_program_destroy(&prepared);
     if (!rendered) {
         *error = (CompileError){.kind = "render", .span = render_error.span};
         snprintf(error->message, sizeof(error->message), "%s", render_error.message);
-        fusemesh_mesh_destroy(&candidate);
+        graficmesh_mesh_destroy(&candidate);
         return false;
     }
-    fusemesh_mesh_destroy(out);
+    graficmesh_mesh_destroy(out);
     *out = candidate;
     return true;
 }

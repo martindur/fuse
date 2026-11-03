@@ -1,6 +1,6 @@
 #include "render.h"
 
-bool fusetex_render(
+bool grafictex_render(
     const Program *program,
     const char *source,
     const RenderConfig *config,
@@ -47,7 +47,7 @@ bool fusetex_render(
             RuntimeValue value;
             EvalError eval_error;
 
-            if (!fusetex_evaluate_program(
+            if (!grafictex_evaluate_program(
                     program,
                     source,
                     &context,

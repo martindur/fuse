@@ -10,8 +10,8 @@ SOURCE = "uv.multiply(3.0).noise().colorize(rgb(0.2, 0.6, 1.0))"
 
 
 class TextureTests(CompilerTests):
-    binary = Path("build/fuse").resolve()
-    language_id = "fusetex"
+    binary = Path("build/grafic").resolve()
+    language_id = "grafictex"
     command = "tex"
 
     def test_line_comments_preserve_image_output(self):
@@ -54,7 +54,7 @@ class TextureTests(CompilerTests):
         for arguments in [("--help",), ("-h",)]:
             result = self.run_command(*arguments)
             self.assertEqual(result.returncode, 0)
-            self.assertIn(b"Usage: fuse tex", result.stdout)
+            self.assertIn(b"Usage: grafic tex", result.stdout)
         result = self.run_command("--builtins")
         self.assertEqual(result.returncode, 0)
         names = set(re.findall(r"^  ([a-zA-Z_]\w*)[(:]", result.stdout.decode(), re.MULTILINE))
@@ -76,7 +76,7 @@ class TextureTests(CompilerTests):
         text = responses[2]["result"]["contents"]["value"]
         self.assertIn("noise(vec2) -> float", text)
         self.assertIn("Perlin noise", text)
-        self.assertIn("```fusetex", text)
+        self.assertIn("```grafictex", text)
 
     def test_diagnostics(self):
         packets, _ = self.lsp_session(opened("uv", self.language_id))

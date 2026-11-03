@@ -1,6 +1,6 @@
-# Fuse language
+# Grafic language
 
-Fuse programs consist of zero or more bindings followed by one result
+Grafic programs consist of zero or more bindings followed by one result
 expression. The syntax does not define a builtin vocabulary; a capability's
 catalog supplies functions, globals, documentation, and reserved names.
 

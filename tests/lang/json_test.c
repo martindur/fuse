@@ -10,27 +10,27 @@ static bool test_nested_json_values(void)
     const char source[] =
         "{\"params\":{\"text\":\"line\\n\\u00e5\"},"
         "\"changes\":[{\"text\":\"uv\"}]}";
-    FuseJsonValue root;
-    FuseJsonValue params;
-    FuseJsonValue changes;
-    FuseJsonValue change;
-    FuseJsonValue text_value;
-    FuseJsonValue change_text;
+    GraficJsonValue root;
+    GraficJsonValue params;
+    GraficJsonValue changes;
+    GraficJsonValue change;
+    GraficJsonValue text_value;
+    GraficJsonValue change_text;
     char *text = NULL;
     char *change_string = NULL;
-    bool passed = fuse_json_parse(
+    bool passed = grafic_json_parse(
         source,
         sizeof(source) - 1,
         &root
     )
-        && fuse_json_object_get(root, "params", &params)
-        && fuse_json_object_get(params, "text", &text_value)
-        && fuse_json_object_get(root, "changes", &changes)
-        && fuse_json_array_first(changes, &change)
-        && fuse_json_string_copy(text_value, &text)
+        && grafic_json_object_get(root, "params", &params)
+        && grafic_json_object_get(params, "text", &text_value)
+        && grafic_json_object_get(root, "changes", &changes)
+        && grafic_json_array_first(changes, &change)
+        && grafic_json_string_copy(text_value, &text)
         && strcmp(text, "line\n\xc3\xa5") == 0
-        && fuse_json_object_get(change, "text", &change_text)
-        && fuse_json_string_copy(change_text, &change_string)
+        && grafic_json_object_get(change, "text", &change_text)
+        && grafic_json_string_copy(change_text, &change_string)
         && strcmp(change_string, "uv") == 0;
 
     free(text);
@@ -48,7 +48,7 @@ static bool test_nested_json_values(void)
 int main(void)
 {
     if (test_nested_json_values()) {
-        printf("1/1 Fuse JSON tests passed\n");
+        printf("1/1 Grafic JSON tests passed\n");
         return EXIT_SUCCESS;
     }
 

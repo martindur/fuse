@@ -2,11 +2,11 @@
 
 #include "tex/builtins.h"
 #include "tex/image.h"
-#include "fuse/lower.h"
-#include "fuse/parser.h"
+#include "grafic/lower.h"
+#include "grafic/parser.h"
 #include "tex/png_write.h"
 #include "tex/render.h"
-#include "fuse/semantic.h"
+#include "grafic/semantic.h"
 
 #include <math.h>
 #include <stdbool.h>
@@ -64,13 +64,13 @@ static bool analyze_program(
     if (!semantic_analyze(
             program,
             source,
-            fusetex_dialect()->environment,
+            grafictex_dialect()->environment,
             out_info,
             &error
         )) {
         fprintf(
             stderr,
-            "FAIL FuseTex semantic analysis at %zu:%zu: %s\n",
+            "FAIL GraficTex semantic analysis at %zu:%zu: %s\n",
             error.span.offset,
             error.span.length,
             error.message
@@ -108,7 +108,7 @@ static bool evaluate_source_at(
         .seed = seed,
     };
     EvalError error;
-    bool evaluated = fusetex_evaluate_program(
+    bool evaluated = grafictex_evaluate_program(
         program,
         source,
         &context,
@@ -119,7 +119,7 @@ static bool evaluate_source_at(
     if (!evaluated) {
         fprintf(
             stderr,
-            "FAIL FuseTex primitive evaluation at %zu:%zu: %s\n",
+            "FAIL GraficTex primitive evaluation at %zu:%zu: %s\n",
             error.span.offset,
             error.span.length,
             error.message
@@ -161,7 +161,7 @@ static bool test_gradient_render(void)
     };
     Image image = {0};
     RenderError render_error;
-    bool rendered = fusetex_render(
+    bool rendered = grafictex_render(
         program,
         source,
         &config,
@@ -173,7 +173,7 @@ static bool test_gradient_render(void)
     if (!rendered) {
         fprintf(
             stderr,
-            "FAIL FuseTex gradient render at %zu:%zu: %s\n",
+            "FAIL GraficTex gradient render at %zu:%zu: %s\n",
             render_error.span.offset,
             render_error.span.length,
             render_error.message
@@ -194,7 +194,7 @@ static bool test_gradient_render(void)
             && approximately_equal(top_right[3], 1.0f);
 
         if (!passed) {
-            fprintf(stderr, "FAIL FuseTex gradient pixel values\n");
+            fprintf(stderr, "FAIL GraficTex gradient pixel values\n");
         }
 
         image_destroy(&image);
@@ -204,7 +204,7 @@ static bool test_gradient_render(void)
     program_destroy(program);
 
     if (passed) {
-        printf("PASS FuseTex gradient render\n");
+        printf("PASS GraficTex gradient render\n");
     }
 
     return passed;
@@ -330,9 +330,9 @@ static bool test_texture_primitives(void)
         );
 
     if (!passed) {
-        fprintf(stderr, "FAIL FuseTex texture primitives\n");
+        fprintf(stderr, "FAIL GraficTex texture primitives\n");
     } else {
-        printf("PASS FuseTex texture primitives\n");
+        printf("PASS GraficTex texture primitives\n");
     }
 
     return passed;
@@ -372,9 +372,9 @@ static bool test_image_reinitialization(void)
     image_destroy(&image);
 
     if (!passed) {
-        fprintf(stderr, "FAIL FuseTex image reinitialization\n");
+        fprintf(stderr, "FAIL GraficTex image reinitialization\n");
     } else {
-        printf("PASS FuseTex image reinitialization\n");
+        printf("PASS GraficTex image reinitialization\n");
     }
 
     return passed;
@@ -399,9 +399,9 @@ static bool test_preview_value_storage(void)
     image_destroy(&image);
 
     if (!passed) {
-        fprintf(stderr, "FAIL FuseTex preview value storage\n");
+        fprintf(stderr, "FAIL GraficTex preview value storage\n");
     } else {
-        printf("PASS FuseTex preview value storage\n");
+        printf("PASS GraficTex preview value storage\n");
     }
 
     return passed;
@@ -451,9 +451,9 @@ static bool test_png_signature(void)
     image_destroy(&image);
 
     if (!passed) {
-        fprintf(stderr, "FAIL FuseTex PNG signature\n");
+        fprintf(stderr, "FAIL GraficTex PNG signature\n");
     } else {
-        printf("PASS FuseTex PNG signature\n");
+        printf("PASS GraficTex PNG signature\n");
     }
 
     return passed;
@@ -483,6 +483,6 @@ int main(void)
         passed += 1;
     }
 
-    printf("%zu/5 FuseTex tests passed\n", passed);
+    printf("%zu/5 GraficTex tests passed\n", passed);
     return passed == 5 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

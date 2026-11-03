@@ -1,21 +1,21 @@
-#ifndef FUSE_MESH_RENDER_H
-#define FUSE_MESH_RENDER_H
+#ifndef GRAFIC_MESH_RENDER_H
+#define GRAFIC_MESH_RENDER_H
 
 #include "mesh.h"
-#include "fuse/ast.h"
+#include "grafic/ast.h"
 
 #include <stdbool.h>
 
 typedef struct {
     SourceSpan span;
     const char *message;
-} FuseMeshRenderError;
+} GraficMeshRenderError;
 
-bool fusemesh_render(
+bool graficmesh_render(
     const Program *program,
     const char *source,
-    FuseMesh *out_mesh,
-    FuseMeshRenderError *out_error
+    GraficMesh *out_mesh,
+    GraficMeshRenderError *out_error
 );
 
 #endif

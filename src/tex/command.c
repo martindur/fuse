@@ -1,9 +1,9 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include "cli/commands.h"
-#include "fuse/compile.h"
+#include "grafic/compile.h"
 #include "builtins.h"
-#include "fuse/help.h"
+#include "grafic/help.h"
 #include "png_write.h"
 #include "render.h"
 
@@ -17,9 +17,9 @@ static void usage(FILE *output, const char *program)
 {
     fprintf(
         output,
-        "Usage: %s [OPTION]... < source.ftex > texture.png\n"
+        "Usage: %s [OPTION]... < source.gtex > texture.png\n"
         "\n"
-        "Evaluate a FuseTex program and write a PNG image.\n"
+        "Evaluate a GraficTex program and write a PNG image.\n"
         "\n"
         "Options:\n"
         "  --width N          output width in pixels (default: 256)\n"
@@ -30,9 +30,9 @@ static void usage(FILE *output, const char *program)
         "  -h, --help         show this help\n"
         "\n"
         "Examples:\n"
-        "  fuse tex < texture.ftex > texture.png\n"
-        "  fuse tex --width 512 --height 256 < texture.ftex > texture.png\n"
-        "  fuse tex --preview-line 3 < texture.ftex > preview.png\n",
+        "  grafic tex < texture.gtex > texture.png\n"
+        "  grafic tex --width 512 --height 256 < texture.gtex > texture.png\n"
+        "  grafic tex --preview-line 3 < texture.gtex > preview.png\n",
         program
     );
 }
@@ -99,9 +99,9 @@ static bool parse_seed(
     return true;
 }
 
-int fuse_tex_main(int argument_count, char **arguments)
+int grafic_tex_main(int argument_count, char **arguments)
 {
-    const FuseDialect *dialect = fusetex_dialect();
+    const GraficDialect *dialect = grafictex_dialect();
 
     RenderConfig config = {
         .width = 256,
@@ -115,13 +115,13 @@ int fuse_tex_main(int argument_count, char **arguments)
 
         if (strcmp(option, "--help") == 0
             || strcmp(option, "-h") == 0) {
-            usage(stdout, "fuse tex");
+            usage(stdout, "grafic tex");
             return EXIT_SUCCESS;
         }
 
         if (strcmp(option, "--builtins") == 0) {
             if (argument_count != 2) {
-                usage(stderr, "fuse tex");
+                usage(stderr, "grafic tex");
                 return EXIT_FAILURE;
             }
 
@@ -137,7 +137,7 @@ int fuse_tex_main(int argument_count, char **arguments)
             || strcmp(option, "--seed") == 0
             || strcmp(option, "--preview-line") == 0) {
             if (index + 1 >= argument_count) {
-                usage(stderr, "fuse tex");
+                usage(stderr, "grafic tex");
                 return EXIT_FAILURE;
             }
 
@@ -145,7 +145,7 @@ int fuse_tex_main(int argument_count, char **arguments)
 
             if (strcmp(option, "--seed") == 0) {
                 if (!parse_seed(value, &config.seed)) {
-                    fprintf(stderr, "fuse tex: invalid seed: %s\n", value);
+                    fprintf(stderr, "grafic tex: invalid seed: %s\n", value);
                     return EXIT_FAILURE;
                 }
             } else {
@@ -162,7 +162,7 @@ int fuse_tex_main(int argument_count, char **arguments)
                 if (target == NULL || !parse_unsigned(value, target)) {
                     fprintf(
                         stderr,
-                        "fuse tex: invalid %s: %s\n",
+                        "grafic tex: invalid %s: %s\n",
                         strcmp(option, "--preview-line") == 0
                             ? "preview line"
                             : "dimension",
@@ -172,7 +172,7 @@ int fuse_tex_main(int argument_count, char **arguments)
                 }
             }
         } else {
-            usage(stderr, "fuse tex");
+            usage(stderr, "grafic tex");
             return EXIT_FAILURE;
         }
     }
@@ -182,7 +182,7 @@ int fuse_tex_main(int argument_count, char **arguments)
     ssize_t length = getdelim(&source, &capacity, '\0', stdin);
 
     if (length < 0) {
-        fprintf(stderr, "fuse tex: expected a program on stdin\n");
+        fprintf(stderr, "grafic tex: expected a program on stdin\n");
         free(source);
         return EXIT_FAILURE;
     }
@@ -193,14 +193,14 @@ int fuse_tex_main(int argument_count, char **arguments)
     CompileError compile_error;
     if (!prepare_program(source, (size_t)length, dialect, preview_line, &prepared, &compile_error)) {
         SourcePosition position = source_position_at(source, (size_t)length, compile_error.span.offset);
-        fprintf(stderr, "fuse tex: %s error at %zu:%zu: %s\n", compile_error.kind,
+        fprintf(stderr, "grafic tex: %s error at %zu:%zu: %s\n", compile_error.kind,
             position.line, position.column, compile_error.message);
         goto cleanup;
     }
 
     RenderError render_error;
 
-    if (!fusetex_render(
+    if (!grafictex_render(
             prepared.program,
             source,
             &config,
@@ -209,7 +209,7 @@ int fuse_tex_main(int argument_count, char **arguments)
         )) {
         fprintf(
             stderr,
-            "fuse tex: render error at %zu:%zu: %s\n",
+            "grafic tex: render error at %zu:%zu: %s\n",
             source_position_at(
                 source,
                 (size_t)length,
@@ -226,7 +226,7 @@ int fuse_tex_main(int argument_count, char **arguments)
     }
 
     if (!png_write(stdout, &image) || fflush(stdout) == EOF) {
-        perror("fuse tex: failed to write PNG");
+        perror("grafic tex: failed to write PNG");
         goto cleanup;
     }
 

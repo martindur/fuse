@@ -1,7 +1,7 @@
-#ifndef FUSE_LOWER_H
-#define FUSE_LOWER_H
+#ifndef GRAFIC_LOWER_H
+#define GRAFIC_LOWER_H
 
-#include "fuse/ast.h"
+#include "grafic/ast.h"
 
 #include <stdbool.h>
 

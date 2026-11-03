@@ -2,9 +2,9 @@
 
 #include "gl/glsl_emit.h"
 #include "gl/glsl_stdlib.h"
-#include "fuse/lower.h"
-#include "fuse/parser.h"
-#include "fuse/semantic.h"
+#include "grafic/lower.h"
+#include "grafic/parser.h"
+#include "grafic/semantic.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -15,7 +15,7 @@
 static const char EXPECTED_SHADER[] =
     "#version 330 core\n"
     "\n"
-    "in vec2 fuseUv;\n"
+    "in vec2 graficUv;\n"
     "out vec4 fragColor;\n"
     "\n"
     "uniform float u_time;\n"
@@ -139,7 +139,7 @@ static const char EXPECTED_SHADER[] =
     "}\n"
     "\n"
     "void main() {\n"
-    "    vec2 uv = fuseUv;\n"
+    "    vec2 uv = graficUv;\n"
     "    vec2 p = aspect(center(uv));\n"
     "    fragColor = colorize(fill(sdf_union("
     "circle(p, 0.22), "
@@ -231,7 +231,7 @@ static bool test_complete_shader(void)
     if (!semantic_analyze(
             lowered,
             source,
-            fusegl_dialect()->environment,
+            graficgl_dialect()->environment,
             &semantic_info,
             &semantic_error
         )) {
@@ -364,7 +364,7 @@ static bool test_texture_shader(void)
     if (!semantic_analyze(
             lowered,
             source,
-            fusegl_dialect()->environment,
+            graficgl_dialect()->environment,
             &semantic_info,
             &semantic_error
         )) {
@@ -444,7 +444,7 @@ static bool test_channel_helpers(void)
         && semantic_analyze(
             lowered,
             source,
-            fusegl_dialect()->environment,
+            graficgl_dialect()->environment,
             &semantic_info,
             &semantic_error
         )
@@ -500,7 +500,7 @@ static bool test_preview_result_conversion(void)
         && semantic_analyze(
             lowered,
             source,
-            fusegl_dialect()->environment,
+            graficgl_dialect()->environment,
             &semantic_info,
             &semantic_error
         )

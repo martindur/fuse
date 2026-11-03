@@ -2,24 +2,24 @@
 
 #include "evaluate.h"
 
-bool fusemesh_render(
+bool graficmesh_render(
     const Program *program,
     const char *source,
-    FuseMesh *out_mesh,
-    FuseMeshRenderError *out_error
+    GraficMesh *out_mesh,
+    GraficMeshRenderError *out_error
 )
 {
     if (out_mesh == NULL || out_error == NULL) {
         return false;
     }
 
-    *out_mesh = (FuseMesh){0};
-    *out_error = (FuseMeshRenderError){0};
+    *out_mesh = (GraficMesh){0};
+    *out_error = (GraficMeshRenderError){0};
 
-    FuseMeshDiskSpec spec;
-    FuseMeshEvalError eval_error;
+    GraficMeshDiskSpec spec;
+    GraficMeshEvalError eval_error;
 
-    if (!fusemesh_evaluate_program(
+    if (!graficmesh_evaluate_program(
             program,
             source,
             &spec,
@@ -32,7 +32,7 @@ bool fusemesh_render(
 
     const char *mesh_error = NULL;
 
-    if (!fusemesh_mesh_from_disk(
+    if (!graficmesh_mesh_from_disk(
             &spec,
             out_mesh,
             &mesh_error

@@ -172,7 +172,7 @@ static const GlobalSignature GLOBALS[] = {
 };
 
 static const SymbolDocumentation DOCUMENTATION[] = {
-    {"show", "Selects this intermediate value in fuse view. The last show() in each file wins; normal compilation returns the value unchanged."},
+    {"show", "Selects this intermediate value in grafic view. The last show() in each file wins; normal compilation returns the value unchanged."},
     {
         "center",
         "Moves UV coordinates so the center of the image is the origin.",
@@ -223,7 +223,7 @@ static const SymbolDocumentation DOCUMENTATION[] = {
     },
     {
         "noise",
-        "Generates seeded 2D improved Perlin noise. Input coordinates control scale; the FuseTex seed controls variation. An optional period makes the noise tileable. Returns a value in the [0, 1] range.",
+        "Generates seeded 2D improved Perlin noise. Input coordinates control scale; the GraficTex seed controls variation. An optional period makes the noise tileable. Returns a value in the [0, 1] range.",
     },
     {
         "vec2",
@@ -266,14 +266,14 @@ static const LanguageEnvironment ENVIRONMENT = {
     .reserved_count = 0,
 };
 
-static const FuseDialect DIALECT = {
-    .language_id = "fusetex",
-    .file_extension = ".ftex",
+static const GraficDialect DIALECT = {
+    .language_id = "grafictex",
+    .file_extension = ".gtex",
     .environment = &ENVIRONMENT,
     .required_result_type = VALUE_TYPE_VEC4,
 };
 
-const FuseDialect *fusetex_dialect(void)
+const GraficDialect *grafictex_dialect(void)
 {
     return &DIALECT;
 }

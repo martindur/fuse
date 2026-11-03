@@ -1,6 +1,6 @@
-#include "fuse/parser.h"
+#include "grafic/parser.h"
 
-#include "fuse/lexer.h"
+#include "grafic/lexer.h"
 
 typedef struct {
   Lexer lexer;

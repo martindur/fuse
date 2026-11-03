@@ -1,8 +1,8 @@
-#ifndef FUSE_COMPILE_H
-#define FUSE_COMPILE_H
+#ifndef GRAFIC_COMPILE_H
+#define GRAFIC_COMPILE_H
 
-#include "fuse/dialect.h"
-#include "fuse/semantic.h"
+#include "grafic/dialect.h"
+#include "grafic/semantic.h"
 
 typedef struct {
     Program *program;
@@ -27,7 +27,7 @@ typedef struct {
 bool prepare_program(
     const char *source,
     size_t length,
-    const FuseDialect *dialect,
+    const GraficDialect *dialect,
     size_t preview_line,
     PreparedProgram *out,
     CompileError *error
@@ -36,7 +36,7 @@ bool prepare_program(
 void prepared_program_destroy(PreparedProgram *prepared);
 
 /* Viewer policy: explicit line, otherwise last show(), otherwise full program. */
-bool prepare_view_program(const char *source, size_t length, const FuseDialect *dialect,
+bool prepare_view_program(const char *source, size_t length, const GraficDialect *dialect,
     size_t preview_line, PreparedProgram *out, CompileError *error);
 
 #endif

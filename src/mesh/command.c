@@ -1,9 +1,9 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include "cli/commands.h"
-#include "fuse/compile.h"
+#include "grafic/compile.h"
 #include "builtins.h"
-#include "fuse/help.h"
+#include "grafic/help.h"
 #include "render.h"
 
 #include <stdio.h>
@@ -14,9 +14,9 @@ static void usage(FILE *output, const char *program)
 {
     fprintf(
         output,
-        "Usage: %s [OPTION]... < source.fmesh > mesh.obj\n"
+        "Usage: %s [OPTION]... < source.gmesh > mesh.obj\n"
         "\n"
-        "Evaluate a FuseMesh program and write an OBJ mesh.\n"
+        "Evaluate a GraficMesh program and write an OBJ mesh.\n"
         "\n"
         "Options:\n"
         "  --preview-line N  compile the intermediate result at source line N\n"
@@ -24,8 +24,8 @@ static void usage(FILE *output, const char *program)
         "  -h, --help         show this help\n"
         "\n"
         "Examples:\n"
-        "  fuse mesh < mesh.fmesh > mesh.obj\n"
-        "  fuse mesh --preview-line 4 < mesh.fmesh > preview.obj\n",
+        "  grafic mesh < mesh.gmesh > mesh.obj\n"
+        "  grafic mesh --preview-line 4 < mesh.gmesh > preview.obj\n",
         program
     );
 }
@@ -87,9 +87,9 @@ static void print_error(
     );
 }
 
-int fuse_mesh_main(int argument_count, char **arguments)
+int grafic_mesh_main(int argument_count, char **arguments)
 {
-    const FuseDialect *dialect = fusemesh_dialect();
+    const GraficDialect *dialect = graficmesh_dialect();
 
     size_t preview_line = 0;
 
@@ -98,13 +98,13 @@ int fuse_mesh_main(int argument_count, char **arguments)
 
         if (strcmp(option, "--help") == 0
             || strcmp(option, "-h") == 0) {
-            usage(stdout, "fuse mesh");
+            usage(stdout, "grafic mesh");
             return EXIT_SUCCESS;
         }
 
         if (strcmp(option, "--builtins") == 0) {
             if (argument_count != 2) {
-                usage(stderr, "fuse mesh");
+                usage(stderr, "grafic mesh");
                 return EXIT_FAILURE;
             }
 
@@ -118,7 +118,7 @@ int fuse_mesh_main(int argument_count, char **arguments)
         if (strcmp(option, "--preview-line") != 0
             || index + 1 >= argument_count
             || !parse_line(arguments[++index], &preview_line)) {
-            usage(stderr, "fuse mesh");
+            usage(stderr, "grafic mesh");
             return EXIT_FAILURE;
         }
     }
@@ -128,32 +128,32 @@ int fuse_mesh_main(int argument_count, char **arguments)
     ssize_t length = getdelim(&source, &capacity, '\0', stdin);
 
     if (length < 0) {
-        fprintf(stderr, "fuse mesh: expected a program on stdin\n");
+        fprintf(stderr, "grafic mesh: expected a program on stdin\n");
         free(source);
         return EXIT_FAILURE;
     }
 
     PreparedProgram prepared = {0};
-    FuseMesh mesh = {0};
+    GraficMesh mesh = {0};
     int status = EXIT_FAILURE;
     CompileError compile_error;
     if (!prepare_program(source, (size_t)length, dialect, preview_line, &prepared, &compile_error)) {
         SourcePosition position = source_position_at(source, (size_t)length, compile_error.span.offset);
-        fprintf(stderr, "fuse mesh: %s error at %zu:%zu: %s\n", compile_error.kind,
+        fprintf(stderr, "grafic mesh: %s error at %zu:%zu: %s\n", compile_error.kind,
             position.line, position.column, compile_error.message);
         goto cleanup;
     }
 
-    FuseMeshRenderError render_error;
+    GraficMeshRenderError render_error;
 
-    if (!fusemesh_render(
+    if (!graficmesh_render(
             prepared.program,
             source,
             &mesh,
             &render_error
         )) {
         print_error(
-            "fuse mesh",
+            "grafic mesh",
             "render",
             source,
             (size_t)length,
@@ -163,15 +163,15 @@ int fuse_mesh_main(int argument_count, char **arguments)
         goto cleanup;
     }
 
-    if (!fusemesh_mesh_write_obj(stdout, &mesh)) {
-        perror("fuse mesh: failed to write OBJ");
+    if (!graficmesh_mesh_write_obj(stdout, &mesh)) {
+        perror("grafic mesh: failed to write OBJ");
         goto cleanup;
     }
 
     status = EXIT_SUCCESS;
 
 cleanup:
-    fusemesh_mesh_destroy(&mesh);
+    graficmesh_mesh_destroy(&mesh);
     prepared_program_destroy(&prepared);
     free(source);
     return status;

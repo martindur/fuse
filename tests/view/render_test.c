@@ -93,9 +93,9 @@ int main(int argc, char **argv)
     ViewRenderError error = {0};
     GLuint framebuffer = 0;
     GLuint color = 0;
-    FuseMesh mesh = {0};
+    GraficMesh mesh = {0};
     bool passed = true;
-    CHECK(view_renderer_init(&renderer, 64, 64, "Fuse render test", false, &error));
+    CHECK(view_renderer_init(&renderer, 64, 64, "Grafic render test", false, &error));
     glGenFramebuffers(1, &framebuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
     glGenTextures(1, &color);
@@ -116,12 +116,12 @@ int main(int argc, char **argv)
     CHECK(pixel_equals(16, 48, 66, 193, 128));
 
     CHECK(!view_renderer_set_shader(&renderer,
-        "#version 330 core\nin vec3 fuseUv; out vec4 fragColor;\n"
-        "void main() { fragColor = vec4(fuseUv, 1.0); }", &error));
+        "#version 330 core\nin vec3 graficUv; out vec4 fragColor;\n"
+        "void main() { fragColor = vec4(graficUv, 1.0); }", &error));
     CHECK(renderer.program == previous);
     CHECK(!view_renderer_set_shader(&renderer,
-        "#version 330 core\nin vec2 fuseUv; uniform sampler2D tex0; out vec4 fragColor;\n"
-        "void main() { fragColor = texture(tex0, fuseUv); }", &error));
+        "#version 330 core\nin vec2 graficUv; uniform sampler2D tex0; out vec4 fragColor;\n"
+        "void main() { fragColor = texture(tex0, graficUv); }", &error));
     CHECK(strstr(error.message, "tex0") != NULL && renderer.program == previous);
     CHECK(set_source(&renderer, "rgb(0.0, 1.0, 0.0).vec4(1.0)", &error));
     view_renderer_draw(&renderer, 64, 64, 0.0f);
@@ -202,7 +202,7 @@ int main(int argc, char **argv)
 
     ViewSource ring = {0};
     char read_error[256];
-    CHECK(view_source_poll(&ring, "examples/gl/ring.fgl", read_error, sizeof(read_error)) == VIEW_SOURCE_CHANGED);
+    CHECK(view_source_poll(&ring, "examples/gl/ring.gfrag", read_error, sizeof(read_error)) == VIEW_SOURCE_CHANGED);
     bool ring_loaded = set_source(&renderer, ring.text, &error);
     view_source_destroy(&ring);
     CHECK(ring_loaded);
@@ -212,10 +212,10 @@ int main(int argc, char **argv)
         CHECK(snapshot(argv[1]));
     }
 
-    CHECK(load_texture(&renderer, 0, "examples/compositions/masked-reveal/mask.ftex", &error));
-    CHECK(load_texture(&renderer, 1, "examples/compositions/masked-reveal/rings.ftex", &error));
+    CHECK(load_texture(&renderer, 0, "examples/compositions/masked-reveal/mask.gtex", &error));
+    CHECK(load_texture(&renderer, 1, "examples/compositions/masked-reveal/rings.gtex", &error));
     ViewSource composition = {0};
-    CHECK(view_source_poll(&composition, "examples/compositions/masked-reveal/masked-reveal.fgl",
+    CHECK(view_source_poll(&composition, "examples/compositions/masked-reveal/masked-reveal.gfrag",
         read_error, sizeof(read_error)) == VIEW_SOURCE_CHANGED);
     bool composition_loaded = set_source(&renderer, composition.text, &error);
     view_source_destroy(&composition);
@@ -226,9 +226,9 @@ int main(int argc, char **argv)
         CHECK(snapshot(argv[2]));
     }
 
-    FuseMeshDiskSpec spec = {.radius = 2.0f, .segments = 64, .rings = 4};
+    GraficMeshDiskSpec spec = {.radius = 2.0f, .segments = 64, .rings = 4};
     const char *mesh_error;
-    CHECK(fusemesh_mesh_from_disk(&spec, &mesh, &mesh_error));
+    CHECK(graficmesh_mesh_from_disk(&spec, &mesh, &mesh_error));
     CHECK(view_renderer_set_mesh(&renderer, &mesh, &error));
     view_renderer_draw_mesh(&renderer, 128, 128, false);
     CHECK(pixel_equals(96, 64, 199, 129, 0));
@@ -272,9 +272,9 @@ int main(int argc, char **argv)
     view_renderer_draw(&renderer, 128, 128, 0.0f);
     CHECK(pixel_equals(0, 0, 0, 255, 0));
 
-    fusemesh_mesh_destroy(&mesh);
-    spec.uv_mapping = FUSE_MESH_UV_RADIAL;
-    CHECK(fusemesh_mesh_from_disk(&spec, &mesh, &mesh_error));
+    graficmesh_mesh_destroy(&mesh);
+    spec.uv_mapping = GRAFIC_MESH_UV_RADIAL;
+    CHECK(graficmesh_mesh_from_disk(&spec, &mesh, &mesh_error));
     CHECK(view_renderer_set_mesh(&renderer, &mesh, &error));
     CHECK(renderer.mesh.vertex_array != previous_mesh);
     view_renderer_draw_mesh(&renderer, 512, 512, false);
@@ -288,7 +288,7 @@ int main(int argc, char **argv)
     }
 
 cleanup:
-    fusemesh_mesh_destroy(&mesh);
+    graficmesh_mesh_destroy(&mesh);
     if (renderer.window != NULL) {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glDeleteFramebuffers(1, &framebuffer);

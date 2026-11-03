@@ -1,5 +1,5 @@
-#ifndef FUSE_VIEW_RENDER_H
-#define FUSE_VIEW_RENDER_H
+#ifndef GRAFIC_VIEW_RENDER_H
+#define GRAFIC_VIEW_RENDER_H
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -51,7 +51,7 @@ void view_renderer_draw(const ViewRenderer *renderer, int width, int height, flo
 /* Inspect a slot without changing the active composition program. */
 void view_renderer_draw_texture(const ViewRenderer *renderer, int width, int height, size_t slot);
 /* Upload candidate geometry before replacing the last working mesh. */
-bool view_renderer_set_mesh(ViewRenderer *renderer, const FuseMesh *mesh, ViewRenderError *error);
+bool view_renderer_set_mesh(ViewRenderer *renderer, const GraficMesh *mesh, ViewRenderError *error);
 void view_renderer_draw_mesh(const ViewRenderer *renderer, int width, int height, bool wireframe);
 void view_renderer_destroy_mesh(ViewRenderer *renderer);
 /* Shared OpenGL program creation; returns zero on failure. Requires a context. */

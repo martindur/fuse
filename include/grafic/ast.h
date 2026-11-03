@@ -1,7 +1,7 @@
-#ifndef FUSE_AST_H
-#define FUSE_AST_H
+#ifndef GRAFIC_AST_H
+#define GRAFIC_AST_H
 
-#include "fuse/source.h"
+#include "grafic/source.h"
 
 #include <stdbool.h>
 #include <stddef.h>

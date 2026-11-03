@@ -1,10 +1,10 @@
-# Developing Fuse
+# Developing Grafic
 
 ## Responsibilities
 
 | Location | Responsibility |
 | --- | --- |
-| `include/fuse/` | Shared language and tooling contracts |
+| `include/grafic/` | Shared language and tooling contracts |
 | `src/lang/` | Lexer, AST, parser, lowering, type checking, source selection, help |
 | `src/lsp/` | Shared language server and private JSON support |
 | `src/cli/` | Command dispatch and enabled capability registration |
@@ -15,7 +15,7 @@
 | `tests/lang/` | Shared tests using small fixture catalogs |
 | `tests/{gl,tex,mesh}/` | Capability behavior and command integration tests |
 | `tests/view/` | Source lifecycle, viewer arguments, rendered pixels, and live reload |
-| `tree-sitter-fuse/` | Grammar, generic queries, generated parser, corpus tests |
+| `tree-sitter-grafic/` | Grammar, generic queries, generated parser, corpus tests |
 | `editors/nvim/` | File associations and compiler/LSP command selection |
 
 Capabilities depend on the frontend and shared tooling. The shared layer does
@@ -27,7 +27,7 @@ The root Makefile builds one executable with all or selected capabilities.
 
 `LanguageEnvironment` describes builtin signatures, global types, symbol
 documentation, and reserved names. Each capability owns these tables together
-with the implementations of its functions. Its `FuseDialect` supplies the
+with the implementations of its functions. Its `GraficDialect` supplies the
 canonical language ID, environment, and required complete-program result type.
 
 The same descriptor drives compilation, builtin help, and the integrated LSP.
@@ -41,14 +41,14 @@ belong to the capabilities. Add extensibility only when requirements justify it.
 
 ## Shared C API
 
-`make language` builds `build/libfuse-lang.a`. Public headers are included as
-`fuse/parser.h`, for example. A consumer links against the library:
+`make language` builds `build/libgrafic-lang.a`. Public headers are included as
+`grafic/parser.h`, for example. A consumer links against the library:
 
 ```sh
-cc -std=c17 -Iinclude consumer.c build/libfuse-lang.a -o consumer
+cc -std=c17 -Iinclude consumer.c build/libgrafic-lang.a -o consumer
 ```
 
-`prepare_program` in `fuse/compile.h` performs parsing, optional one-based
+`prepare_program` in `grafic/compile.h` performs parsing, optional one-based
 preview selection, lowering, type checking, and result validation against a
 dialect. It returns an owned `PreparedProgram` containing the lowered AST and
 semantic information. Initialize it to zero and release it with
@@ -63,7 +63,7 @@ refer to source spans. Selection and lowering each return a separately owned
 AST and do not consume their input. Release ASTs and semantic information
 with their corresponding destroy functions.
 
-`fuse_lsp_run` borrows a list of dialect descriptors and the caller's streams.
+`grafic_lsp_run` borrows a list of dialect descriptors and the caller's streams.
 Each dialect supplies a unique language ID and filename extension. On document
 open, a recognized language ID takes precedence over the URI extension; the
 selected capability stays with that document across changes. Unknown types
@@ -113,7 +113,7 @@ make tree-sitter-parser
 Native grammar builds use the checked-in generated C. Reusable queries express
 syntax and bindings; capability symbol knowledge lives in the catalogs.
 
-`make test-shaders` compiles every `.fgl` example and validates the output with
+`make test-shaders` compiles every `.gfrag` example and validates the output with
 `glslangValidator` (provided by `glslang-tools` on Debian/Ubuntu). CI runs the
 compiler, installer, grammar, and shader checks on pushes and pull requests.
 
@@ -137,7 +137,7 @@ CI runs these under Xvfb and Mesa software rendering.
 
 ## Installation and releases
 
-`make install` installs `fuse` and its man page. The source installer uses
+`make install` installs `grafic` and its man page. The source installer uses
 this target after downloading a release archive. It defaults to the latest
 published GitHub release and accepts `--version TAG` and `--prefix PATH`.
 Installer tests use a local source archive and a substitute curl command;
@@ -184,7 +184,7 @@ make CAPABILITIES=gl
 make CAPABILITIES=gl PREFIX="$HOME/.local" install
 ```
 
-This still produces `fuse`, with only `gl` and its LSP catalog. It needs neither
+This still produces `grafic`, with only `gl` and its LSP catalog. It needs neither
 libpng nor pkg-config. Space-separated selections such as `CAPABILITIES="gl mesh"`
 are supported; unknown or empty selections are rejected. Changing the selection
 in the same build directory rebuilds the dispatcher. `make test` checks the enabled

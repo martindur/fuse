@@ -313,33 +313,33 @@ static bool skip_value(
     }
 }
 
-FuseJsonType fuse_json_type(FuseJsonValue value)
+GraficJsonType grafic_json_type(GraficJsonValue value)
 {
     if (value.data == NULL || value.length == 0) {
-        return FUSE_JSON_INVALID;
+        return GRAFIC_JSON_INVALID;
     }
 
     switch (value.data[value.offset]) {
     case 'n':
-        return FUSE_JSON_NULL;
+        return GRAFIC_JSON_NULL;
     case 't':
     case 'f':
-        return FUSE_JSON_BOOL;
+        return GRAFIC_JSON_BOOL;
     case '"':
-        return FUSE_JSON_STRING;
+        return GRAFIC_JSON_STRING;
     case '{':
-        return FUSE_JSON_OBJECT;
+        return GRAFIC_JSON_OBJECT;
     case '[':
-        return FUSE_JSON_ARRAY;
+        return GRAFIC_JSON_ARRAY;
     default:
-        return FUSE_JSON_NUMBER;
+        return GRAFIC_JSON_NUMBER;
     }
 }
 
-bool fuse_json_parse(
+bool grafic_json_parse(
     const char *data,
     size_t length,
-    FuseJsonValue *out_value
+    GraficJsonValue *out_value
 )
 {
     if (data == NULL || out_value == NULL) {
@@ -360,7 +360,7 @@ bool fuse_json_parse(
         return false;
     }
 
-    *out_value = (FuseJsonValue){
+    *out_value = (GraficJsonValue){
         .data = data,
         .length = offset - start,
         .offset = start,
@@ -369,26 +369,26 @@ bool fuse_json_parse(
 }
 
 static bool json_string_equals(
-    FuseJsonValue value,
+    GraficJsonValue value,
     const char *expected
 )
 {
     char *actual = NULL;
-    bool equal = fuse_json_string_copy(value, &actual)
+    bool equal = grafic_json_string_copy(value, &actual)
         && strcmp(actual, expected) == 0;
     free(actual);
     return equal;
 }
 
-bool fuse_json_object_get(
-    FuseJsonValue object,
+bool grafic_json_object_get(
+    GraficJsonValue object,
     const char *key,
-    FuseJsonValue *out_value
+    GraficJsonValue *out_value
 )
 {
     if (out_value == NULL
         || key == NULL
-        || fuse_json_type(object) != FUSE_JSON_OBJECT) {
+        || grafic_json_type(object) != GRAFIC_JSON_OBJECT) {
         return false;
     }
 
@@ -403,7 +403,7 @@ bool fuse_json_object_get(
             return false;
         }
 
-        FuseJsonValue key_value = {
+        GraficJsonValue key_value = {
             .data = object.data,
             .length = offset - key_start,
             .offset = key_start,
@@ -423,7 +423,7 @@ bool fuse_json_object_get(
         }
 
         if (json_string_equals(key_value, key)) {
-            *out_value = (FuseJsonValue){
+            *out_value = (GraficJsonValue){
                 .data = object.data,
                 .length = offset - value_start,
                 .offset = value_start,
@@ -448,13 +448,13 @@ bool fuse_json_object_get(
     return false;
 }
 
-bool fuse_json_array_first(
-    FuseJsonValue array,
-    FuseJsonValue *out_value
+bool grafic_json_array_first(
+    GraficJsonValue array,
+    GraficJsonValue *out_value
 )
 {
     if (out_value == NULL
-        || fuse_json_type(array) != FUSE_JSON_ARRAY) {
+        || grafic_json_type(array) != GRAFIC_JSON_ARRAY) {
         return false;
     }
 
@@ -472,7 +472,7 @@ bool fuse_json_array_first(
         return false;
     }
 
-    *out_value = (FuseJsonValue){
+    *out_value = (GraficJsonValue){
         .data = array.data,
         .length = offset - start,
         .offset = start,
@@ -566,13 +566,13 @@ static bool append_codepoint(
             (unsigned char)(0x80 | (codepoint & 0x3f)));
 }
 
-bool fuse_json_string_copy(
-    FuseJsonValue value,
+bool grafic_json_string_copy(
+    GraficJsonValue value,
     char **out_string
 )
 {
     if (out_string == NULL
-        || fuse_json_type(value) != FUSE_JSON_STRING) {
+        || grafic_json_type(value) != GRAFIC_JSON_STRING) {
         return false;
     }
 

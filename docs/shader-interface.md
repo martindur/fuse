@@ -1,21 +1,21 @@
 # Shader host interface
 
-FuseGL emits a complete GLSL 330 core fragment shader. A host provides the
+GraficGL emits a complete GLSL 330 core fragment shader. A host provides the
 vertex stage, textures, uniform values, and drawing context.
 
 | Name | GLSL type | Host responsibility |
 | --- | --- | --- |
-| `fuseUv` | Fragment input `vec2` | Supply interpolated UV coordinates from the vertex stage |
+| `graficUv` | Fragment input `vec2` | Supply interpolated UV coordinates from the vertex stage |
 | `fragColor` | Fragment output `vec4` | Use as the shader's RGBA color output |
 | `u_time` | Uniform `float` | Set elapsed animation time |
 | `u_resolution` | Uniform `vec2` | Set output width and height in pixels |
 | `tex0` through `tex3` | Uniform `sampler2D` | Bind the texture inputs used by the program |
 
-The language's `uv` value comes from `fuseUv`. Its `time` and `resolution`
+The language's `uv` value comes from `graficUv`. Its `time` and `resolution`
 globals refer to the corresponding uniforms. Builtins that correct aspect
 ratio use `resolution.x / resolution.y`, so the host supplies a nonzero height.
 
-A compatible vertex shader declares `out vec2 fuseUv` and assigns UVs
+A compatible vertex shader declares `out vec2 graficUv` and assigns UVs
 appropriate for its geometry. For a full-screen surface, these typically span
 the unit square. Mesh rendering can use the mesh's own UV coordinates.
 

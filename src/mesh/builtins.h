@@ -1,8 +1,8 @@
-#ifndef FUSE_MESH_BUILTINS_H
-#define FUSE_MESH_BUILTINS_H
+#ifndef GRAFIC_MESH_BUILTINS_H
+#define GRAFIC_MESH_BUILTINS_H
 
-#include "fuse/dialect.h"
+#include "grafic/dialect.h"
 
-const FuseDialect *fusemesh_dialect(void);
+const GraficDialect *graficmesh_dialect(void);
 
 #endif

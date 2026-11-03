@@ -1,6 +1,6 @@
-#include "fuse/lower.h"
-#include "fuse/parser.h"
-#include "fuse/semantic.h"
+#include "grafic/lower.h"
+#include "grafic/parser.h"
+#include "grafic/semantic.h"
 #include "gl/glsl_stdlib.h"
 
 #include <stdbool.h>
@@ -76,7 +76,7 @@ static bool test_valid_program(void)
     bool analyzed = semantic_analyze(
         program,
         source,
-        fusegl_dialect()->environment,
+        graficgl_dialect()->environment,
         &info,
         &error
     );
@@ -125,7 +125,7 @@ static bool test_texture_program(void)
     bool analyzed = semantic_analyze(
         program,
         source,
-        fusegl_dialect()->environment,
+        graficgl_dialect()->environment,
         &info,
         &error
     );
@@ -196,7 +196,7 @@ static bool test_semantic_failures(void)
         bool analyzed = semantic_analyze(
             program,
             test_case->source,
-            fusegl_dialect()->environment,
+            graficgl_dialect()->environment,
             &info,
             &error
         );
@@ -243,7 +243,7 @@ static bool test_non_vec4_result_inference(void)
     bool analyzed = semantic_analyze(
         program,
         source,
-        fusegl_dialect()->environment,
+        graficgl_dialect()->environment,
         &info,
         &error
     );

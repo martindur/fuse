@@ -53,8 +53,8 @@ view_OBJECTS := $(VIEW_OBJECTS)
 SELECTED_OBJECTS := $(foreach capability,$(ENABLED_CAPABILITIES),$($(capability)_OBJECTS))
 CLI_OBJECT := $(OBJECT_DIR)/src/cli/main.o
 OBJECTS := $(LANG_OBJECTS) $(GL_OBJECTS) $(TEX_OBJECTS) $(MESH_OBJECTS) $(VIEW_OBJECTS) $(CLI_OBJECT)
-LIBRARY := $(BUILD_DIR)/libfuse-lang.a
-TARGET := $(BUILD_DIR)/fuse
+LIBRARY := $(BUILD_DIR)/libgrafic-lang.a
+TARGET := $(BUILD_DIR)/grafic
 CAPABILITY_CONFIG := $(BUILD_DIR)/capabilities
 
 LANG_TEST_NAMES := lexer parser ast_dump lower preview semantic json lsp compile
@@ -70,15 +70,15 @@ VIEW_CORE_OBJECTS := $(OBJECT_DIR)/src/view/assets.o $(filter-out $(OBJECT_DIR)/
 TEST_TARGETS := $(VIEW_ASSET_TEST) $(VIEW_RENDER_TEST) $(LANG_TEST_TARGETS) $(GL_TEST_TARGETS) $(TEX_TEST_TARGETS) $(MESH_TEST_TARGETS)
 TEST_OBJECTS := $(TEST_TARGETS:$(BUILD_DIR)/%=$(OBJECT_DIR)/%.o)
 TEST_DIALECTS := $(OBJECT_DIR)/tests/lang/dialects.o
-GRAMMAR := tree-sitter-fuse
-PARSER := $(BUILD_DIR)/tree-sitter/fuse.so
+GRAMMAR := tree-sitter-grafic
+PARSER := $(BUILD_DIR)/tree-sitter/grafic.so
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
 INCLUDEDIR ?= $(PREFIX)/include
 LIBDIR ?= $(PREFIX)/lib
 MANDIR ?= $(PREFIX)/share/man
-DATADIR ?= $(PREFIX)/share/fuse
+DATADIR ?= $(PREFIX)/share/grafic
 INSTALL ?= install
 
 .PHONY: all language test test-lang test-gl test-tex test-mesh test-view test-view-render test-cli test-install test-shaders \
@@ -106,10 +106,10 @@ $(CAPABILITY_CONFIG): FORCE
 	@$(RM) $@.tmp
 
 $(CLI_OBJECT): $(CAPABILITY_CONFIG)
-$(CLI_OBJECT): CPPFLAGS += $(if $(filter gl,$(ENABLED_CAPABILITIES)),-DFUSE_CAP_GL) \
-	$(if $(filter tex,$(ENABLED_CAPABILITIES)),-DFUSE_CAP_TEX) \
-	$(if $(filter mesh,$(ENABLED_CAPABILITIES)),-DFUSE_CAP_MESH) \
-	$(if $(filter view,$(ENABLED_CAPABILITIES)),-DFUSE_CAP_VIEW)
+$(CLI_OBJECT): CPPFLAGS += $(if $(filter gl,$(ENABLED_CAPABILITIES)),-DGRAFIC_CAP_GL) \
+	$(if $(filter tex,$(ENABLED_CAPABILITIES)),-DGRAFIC_CAP_TEX) \
+	$(if $(filter mesh,$(ENABLED_CAPABILITIES)),-DGRAFIC_CAP_MESH) \
+	$(if $(filter view,$(ENABLED_CAPABILITIES)),-DGRAFIC_CAP_VIEW)
 $(VIEW_OBJECTS) $(OBJECT_DIR)/tests/view/render_test.o: CPPFLAGS += $(VIEW_CFLAGS)
 $(TEX_OBJECTS): CPPFLAGS += $(PNG_CFLAGS)
 $(OBJECT_DIR)/tests/lang/json_test.o: CPPFLAGS += -Isrc/lsp
@@ -144,7 +144,7 @@ endif
 test-release:
 	$(PYTHON) -m tests.release_test
 
-release: export FUSE_RELEASE_VERSION = $(VERSION)
+release: export GRAFIC_RELEASE_VERSION = $(VERSION)
 release:
 	$(PYTHON) scripts/release.py open-pr
 
@@ -194,24 +194,24 @@ $(PARSER): $(GRAMMAR)/src/parser.c $(GRAMMAR)/src/tree_sitter/parser.h
 
 install: $(TARGET)
 	$(INSTALL) -d "$(DESTDIR)$(BINDIR)" "$(DESTDIR)$(MANDIR)/man1"
-	$(INSTALL) -m 755 $(TARGET) "$(DESTDIR)$(BINDIR)/fuse"
-	$(INSTALL) -m 644 docs/man/fuse.1 "$(DESTDIR)$(MANDIR)/man1/"
+	$(INSTALL) -m 755 $(TARGET) "$(DESTDIR)$(BINDIR)/grafic"
+	$(INSTALL) -m 644 docs/man/grafic.1 "$(DESTDIR)$(MANDIR)/man1/"
 
 install-library: $(LIBRARY)
-	$(INSTALL) -d "$(DESTDIR)$(LIBDIR)" "$(DESTDIR)$(INCLUDEDIR)/fuse"
+	$(INSTALL) -d "$(DESTDIR)$(LIBDIR)" "$(DESTDIR)$(INCLUDEDIR)/grafic"
 	$(INSTALL) -m 644 $(LIBRARY) "$(DESTDIR)$(LIBDIR)/"
-	$(INSTALL) -m 644 include/fuse/*.h "$(DESTDIR)$(INCLUDEDIR)/fuse/"
+	$(INSTALL) -m 644 include/grafic/*.h "$(DESTDIR)$(INCLUDEDIR)/grafic/"
 
 install-grammar: tree-sitter-parser
-	$(INSTALL) -d "$(DESTDIR)$(DATADIR)/tree-sitter-fuse/parser" "$(DESTDIR)$(DATADIR)/tree-sitter-fuse/queries/fuse"
-	$(INSTALL) -m 755 $(PARSER) "$(DESTDIR)$(DATADIR)/tree-sitter-fuse/parser/fuse.so"
-	$(INSTALL) -m 644 $(GRAMMAR)/queries/fuse/*.scm "$(DESTDIR)$(DATADIR)/tree-sitter-fuse/queries/fuse/"
+	$(INSTALL) -d "$(DESTDIR)$(DATADIR)/tree-sitter-grafic/parser" "$(DESTDIR)$(DATADIR)/tree-sitter-grafic/queries/grafic"
+	$(INSTALL) -m 755 $(PARSER) "$(DESTDIR)$(DATADIR)/tree-sitter-grafic/parser/grafic.so"
+	$(INSTALL) -m 644 $(GRAMMAR)/queries/grafic/*.scm "$(DESTDIR)$(DATADIR)/tree-sitter-grafic/queries/grafic/"
 
 install-editor: install-grammar
-	$(INSTALL) -d "$(DESTDIR)$(DATADIR)/nvim/ftdetect" "$(DESTDIR)$(DATADIR)/nvim/lua/fuse" "$(DESTDIR)$(DATADIR)/nvim/plugin"
-	$(INSTALL) -m 644 editors/nvim/ftdetect/fuse.lua "$(DESTDIR)$(DATADIR)/nvim/ftdetect/"
-	$(INSTALL) -m 644 editors/nvim/lua/fuse/lsp.lua "$(DESTDIR)$(DATADIR)/nvim/lua/fuse/"
-	$(INSTALL) -m 644 editors/nvim/plugin/fuse.lua "$(DESTDIR)$(DATADIR)/nvim/plugin/"
+	$(INSTALL) -d "$(DESTDIR)$(DATADIR)/nvim/ftdetect" "$(DESTDIR)$(DATADIR)/nvim/lua/grafic" "$(DESTDIR)$(DATADIR)/nvim/plugin"
+	$(INSTALL) -m 644 editors/nvim/ftdetect/grafic.lua "$(DESTDIR)$(DATADIR)/nvim/ftdetect/"
+	$(INSTALL) -m 644 editors/nvim/lua/grafic/lsp.lua "$(DESTDIR)$(DATADIR)/nvim/lua/grafic/"
+	$(INSTALL) -m 644 editors/nvim/plugin/grafic.lua "$(DESTDIR)$(DATADIR)/nvim/plugin/"
 
 clean:
 	$(RM) -r $(BUILD_DIR)

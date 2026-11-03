@@ -744,7 +744,7 @@ static bool evaluate_expression(
     return false;
 }
 
-bool fusetex_evaluate_program(
+bool grafictex_evaluate_program(
     const Program *program,
     const char *source,
     const EvalContext *context,

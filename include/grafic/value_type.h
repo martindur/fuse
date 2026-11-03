@@ -1,5 +1,5 @@
-#ifndef FUSE_VALUE_TYPE_H
-#define FUSE_VALUE_TYPE_H
+#ifndef GRAFIC_VALUE_TYPE_H
+#define GRAFIC_VALUE_TYPE_H
 
 #include <stdbool.h>
 

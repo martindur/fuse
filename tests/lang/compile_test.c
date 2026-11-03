@@ -1,4 +1,4 @@
-#include "fuse/compile.h"
+#include "grafic/compile.h"
 #include "dialects.h"
 
 #include <stdio.h>

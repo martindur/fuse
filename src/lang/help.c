@@ -1,4 +1,4 @@
-#include "fuse/help.h"
+#include "grafic/help.h"
 
 #include <string.h>
 

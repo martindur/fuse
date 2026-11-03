@@ -1,7 +1,7 @@
-#ifndef FUSE_LSP_H
-#define FUSE_LSP_H
+#ifndef GRAFIC_LSP_H
+#define GRAFIC_LSP_H
 
-#include "fuse/dialect.h"
+#include "grafic/dialect.h"
 
 #include <stddef.h>
 #include <stdio.h>
@@ -18,8 +18,8 @@
  * Returns zero after shutdown/exit or clean EOF, and nonzero for invalid
  * configuration, premature exit, I/O errors, or unrecoverable server errors.
  */
-int fuse_lsp_run(
-    const FuseDialect *const *dialects,
+int grafic_lsp_run(
+    const GraficDialect *const *dialects,
     size_t dialect_count,
     FILE *input,
     FILE *output,

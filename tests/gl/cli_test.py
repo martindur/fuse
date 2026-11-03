@@ -9,8 +9,8 @@ from tests.cli_support import CompilerTests, URI, opened, changed, at, notificat
 SOURCE = "uv.center().circle(0.2).fill().colorize(rgb(1.0, 0.5, 0.0))"
 
 class ShaderTests(CompilerTests):
-    binary = Path("build/fuse").resolve()
-    language_id = "fusegl"
+    binary = Path("build/grafic").resolve()
+    language_id = "graficgl"
     command = "gl"
 
     def test_line_comments_preserve_shader_output(self):
@@ -65,7 +65,7 @@ class ShaderTests(CompilerTests):
         self.assertEqual(result.returncode, 0, result.stderr.decode())
         self.assertEqual(result.stderr, b"")
         self.assertTrue(result.stdout.startswith(b"#version 330 core\n"))
-        self.assertIn(b"in vec2 fuseUv;", result.stdout)
+        self.assertIn(b"in vec2 graficUv;", result.stdout)
         self.assertIn(
             b"fragColor = colorize(fill(circle(center(uv), 0.2)), rgb(1.0, 0.5, 0.0));",
             result.stdout,
@@ -86,7 +86,7 @@ class ShaderTests(CompilerTests):
                 result = self.run_command("--preview-line", line, source=source)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(result.stdout, b"")
-                self.assertIn(b"fuse gl:", result.stderr)
+                self.assertIn(b"grafic gl:", result.stderr)
 
     def test_invalid_arguments(self):
         for arguments in [
@@ -100,7 +100,7 @@ class ShaderTests(CompilerTests):
                 result = self.run_command(*arguments, source=SOURCE)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(result.stdout, b"")
-                self.assertIn(b"Usage: fuse gl", result.stderr)
+                self.assertIn(b"Usage: grafic gl", result.stderr)
 
     def test_invalid_programs(self):
         for source, error in [
@@ -121,7 +121,7 @@ class ShaderTests(CompilerTests):
             with self.subTest(arguments=arguments):
                 result = self.run_command(*arguments)
                 self.assertEqual(result.returncode, 0)
-                self.assertIn(b"Usage: fuse gl", result.stdout)
+                self.assertIn(b"Usage: grafic gl", result.stdout)
                 self.assertEqual(result.stderr, b"")
 
     def test_completion_matches_builtin_help(self):
@@ -160,7 +160,7 @@ class ShaderTests(CompilerTests):
         )
         markdown = responses[2]["result"]["contents"]["value"]
         documentation = "Samples a texture at the input UV coordinate."
-        self.assertIn("```fusegl", markdown)
+        self.assertIn("```graficgl", markdown)
         self.assertIn("sample(vec2, texture) -> vec4", markdown)
         self.assertIn(documentation, markdown)
         self.assertIn(documentation.encode(), self.run_command("--builtins").stdout)
@@ -173,7 +173,7 @@ class ShaderTests(CompilerTests):
         diagnostics = [packet["params"]["diagnostics"] for packet in packets
                        if packet.get("method") == "textDocument/publishDiagnostics"]
         self.assertEqual(len(diagnostics), 4)
-        self.assertEqual(diagnostics[0][0]["source"], "fusegl")
+        self.assertEqual(diagnostics[0][0]["source"], "graficgl")
         self.assertEqual(diagnostics[0][0]["message"], "program result must be vec4")
         self.assertEqual(diagnostics[1], [])
         self.assertEqual(diagnostics[2][0]["message"], "unknown function")
@@ -187,7 +187,7 @@ class ShaderTests(CompilerTests):
                 stderr=subprocess.PIPE, timeout=10,
             )
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn(b"fuse gl: failed to", result.stderr)
+        self.assertIn(b"grafic gl: failed to", result.stderr)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 
-#include "fuse/ast_dump.h"
-#include "fuse/parser.h"
+#include "grafic/ast_dump.h"
+#include "grafic/parser.h"
 
 #include <stdbool.h>
 #include <stddef.h>

@@ -1,14 +1,17 @@
-# Fuse
+# Grafic
 
-Fuse is a language and toolchain for composing shaders, textures, and geometry
+Grafic is a language and toolchain for composing shaders, textures, and geometry
 from small chained transformations.
+
+This project is in early development. The language, tools, and APIs may change
+substantially between releases.
 
 | Command | Input | Output |
 | --- | --- | --- |
-| `fuse gl` | Shader source (`.fgl`) | GLSL 330 fragment shader |
-| `fuse tex` | Texture source (`.ftex`) | PNG image |
-| `fuse mesh` | Geometry source (`.fmesh`) | Wavefront OBJ mesh |
-| `fuse view` | Shader (`.fgl`), texture (`.ftex`), or mesh (`.fmesh`) file | Live preview window |
+| `grafic gl` | Shader source (`.gfrag`) | GLSL 330 fragment shader |
+| `grafic tex` | Texture source (`.gtex`) | PNG image |
+| `grafic mesh` | Geometry source (`.gmesh`) | Wavefront OBJ mesh |
+| `grafic view` | Shader (`.gfrag`), texture (`.gtex`), or mesh (`.gmesh`) file | Live preview window |
 
 Compiler commands read source from stdin, write output to stdout, and report
 errors on stderr. Use `--builtins` to list its functions and globals.
@@ -25,7 +28,7 @@ Install the latest release from source:
 curl -fsSL https://raw.githubusercontent.com/martindur/fuse/main/install.sh | sh
 ```
 
-The installer also requires curl and tar. It installs `fuse` and its man page
+The installer also requires curl and tar. It installs `grafic` and its man page
 under `~/.local`; add `~/.local/bin` to your `PATH`.
 To choose a release or destination, pass `--version v0.2.0` or `--prefix /path`
 to `sh -s --` at the end of the command.
@@ -42,23 +45,23 @@ The C library and headers can be installed separately with `make install-library
 
 ```sh
 make
-build/fuse gl < examples/gl/ring.fgl > build/ring.frag
-build/fuse tex --width 256 --height 256 --seed 42 \
-  < examples/tex/clouds.ftex > build/clouds.png
-build/fuse mesh < examples/mesh/radial.fmesh > build/radial.obj
+build/grafic gl < examples/gl/ring.gfrag > build/ring.frag
+build/grafic tex --width 256 --height 256 --seed 42 \
+  < examples/tex/clouds.gtex > build/clouds.png
+build/grafic mesh < examples/mesh/radial.gmesh > build/radial.obj
 ```
 
-Preview Fuse source files with live reload:
+Preview Grafic source files with live reload:
 
 ```sh
-build/fuse view examples/gl/ring.fgl
-build/fuse view examples/tex/clouds.ftex
-build/fuse view examples/mesh/radial.fmesh
+build/grafic view examples/gl/ring.gfrag
+build/grafic view examples/tex/clouds.gtex
+build/grafic view examples/mesh/radial.gmesh
 ```
 
 Save edits to update the image. Space pauses animation; Escape closes the
 window. Errors appear in the terminal while the last working shader keeps
-running. Bind procedural textures with `--tex0 FILE.ftex` through `--tex3 FILE.ftex`;
+running. Bind procedural textures with `--tex0 FILE.gtex` through `--tex3 FILE.gtex`;
 each input reloads independently. Press `1` for the shader or `2`–`5` for texture
 inputs. In a mesh preview, `W` toggles wireframe and `U` shows UV colors.
 Add `.show()` to preview an intermediate value in any source.
@@ -80,7 +83,7 @@ See the [language reference](docs/language.md),
 
 ## Editors
 
-Configure your editor to run `fuse lsp` for `.fgl`, `.ftex`, and `.fmesh` files.
+Configure your editor to run `grafic lsp` for `.gfrag`, `.gtex`, and `.gmesh` files.
 One server provides diagnostics, completion, and hover documentation for all three.
 
 For Neovim, see the [setup guide](editors/nvim/README.md) to install and enable

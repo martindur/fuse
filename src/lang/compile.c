@@ -1,7 +1,7 @@
-#include "fuse/compile.h"
-#include "fuse/lower.h"
-#include "fuse/parser.h"
-#include "fuse/preview.h"
+#include "grafic/compile.h"
+#include "grafic/lower.h"
+#include "grafic/parser.h"
+#include "grafic/preview.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -25,7 +25,7 @@ void prepared_program_destroy(PreparedProgram *prepared)
 static bool prepare(
     const char *source,
     size_t length,
-    const FuseDialect *dialect,
+    const GraficDialect *dialect,
     size_t preview_line,
     bool use_show,
     PreparedProgram *out,
@@ -110,13 +110,13 @@ cleanup:
     return success;
 }
 
-bool prepare_program(const char *source, size_t length, const FuseDialect *dialect,
+bool prepare_program(const char *source, size_t length, const GraficDialect *dialect,
     size_t preview_line, PreparedProgram *out, CompileError *error)
 {
     return prepare(source, length, dialect, preview_line, false, out, error);
 }
 
-bool prepare_view_program(const char *source, size_t length, const FuseDialect *dialect,
+bool prepare_view_program(const char *source, size_t length, const GraficDialect *dialect,
     size_t preview_line, PreparedProgram *out, CompileError *error)
 {
     return prepare(source, length, dialect, preview_line, true, out, error);

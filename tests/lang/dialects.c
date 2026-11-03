@@ -30,7 +30,7 @@ static const LanguageEnvironment POINT_ENVIRONMENT = {
     .reserved_count = sizeof(POINT_RESERVED) / sizeof(POINT_RESERVED[0]),
 };
 
-const FuseDialect TEST_POINT_DIALECT = {
+const GraficDialect TEST_POINT_DIALECT = {
     .language_id = "test-point",
     .file_extension = ".point",
     .environment = &POINT_ENVIRONMENT,
@@ -54,7 +54,7 @@ static const LanguageEnvironment OBJECT_ENVIRONMENT = {
     .documentation_count = sizeof(OBJECT_DOCUMENTATION) / sizeof(OBJECT_DOCUMENTATION[0]),
 };
 
-const FuseDialect TEST_OBJECT_DIALECT = {
+const GraficDialect TEST_OBJECT_DIALECT = {
     .language_id = "test-object",
     .file_extension = ".object",
     .environment = &OBJECT_ENVIRONMENT,

@@ -35,7 +35,7 @@ static const BuiltinSignature BUILTINS[] = {
 };
 
 static const SymbolDocumentation DOCUMENTATION[] = {
-    {"show", "Selects this intermediate mesh in fuse view. The last show() in each file wins; normal compilation returns the mesh unchanged."},
+    {"show", "Selects this intermediate mesh in grafic view. The last show() in each file wins; normal compilation returns the mesh unchanged."},
     {
         "disk",
         "Creates a filled disk mesh with centered planar UVs.",
@@ -70,14 +70,14 @@ static const LanguageEnvironment ENVIRONMENT = {
     .reserved_count = 0,
 };
 
-static const FuseDialect DIALECT = {
-    .language_id = "fusemesh",
-    .file_extension = ".fmesh",
+static const GraficDialect DIALECT = {
+    .language_id = "graficmesh",
+    .file_extension = ".gmesh",
     .environment = &ENVIRONMENT,
     .required_result_type = VALUE_TYPE_MESH,
 };
 
-const FuseDialect *fusemesh_dialect(void)
+const GraficDialect *graficmesh_dialect(void)
 {
     return &DIALECT;
 }

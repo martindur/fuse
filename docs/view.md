@@ -1,12 +1,12 @@
 # Source preview
 
 ```sh
-fuse view examples/gl/ring.fgl
-fuse view examples/tex/clouds.ftex
-fuse view examples/mesh/radial.fmesh
+grafic view examples/gl/ring.gfrag
+grafic view examples/tex/clouds.gtex
+grafic view examples/mesh/radial.gmesh
 ```
 
-Open a `.fgl` shader, `.ftex` texture, or `.fmesh` mesh directly. Shaders and
+Open a `.gfrag` shader, `.gtex` texture, or `.gmesh` mesh directly. Shaders and
 textures fill the window, with UVs from zero to one. For shaders, `time` advances
 in seconds and `resolution` follows the framebuffer size, including display
 scaling. Resize the window to change the aspect ratio.
@@ -24,12 +24,12 @@ the sources while rendering is suspended.
 
 ## Procedural textures
 
-Bind `.ftex` sources directly to the shader's texture slots:
+Bind `.gtex` sources directly to the shader's texture slots:
 
 ```sh
-fuse view examples/compositions/masked-reveal/masked-reveal.fgl \
-  --tex0 examples/compositions/masked-reveal/mask.ftex \
-  --tex1 examples/compositions/masked-reveal/rings.ftex
+grafic view examples/compositions/masked-reveal/masked-reveal.gfrag \
+  --tex0 examples/compositions/masked-reveal/mask.gtex \
+  --tex1 examples/compositions/masked-reveal/rings.gtex
 ```
 
 `--tex0` through `--tex3` generate and bind textures without intermediate PNG
@@ -67,7 +67,7 @@ colors. The title shows the active mode. Reloading preserves it and replaces
 the mesh only after successful generation and upload. Shader texture slots
 are available when opening a shader source.
 
-Try `examples/mesh/disk.fmesh` and `examples/mesh/radial.fmesh` to compare
+Try `examples/mesh/disk.gmesh` and `examples/mesh/radial.gmesh` to compare
 planar and radial UV mappings.
 
 ## Intermediate outputs with `.show()`
@@ -104,7 +104,7 @@ disk()
 This previews the mesh before the final subdivision change. Names for markers
 are not supported yet.
 
-Normal `fuse gl`, `fuse tex`, and `fuse mesh` compilation treats `.show()` as an identity
+Normal `grafic gl`, `grafic tex`, and `grafic mesh` compilation treats `.show()` as an identity
 operation and compiles the complete program. Explicit `--preview-line N`
 overrides markers for the file opened directly; bound textures still use their
 own markers.
@@ -112,9 +112,9 @@ own markers.
 ## Window and preview options
 
 ```sh
-fuse view --width 1280 --height 720 examples/gl/ring.fgl
-fuse view --preview-line 4 examples/gl/ring.fgl
-fuse view --preview-line 3 examples/tex/clouds.ftex
+grafic view --width 1280 --height 720 examples/gl/ring.gfrag
+grafic view --preview-line 4 examples/gl/ring.gfrag
+grafic view --preview-line 3 examples/tex/clouds.gtex
 ```
 
 `--width` and `--height` set the initial window size (default 960 × 640).
@@ -126,7 +126,7 @@ line without an expression reports a preview error.
 
 The default package includes the viewer. It requires GLFW 3 and OpenGL headers
 and libraries in addition to the compiler dependencies. The renderer uses an
-OpenGL 3.3 core context through GLFW. No display is needed to build Fuse or run
+OpenGL 3.3 core context through GLFW. No display is needed to build Grafic or run
 the compiler and asset tests.
 
 ```sh

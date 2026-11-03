@@ -1,5 +1,5 @@
-#ifndef FUSE_TEX_RENDER_H
-#define FUSE_TEX_RENDER_H
+#ifndef GRAFIC_TEX_RENDER_H
+#define GRAFIC_TEX_RENDER_H
 
 #include "evaluate.h"
 #include "image.h"
@@ -19,7 +19,7 @@ typedef struct {
     const char *message;
 } RenderError;
 
-bool fusetex_render(
+bool grafictex_render(
     const Program *program,
     const char *source,
     const RenderConfig *config,

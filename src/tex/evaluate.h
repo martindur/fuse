@@ -1,8 +1,8 @@
-#ifndef FUSE_TEX_EVALUATE_H
-#define FUSE_TEX_EVALUATE_H
+#ifndef GRAFIC_TEX_EVALUATE_H
+#define GRAFIC_TEX_EVALUATE_H
 
-#include "fuse/ast.h"
-#include "fuse/value_type.h"
+#include "grafic/ast.h"
+#include "grafic/value_type.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -23,7 +23,7 @@ typedef struct {
     const char *message;
 } EvalError;
 
-bool fusetex_evaluate_program(
+bool grafictex_evaluate_program(
     const Program *program,
     const char *source,
     const EvalContext *context,

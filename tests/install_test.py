@@ -14,18 +14,18 @@ ROOT = Path(__file__).resolve().parents[1]
 class InstallTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.archive_directory = tempfile.TemporaryDirectory(prefix="fuse-source-")
+        cls.archive_directory = tempfile.TemporaryDirectory(prefix="grafic-source-")
         cls.archive = Path(cls.archive_directory.name) / "source.tar.gz"
         with tarfile.open(cls.archive, "w:gz") as archive:
             for name in ("Makefile", "src", "include", "docs"):
-                archive.add(ROOT / name, arcname=f"fuse-0.1.0/{name}")
+                archive.add(ROOT / name, arcname=f"grafic-0.1.0/{name}")
 
     @classmethod
     def tearDownClass(cls):
         cls.archive_directory.cleanup()
 
     def setUp(self):
-        self.directory = tempfile.TemporaryDirectory(prefix="fuse-installer-test-")
+        self.directory = tempfile.TemporaryDirectory(prefix="grafic-installer-test-")
         self.addCleanup(self.directory.cleanup)
         self.root = Path(self.directory.name)
         self.bin = self.root / "bin"
@@ -40,8 +40,8 @@ class InstallTests(unittest.TestCase):
             "HOME": str(self.home),
             "TMPDIR": str(self.temporary),
             "PATH": f"{self.bin}{os.pathsep}{os.environ['PATH']}",
-            "FUSE_TEST_ARCHIVE": str(self.archive),
-            "FUSE_TEST_LOG": str(self.log),
+            "GRAFIC_TEST_ARCHIVE": str(self.archive),
+            "GRAFIC_TEST_LOG": str(self.log),
         }
         curl = self.bin / "curl"
         curl.write_text(f"#!{sys.executable}\n" + '''
@@ -53,15 +53,15 @@ import sys
 
 arguments = sys.argv[1:]
 url = next(argument for argument in arguments if argument.startswith("https://"))
-with open(os.environ["FUSE_TEST_LOG"], "a") as log:
+with open(os.environ["GRAFIC_TEST_LOG"], "a") as log:
     log.write(json.dumps(url) + "\\n")
-if os.environ.get("FUSE_TEST_DOWNLOAD_FAILURE"):
+if os.environ.get("GRAFIC_TEST_DOWNLOAD_FAILURE"):
     sys.exit(22)
 if url.endswith("/releases/latest"):
     print("https://github.com/martindur/fuse/releases/tag/v0.1.0", end="")
 else:
     destination = arguments[arguments.index("-o") + 1]
-    shutil.copyfile(os.environ["FUSE_TEST_ARCHIVE"], destination)
+    shutil.copyfile(os.environ["GRAFIC_TEST_ARCHIVE"], destination)
 ''')
         curl.chmod(0o755)
 
@@ -73,16 +73,16 @@ else:
 
     def assert_installation(self, prefix, result):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        binary = prefix / "bin/fuse"
+        binary = prefix / "bin/grafic"
         self.assertTrue(os.access(binary, os.X_OK))
-        self.assertTrue((prefix / "share/man/man1/fuse.1").is_file())
+        self.assertTrue((prefix / "share/man/man1/grafic.1").is_file())
         for command in ("gl", "tex", "mesh", "view", "lsp"):
             subprocess.run([str(binary), command, "--help"], check=True, capture_output=True)
-        self.assertEqual({p.name for p in (prefix / "bin").iterdir()}, {"fuse"})
+        self.assertEqual({p.name for p in (prefix / "bin").iterdir()}, {"grafic"})
         self.assertFalse((prefix / "include").exists())
         self.assertFalse((prefix / "lib").exists())
         self.assertEqual(list(self.temporary.iterdir()), [])
-        self.assertIn("Installed Fuse v0.1.0", result.stdout)
+        self.assertIn("Installed Grafic v0.1.0", result.stdout)
         self.assertIn(f"Add {prefix}/bin to your PATH", result.stdout)
         self.assertEqual(list(self.home.glob(".*rc")), [])
 
@@ -117,11 +117,11 @@ else:
             with self.subTest(arguments=arguments):
                 result = self.run_installer(*arguments)
                 self.assertNotEqual(result.returncode, 0)
-                self.assertIn("fuse installer:", result.stderr)
+                self.assertIn("grafic installer:", result.stderr)
         self.assertFalse(self.log.exists())
 
     def test_download_failure_leaves_no_installation(self):
-        self.env["FUSE_TEST_DOWNLOAD_FAILURE"] = "1"
+        self.env["GRAFIC_TEST_DOWNLOAD_FAILURE"] = "1"
         for arguments in ((), ("--version", "v0.1.0")):
             with self.subTest(arguments=arguments):
                 result = self.run_installer(*arguments)

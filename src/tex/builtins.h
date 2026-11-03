@@ -1,8 +1,8 @@
-#ifndef FUSE_TEX_BUILTINS_H
-#define FUSE_TEX_BUILTINS_H
+#ifndef GRAFIC_TEX_BUILTINS_H
+#define GRAFIC_TEX_BUILTINS_H
 
-#include "fuse/dialect.h"
+#include "grafic/dialect.h"
 
-const FuseDialect *fusetex_dialect(void);
+const GraficDialect *grafictex_dialect(void);
 
 #endif

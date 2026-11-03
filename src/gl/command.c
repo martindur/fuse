@@ -1,10 +1,10 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include "cli/commands.h"
-#include "fuse/compile.h"
+#include "grafic/compile.h"
 #include "glsl_emit.h"
 #include "glsl_stdlib.h"
-#include "fuse/help.h"
+#include "grafic/help.h"
 
 #include <errno.h>
 #include <stdint.h>
@@ -17,9 +17,9 @@ static void usage(FILE *output)
 {
     fprintf(
         output,
-        "Usage: fuse gl [OPTION]... < source.fgl > shader.glsl\n"
+        "Usage: grafic gl [OPTION]... < source.gfrag > shader.glsl\n"
         "\n"
-        "Compile a FuseGL program to a GLSL fragment shader.\n"
+        "Compile a GraficGL program to a GLSL fragment shader.\n"
         "\n"
         "Options:\n"
         "  --preview-line N  compile the intermediate result at source line N\n"
@@ -27,8 +27,8 @@ static void usage(FILE *output)
         "  -h, --help         show this help\n"
         "\n"
         "Examples:\n"
-        "  fuse gl < main.fgl > main.frag\n"
-        "  fuse gl --preview-line 4 < main.fgl > preview.frag\n"
+        "  grafic gl < main.gfrag > main.frag\n"
+        "  grafic gl --preview-line 4 < main.gfrag > preview.frag\n"
     );
 }
 
@@ -62,9 +62,9 @@ static bool parse_line(const char *text, size_t *out_line)
     return true;
 }
 
-int fuse_gl_main(int argument_count, char **arguments)
+int grafic_gl_main(int argument_count, char **arguments)
 {
-    const FuseDialect *dialect = fusegl_dialect();
+    const GraficDialect *dialect = graficgl_dialect();
 
     size_t preview_line = 0;
 
@@ -100,7 +100,7 @@ int fuse_gl_main(int argument_count, char **arguments)
     size_t capacity = 0;
 
     /*
-     * A NUL byte cannot be part of FuseGL source, so getdelim reads until
+     * A NUL byte cannot be part of GraficGL source, so getdelim reads until
      * end-of-file and gives us the complete input as one owned buffer.
      */
     ssize_t length = getdelim(
@@ -112,9 +112,9 @@ int fuse_gl_main(int argument_count, char **arguments)
 
     if (length < 0) {
         if (ferror(stdin)) {
-            perror("fuse gl: failed to read stdin");
+            perror("grafic gl: failed to read stdin");
         } else {
-            fprintf(stderr, "fuse gl: expected an expression on stdin\n");
+            fprintf(stderr, "grafic gl: expected an expression on stdin\n");
         }
 
         free(source);
@@ -126,7 +126,7 @@ int fuse_gl_main(int argument_count, char **arguments)
     CompileError compile_error;
     if (!prepare_program(source, (size_t)length, dialect, preview_line, &prepared, &compile_error)) {
         SourcePosition position = source_position_at(source, (size_t)length, compile_error.span.offset);
-        fprintf(stderr, "fuse gl: %s error at %zu:%zu: %s\n", compile_error.kind,
+        fprintf(stderr, "grafic gl: %s error at %zu:%zu: %s\n", compile_error.kind,
             position.line, position.column, compile_error.message);
         goto cleanup;
     }
@@ -137,12 +137,12 @@ int fuse_gl_main(int argument_count, char **arguments)
             &prepared.semantic_info,
             source
         )) {
-        perror("fuse gl: failed to write GLSL");
+        perror("grafic gl: failed to write GLSL");
         goto cleanup;
     }
 
     if (fflush(stdout) == EOF) {
-        perror("fuse gl: failed to flush stdout");
+        perror("grafic gl: failed to flush stdout");
         goto cleanup;
     }
 

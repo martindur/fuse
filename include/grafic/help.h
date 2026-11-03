@@ -1,7 +1,7 @@
-#ifndef FUSE_HELP_H
-#define FUSE_HELP_H
+#ifndef GRAFIC_HELP_H
+#define GRAFIC_HELP_H
 
-#include "fuse/builtins.h"
+#include "grafic/builtins.h"
 
 #include <stdio.h>
 

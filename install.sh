@@ -5,14 +5,14 @@ usage() {
     cat <<'EOF'
 Usage: sh install.sh [--version TAG] [--prefix PATH]
 
-Build and install Fuse commands and man pages from a GitHub release.
+Build and install Grafic commands and man pages from a GitHub release.
 Defaults: latest release, prefix $HOME/.local.
 Requires: make, cc (C17), ar, libpng, GLFW 3, OpenGL headers, pkg-config, curl, and tar.
 EOF
 }
 
 fail() {
-    printf 'fuse installer: %s\n' "$*" >&2
+    printf 'grafic installer: %s\n' "$*" >&2
     exit 1
 }
 
@@ -90,22 +90,22 @@ main() {
         validate_version "$version"
     fi
 
-    work_dir=$(mktemp -d "${TMPDIR:-/tmp}/fuse-install.XXXXXXXX")
+    work_dir=$(mktemp -d "${TMPDIR:-/tmp}/grafic-install.XXXXXXXX")
     trap 'rm -rf -- "$work_dir"' 0
     trap 'exit 1' HUP INT TERM
 
-    printf 'Downloading Fuse %s...\n' "$version"
+    printf 'Downloading Grafic %s...\n' "$version"
     curl -fsSL "$repository/archive/refs/tags/$version.tar.gz" \
         -o "$work_dir/source.tar.gz" || fail "could not download release $version"
     mkdir "$work_dir/source"
     tar -xzf "$work_dir/source.tar.gz" --strip-components=1 -C "$work_dir/source"
 
-    printf 'Building Fuse %s...\n' "$version"
+    printf 'Building Grafic %s...\n' "$version"
     unset CAPABILITIES MAKEFLAGS MFLAGS
     make -C "$work_dir/source" all
     make -C "$work_dir/source" PREFIX="$prefix" install
 
-    printf '\nInstalled Fuse %s to %s/bin\n' "$version" "$prefix"
+    printf '\nInstalled Grafic %s to %s/bin\n' "$version" "$prefix"
     case ":${PATH:-}:" in
         *":$prefix/bin:"*) ;;
         *) printf 'Add %s/bin to your PATH to use the installed commands.\n' "$prefix" ;;

@@ -1,4 +1,4 @@
-"""Release preparation and publication for Fuse."""
+"""Release preparation and publication for Grafic."""
 import argparse
 from datetime import date
 import json
@@ -43,7 +43,7 @@ def fragments(root):
 def check(root):
     version = (root / "VERSION").read_text().strip()
     parse_version(version)
-    metadata = json.loads((root / "tree-sitter-fuse/tree-sitter.json").read_text())
+    metadata = json.loads((root / "tree-sitter-grafic/tree-sitter.json").read_text())
     if metadata["metadata"]["version"] != version:
         raise ValueError("VERSION and Tree-sitter metadata disagree")
     history = re.findall(r"^## \[([^\]]+)\]", (root / "CHANGELOG.md").read_text(), re.MULTILINE)
@@ -88,7 +88,7 @@ def prepare(root, version, today=None):
     heading, separator, history = changelog.partition("\n\n")
     if heading != "# Changelog" or not separator:
         raise ValueError("CHANGELOG.md must start with '# Changelog' and a blank line")
-    metadata_path = root / "tree-sitter-fuse/tree-sitter.json"
+    metadata_path = root / "tree-sitter-grafic/tree-sitter.json"
     metadata = json.loads(metadata_path.read_text())
     metadata["metadata"]["version"] = version
     (root / "VERSION").write_text(version + "\n")
@@ -133,12 +133,12 @@ def open_pr(version):
     run("git", "var", "GIT_COMMITTER_IDENT")
     notes = prepare(ROOT, version)
     run("git", "switch", "-c", branch)
-    run("git", "add", "--", "VERSION", "CHANGELOG.md", "tree-sitter-fuse/tree-sitter.json", "changes")
+    run("git", "add", "--", "VERSION", "CHANGELOG.md", "tree-sitter-grafic/tree-sitter.json", "changes")
     run("git", "commit", "-m", f"Prepare release {tag}")
     run("git", "push", "origin", branch)
-    with tempfile.TemporaryDirectory(prefix="fuse-release-") as directory:
+    with tempfile.TemporaryDirectory(prefix="grafic-release-") as directory:
         body = Path(directory) / "body.md"
-        body.write_text(f"Release Fuse {tag}. Merging this PR runs checks, then tags and publishes the merged commit.\n\n" + notes)
+        body.write_text(f"Release Grafic {tag}. Merging this PR runs checks, then tags and publishes the merged commit.\n\n" + notes)
         url = run("gh", "pr", "create", "--repo", REPOSITORY, "--base", "main", "--head", branch,
                   "--title", f"Release {tag}", "--body-file", str(body))
     print(url)
@@ -169,11 +169,11 @@ def publish(version):
     if not existing:
         run("git", "tag", tag, commit)
         run("git", "push", "origin", f"refs/tags/{tag}")
-    with tempfile.TemporaryDirectory(prefix="fuse-release-") as directory:
+    with tempfile.TemporaryDirectory(prefix="grafic-release-") as directory:
         path = Path(directory) / "notes.md"
         path.write_text(notes)
         print(run("gh", "release", "create", tag, "--repo", REPOSITORY, "--verify-tag",
-                  "--title", f"Fuse {tag}", "--notes-file", str(path), "--latest"))
+                  "--title", f"Grafic {tag}", "--notes-file", str(path), "--latest"))
 
 
 def main():
@@ -182,7 +182,7 @@ def main():
     commands.add_parser("check")
     for command in ("open-pr", "prepare", "verify", "publish"):
         subparser = commands.add_parser(command)
-        subparser.add_argument("version", nargs="?", default=os.environ.get("FUSE_RELEASE_VERSION", ""))
+        subparser.add_argument("version", nargs="?", default=os.environ.get("GRAFIC_RELEASE_VERSION", ""))
     arguments = parser.parse_args()
     try:
         if arguments.command == "check":

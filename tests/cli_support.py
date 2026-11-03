@@ -4,7 +4,7 @@ import re
 import subprocess
 import unittest
 
-URI = "file:///test/main.fuse"
+URI = "file:///test/main.grafic"
 
 def notification(method, params=None):
     return {"jsonrpc": "2.0", "method": method, "params": params or {}}
@@ -14,7 +14,7 @@ def request(method, request_id, params=None):
     return {**notification(method, params), "id": request_id}
 
 
-def opened(text, language_id="fusegl", uri=URI):
+def opened(text, language_id="graficgl", uri=URI):
     return notification("textDocument/didOpen", {
         "textDocument": {
             "uri": uri, "languageId": language_id, "version": 1, "text": text,
@@ -86,7 +86,7 @@ class CompilerTests(unittest.TestCase):
             packets.append(json.loads(body[:length]))
             remaining = body[length:]
         responses = {packet["id"]: packet for packet in packets if "id" in packet}
-        self.assertEqual(responses[1]["result"]["serverInfo"]["name"], "fuse")
+        self.assertEqual(responses[1]["result"]["serverInfo"]["name"], "grafic")
         self.assertIsNone(responses[99]["result"])
         return packets, responses
 

@@ -11,15 +11,15 @@ from scripts import release
 
 class ReleaseTests(unittest.TestCase):
     def setUp(self):
-        self.directory = tempfile.TemporaryDirectory(prefix="fuse-release-test-")
+        self.directory = tempfile.TemporaryDirectory(prefix="grafic-release-test-")
         self.addCleanup(self.directory.cleanup)
         self.root = Path(self.directory.name)
         (self.root / "changes").mkdir()
         (self.root / "changes/README.md").write_text("Fragment instructions\n")
         (self.root / "VERSION").write_text("0.1.0\n")
         (self.root / "CHANGELOG.md").write_text("# Changelog\n\n")
-        (self.root / "tree-sitter-fuse").mkdir()
-        self.metadata = self.root / "tree-sitter-fuse/tree-sitter.json"
+        (self.root / "tree-sitter-grafic").mkdir()
+        self.metadata = self.root / "tree-sitter-grafic/tree-sitter.json"
         self.metadata.write_text(json.dumps({"metadata": {"version": "0.1.0", "license": "MIT"}}))
 
     def fragment(self, name="comments.added.md", text="Support line comments."):
@@ -44,10 +44,10 @@ class ReleaseTests(unittest.TestCase):
 
     def test_next_release_preserves_history_and_bumps_both_versions(self):
         first = self.prepare()
-        self.fragment("formatter.added.md", "Format Fuse programs.")
+        self.fragment("formatter.added.md", "Format Grafic programs.")
         second = release.prepare(self.root, "0.2.0", today="2026-11-01")
         self.assertEqual(release.check(self.root), "0.2.0")
-        self.assertIn("Format Fuse programs.", second)
+        self.assertIn("Format Grafic programs.", second)
         self.assertNotIn("Support line comments.", second)
         self.assertEqual(release.release_notes(self.root, "0.1.0"), first)
         self.assertIn("## [0.2.0] - 2026-11-01", (self.root / "CHANGELOG.md").read_text())
@@ -167,7 +167,7 @@ class ReleaseTests(unittest.TestCase):
 
     def test_prepare_merge_and_publish_with_real_local_git(self):
         self.fragment()
-        remote_directory = tempfile.TemporaryDirectory(prefix="fuse-release-remote-")
+        remote_directory = tempfile.TemporaryDirectory(prefix="grafic-release-remote-")
         self.addCleanup(remote_directory.cleanup)
         original_run = release.run
         github_calls = []

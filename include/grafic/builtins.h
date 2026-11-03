@@ -1,7 +1,7 @@
-#ifndef FUSE_BUILTINS_H
-#define FUSE_BUILTINS_H
+#ifndef GRAFIC_BUILTINS_H
+#define GRAFIC_BUILTINS_H
 
-#include "fuse/value_type.h"
+#include "grafic/value_type.h"
 
 #include <stddef.h>
 

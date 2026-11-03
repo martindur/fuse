@@ -1,5 +1,5 @@
-#ifndef FUSE_SOURCE_H
-#define FUSE_SOURCE_H
+#ifndef GRAFIC_SOURCE_H
+#define GRAFIC_SOURCE_H
 
 #include <stddef.h>
 

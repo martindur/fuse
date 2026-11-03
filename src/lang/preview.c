@@ -1,4 +1,4 @@
-#include "fuse/preview.h"
+#include "grafic/preview.h"
 
 #include <stddef.h>
 #include <stdint.h>

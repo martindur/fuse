@@ -40,16 +40,16 @@ typedef struct {
 
 static void usage(FILE *output)
 {
-    fputs("Usage: fuse view [OPTION]... FILE.fgl|FILE.ftex|FILE.fmesh\n\n"
-        "Preview Fuse shader (.fgl), texture (.ftex), and mesh (.fmesh) source files with live reload.\n\n"
+    fputs("Usage: grafic view [OPTION]... FILE.gfrag|FILE.gtex|FILE.gmesh\n\n"
+        "Preview Grafic shader (.gfrag), texture (.gtex), and mesh (.gmesh) source files with live reload.\n\n"
         "Options:\n"
         "  --width N           initial window width (default: 960)\n"
         "  --height N          initial window height (default: 640)\n"
         "  --preview-line N    display the intermediate result on a line\n"
-        "  --tex0 FILE.ftex    bind a procedural texture to tex0\n"
-        "  --tex1 FILE.ftex    bind a procedural texture to tex1\n"
-        "  --tex2 FILE.ftex    bind a procedural texture to tex2\n"
-        "  --tex3 FILE.ftex    bind a procedural texture to tex3\n"
+        "  --tex0 FILE.gtex    bind a procedural texture to tex0\n"
+        "  --tex1 FILE.gtex    bind a procedural texture to tex1\n"
+        "  --tex2 FILE.gtex    bind a procedural texture to tex2\n"
+        "  --tex3 FILE.gtex    bind a procedural texture to tex3\n"
         "  --texture-width N   generated texture width (default: 512)\n"
         "  --texture-height N  generated texture height (default: 512)\n"
         "  --seed N            texture noise seed (default: 42)\n"
@@ -111,7 +111,7 @@ static void update_title(const ViewApp *app)
         : app->selected_texture < 0 ? "shader" : view_texture_name((size_t)app->selected_texture);
     const char *controls = app->kind == VIEW_MESH ? "W: wireframe  U: UV colors | "
         : app->kind == VIEW_TEXTURE ? "" : "1: shader  2-5: textures | ";
-    snprintf(title, sizeof(title), "Fuse%s%s: %s [%s] | %sSpace: %s | Esc: close",
+    snprintf(title, sizeof(title), "Grafic%s%s: %s [%s] | %sSpace: %s | Esc: close",
         has_errors(app) ? " [error]" : "", app->paused ? " [paused]" : "",
         name, output, controls, app->paused ? "resume" : "pause");
     glfwSetWindowTitle(app->renderer.window, title);
@@ -145,7 +145,7 @@ static void on_key(GLFWwindow *window, int key, int scancode, int action, int mo
 static void report_error(ViewApp *app, ViewInput *input, const char *message)
 {
     if (strcmp(input->error, message) != 0) {
-        fprintf(stderr, "fuse view: %s: %s\n", input->label, message);
+        fprintf(stderr, "grafic view: %s: %s\n", input->label, message);
     }
     snprintf(input->error, sizeof(input->error), "%s", message);
     if (app->renderer.window != NULL) {
@@ -195,7 +195,7 @@ static void reload_shader(ViewApp *app)
     app->shader_pending = false;
     app->primary.error[0] = '\0';
     update_title(app);
-    fprintf(stderr, "fuse view: %s: loaded\n", app->primary.path);
+    fprintf(stderr, "grafic view: %s: loaded\n", app->primary.path);
 }
 
 static bool reload_texture(ViewApp *app, size_t slot)
@@ -218,13 +218,13 @@ static bool reload_texture(ViewApp *app, size_t slot)
     }
     input->error[0] = '\0';
     update_title(app);
-    fprintf(stderr, "fuse view: %s: %s: loaded\n", input->label, input->path);
+    fprintf(stderr, "grafic view: %s: %s: loaded\n", input->label, input->path);
     return true;
 }
 
 static void reload_mesh(ViewApp *app)
 {
-    FuseMesh mesh = {0};
+    GraficMesh mesh = {0};
     CompileError compile_error;
     if (!view_mesh_render(&app->primary.source, app->preview_line, &mesh, &compile_error)) {
         report_compile_error(app, &app->primary, &compile_error);
@@ -232,7 +232,7 @@ static void reload_mesh(ViewApp *app)
     }
     ViewRenderError render_error;
     bool uploaded = view_renderer_set_mesh(&app->renderer, &mesh, &render_error);
-    fusemesh_mesh_destroy(&mesh);
+    graficmesh_mesh_destroy(&mesh);
     if (!uploaded) {
         char message[4608];
         snprintf(message, sizeof(message), "%s: %s", app->primary.path, render_error.message);
@@ -241,7 +241,7 @@ static void reload_mesh(ViewApp *app)
     }
     app->primary.error[0] = '\0';
     update_title(app);
-    fprintf(stderr, "fuse view: mesh: %s: loaded\n", app->primary.path);
+    fprintf(stderr, "grafic view: mesh: %s: loaded\n", app->primary.path);
 }
 
 static void reload_primary(ViewApp *app)
@@ -253,7 +253,7 @@ static void reload_primary(ViewApp *app)
     }
 }
 
-int fuse_view_main(int argc, char **argv)
+int grafic_view_main(int argc, char **argv)
 {
     ViewApp app = {.primary = {.label = "shader"}, .shader_pending = true, .selected_texture = -1,
         .texture_config = {.width = 512, .height = 512, .seed = 42}};
@@ -275,7 +275,7 @@ int fuse_view_main(int argc, char **argv)
             && argument[5] >= '0' && argument[5] < '0' + VIEW_TEXTURE_COUNT && argument[6] == '\0') {
             size_t slot = (size_t)(argument[5] - '0');
             if (app.textures[slot].path != NULL || index + 1 >= argc || argv[index + 1][0] == '-') {
-                fprintf(stderr, "fuse view: invalid or repeated %s\n", argument);
+                fprintf(stderr, "grafic view: invalid or repeated %s\n", argument);
                 usage(stderr);
                 return EXIT_FAILURE;
             }
@@ -283,7 +283,7 @@ int fuse_view_main(int argc, char **argv)
         } else if (!files_only && strcmp(argument, "--seed") == 0) {
             uintmax_t seed;
             if (index + 1 >= argc || !parse_unsigned(argv[++index], &seed) || seed > UINT64_MAX) {
-                fprintf(stderr, "fuse view: invalid --seed\n");
+                fprintf(stderr, "grafic view: invalid --seed\n");
                 usage(stderr);
                 return EXIT_FAILURE;
             }
@@ -297,7 +297,7 @@ int fuse_view_main(int argc, char **argv)
                 : strcmp(argument, "--texture-height") == 0 ? &app.texture_config.height : &app.preview_line;
             if (index + 1 >= argc || !parse_positive(argv[++index], value)
                 || (value != &app.preview_line && *value > INT_MAX)) {
-                fprintf(stderr, "fuse view: invalid %s\n", argument);
+                fprintf(stderr, "grafic view: invalid %s\n", argument);
                 usage(stderr);
                 return EXIT_FAILURE;
             }
@@ -313,17 +313,17 @@ int fuse_view_main(int argc, char **argv)
         return EXIT_FAILURE;
     }
     const char *extension = strrchr(app.primary.path, '.');
-    if (extension != NULL && strcmp(extension, ".fgl") == 0) {
+    if (extension != NULL && strcmp(extension, ".gfrag") == 0) {
         app.kind = VIEW_SHADER;
-    } else if (extension != NULL && strcmp(extension, ".ftex") == 0) {
+    } else if (extension != NULL && strcmp(extension, ".gtex") == 0) {
         app.kind = VIEW_TEXTURE;
         app.primary.label = "texture";
         app.selected_texture = 0;
-    } else if (extension != NULL && strcmp(extension, ".fmesh") == 0) {
+    } else if (extension != NULL && strcmp(extension, ".gmesh") == 0) {
         app.kind = VIEW_MESH;
         app.primary.label = "mesh";
     } else {
-        fprintf(stderr, "fuse view: unsupported source extension; expected .fgl, .ftex, or .fmesh\n");
+        fprintf(stderr, "grafic view: unsupported source extension; expected .gfrag, .gtex, or .gmesh\n");
         return EXIT_FAILURE;
     }
     for (size_t slot = 0; slot < VIEW_TEXTURE_COUNT; slot += 1) {
@@ -332,11 +332,11 @@ int fuse_view_main(int argc, char **argv)
         }
         const char *texture_extension = strrchr(app.textures[slot].path, '.');
         if (app.kind != VIEW_SHADER) {
-            fprintf(stderr, "fuse view: --texN inputs require a shader file\n");
+            fprintf(stderr, "grafic view: --texN inputs require a shader file\n");
             return EXIT_FAILURE;
         }
-        if (texture_extension == NULL || strcmp(texture_extension, ".ftex") != 0) {
-            fprintf(stderr, "fuse view: --%s requires a .ftex source file\n", app.textures[slot].label);
+        if (texture_extension == NULL || strcmp(texture_extension, ".gtex") != 0) {
+            fprintf(stderr, "grafic view: --%s requires a .gtex source file\n", app.textures[slot].label);
             return EXIT_FAILURE;
         }
     }
@@ -354,13 +354,13 @@ int fuse_view_main(int argc, char **argv)
         }
     }
     ViewRenderError render_error;
-    if (!view_renderer_init(&app.renderer, (int)width, (int)height, "Fuse", true, &render_error)) {
-        fprintf(stderr, "fuse view: %s\n", render_error.message);
+    if (!view_renderer_init(&app.renderer, (int)width, (int)height, "Grafic", true, &render_error)) {
+        fprintf(stderr, "grafic view: %s\n", render_error.message);
         goto cleanup;
     }
     if (has_textures && (app.texture_config.width > (size_t)app.renderer.texture_limit
             || app.texture_config.height > (size_t)app.renderer.texture_limit)) {
-        fprintf(stderr, "fuse view: texture dimensions exceed GPU limit (%d)\n", app.renderer.texture_limit);
+        fprintf(stderr, "grafic view: texture dimensions exceed GPU limit (%d)\n", app.renderer.texture_limit);
         goto cleanup;
     }
     glfwSetWindowUserPointer(app.renderer.window, &app);

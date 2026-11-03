@@ -1,7 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include "dialects.h"
-#include "fuse/lsp.h"
+#include "grafic/lsp.h"
 #include "json.h"
 
 #include <stdbool.h>
@@ -22,7 +22,7 @@ typedef struct {
     bool framed;
 } Session;
 
-static bool next_packet(const char **cursor, const char *end, FuseJsonValue *out)
+static bool next_packet(const char **cursor, const char *end, GraficJsonValue *out)
 {
     const char *header_end = strstr(*cursor, "\r\n\r\n");
     size_t length = 0;
@@ -34,7 +34,7 @@ static bool next_packet(const char **cursor, const char *end, FuseJsonValue *out
 
     const char *body = header_end + 4;
 
-    if ((size_t)(end - body) < length || !fuse_json_parse(body, length, out)) {
+    if ((size_t)(end - body) < length || !grafic_json_parse(body, length, out)) {
         return false;
     }
 
@@ -43,7 +43,7 @@ static bool next_packet(const char **cursor, const char *end, FuseJsonValue *out
 }
 
 static Session run_session(
-    const FuseDialect *dialect,
+    const GraficDialect *dialect,
     const char *const *messages,
     size_t count
 )
@@ -61,7 +61,7 @@ static Session run_session(
         }
 
         if (written && fflush(input) == 0 && fseek(input, 0, SEEK_SET) == 0) {
-            session.status = fuse_lsp_run(&dialect, 1, input, output, NULL);
+            session.status = grafic_lsp_run(&dialect, 1, input, output, NULL);
         }
     }
 
@@ -75,7 +75,7 @@ static Session run_session(
         session.framed = true;
 
         while (cursor < end) {
-            FuseJsonValue packet;
+            GraficJsonValue packet;
 
             if (!next_packet(&cursor, end, &packet)) {
                 session.framed = false;
@@ -87,7 +87,7 @@ static Session run_session(
     return session;
 }
 
-static bool contains(FuseJsonValue value, const char *text)
+static bool contains(GraficJsonValue value, const char *text)
 {
     size_t length = strlen(text);
 
@@ -104,17 +104,17 @@ static bool contains(FuseJsonValue value, const char *text)
     return false;
 }
 
-static bool field_string_is(FuseJsonValue object, const char *field, const char *expected)
+static bool field_string_is(GraficJsonValue object, const char *field, const char *expected)
 {
-    FuseJsonValue value;
+    GraficJsonValue value;
     char *text = NULL;
-    bool matches = fuse_json_object_get(object, field, &value)
-        && fuse_json_string_copy(value, &text) && strcmp(text, expected) == 0;
+    bool matches = grafic_json_object_get(object, field, &value)
+        && grafic_json_string_copy(value, &text) && strcmp(text, expected) == 0;
     free(text);
     return matches;
 }
 
-static FuseJsonValue result_for(const Session *session, int id)
+static GraficJsonValue result_for(const Session *session, int id)
 {
     const char *cursor = session->output;
     const char *end = cursor + session->length;
@@ -122,33 +122,33 @@ static FuseJsonValue result_for(const Session *session, int id)
     snprintf(expected, sizeof(expected), "%d", id);
 
     while (cursor < end) {
-        FuseJsonValue packet;
-        FuseJsonValue packet_id;
-        FuseJsonValue result;
+        GraficJsonValue packet;
+        GraficJsonValue packet_id;
+        GraficJsonValue result;
 
         if (!next_packet(&cursor, end, &packet)) {
             break;
         }
 
-        if (fuse_json_object_get(packet, "id", &packet_id)
+        if (grafic_json_object_get(packet, "id", &packet_id)
             && packet_id.length == strlen(expected)
             && contains(packet_id, expected)
-            && fuse_json_object_get(packet, "result", &result)) {
+            && grafic_json_object_get(packet, "result", &result)) {
             return result;
         }
     }
 
-    return (FuseJsonValue){0};
+    return (GraficJsonValue){0};
 }
 
-static FuseJsonValue diagnostics_for(const Session *session, size_t index)
+static GraficJsonValue diagnostics_for(const Session *session, size_t index)
 {
     const char *cursor = session->output;
     const char *end = cursor + session->length;
     size_t found = 0;
 
     while (cursor < end) {
-        FuseJsonValue packet;
+        GraficJsonValue packet;
 
         if (!next_packet(&cursor, end, &packet)) {
             break;
@@ -156,18 +156,18 @@ static FuseJsonValue diagnostics_for(const Session *session, size_t index)
 
         if (field_string_is(packet, "method", "textDocument/publishDiagnostics")) {
             if (found++ == index) {
-                FuseJsonValue params;
-                FuseJsonValue diagnostics;
+                GraficJsonValue params;
+                GraficJsonValue diagnostics;
 
-                if (fuse_json_object_get(packet, "params", &params)
-                    && fuse_json_object_get(params, "diagnostics", &diagnostics)) {
+                if (grafic_json_object_get(packet, "params", &params)
+                    && grafic_json_object_get(params, "diagnostics", &diagnostics)) {
                     return diagnostics;
                 }
             }
         }
     }
 
-    return (FuseJsonValue){0};
+    return (GraficJsonValue){0};
 }
 
 static bool check(bool passed, const char *name, const Session *session)
@@ -205,10 +205,10 @@ static bool test_document_lifecycle(void)
     };
     Session session = run_session(&TEST_POINT_DIALECT, MESSAGES,
         sizeof(MESSAGES) / sizeof(MESSAGES[0]));
-    FuseJsonValue completion = result_for(&session, 2);
-    FuseJsonValue hover = result_for(&session, 3);
+    GraficJsonValue completion = result_for(&session, 2);
+    GraficJsonValue hover = result_for(&session, 3);
     bool passed = session.status == 0 && session.framed
-        && contains(result_for(&session, 1), "\"name\":\"fuse\"")
+        && contains(result_for(&session, 1), "\"name\":\"grafic\"")
         && contains(diagnostics_for(&session, 0), "program result must be vec4")
         && contains(diagnostics_for(&session, 0), "\"source\":\"test-point\"")
         && contains(completion, "\"label\":\"shift\"")
@@ -221,15 +221,15 @@ static bool test_document_lifecycle(void)
         && contains(hover, "```test-point")
         && contains(diagnostics_for(&session, 1), "[]")
         && contains(diagnostics_for(&session, 2), "[]")
-        && fuse_json_type(result_for(&session, 5)) == FUSE_JSON_NULL
-        && fuse_json_type(result_for(&session, 99)) == FUSE_JSON_NULL;
+        && grafic_json_type(result_for(&session, 5)) == GRAFIC_JSON_NULL
+        && grafic_json_type(result_for(&session, 99)) == GRAFIC_JSON_NULL;
     passed = check(passed, "document lifecycle, catalog, and identity", &session);
     free(session.output);
     return passed;
 }
 
 static bool test_completion(
-    const FuseDialect *dialect,
+    const GraficDialect *dialect,
     const char *source,
     const char *expected,
     const char *excluded
@@ -246,7 +246,7 @@ static bool test_completion(
         strlen(source));
     const char *messages[] = {INITIALIZE, open, completion, SHUTDOWN, EXIT};
     Session session = run_session(dialect, messages, sizeof(messages) / sizeof(messages[0]));
-    FuseJsonValue result = result_for(&session, 2);
+    GraficJsonValue result = result_for(&session, 2);
     bool passed = check(session.status == 0 && session.framed
         && contains(result, expected) && !contains(result, excluded), source, &session);
     free(session.output);
@@ -269,7 +269,7 @@ static bool test_object_diagnostics_and_hover(void)
     Session session = run_session(&TEST_OBJECT_DIALECT, MESSAGES,
         sizeof(MESSAGES) / sizeof(MESSAGES[0]));
     bool passed = check(session.status == 0 && session.framed
-        && contains(result_for(&session, 1), "\"name\":\"fuse\"")
+        && contains(result_for(&session, 1), "\"name\":\"grafic\"")
         && contains(diagnostics_for(&session, 0), "[]")
         && contains(diagnostics_for(&session, 1), "program result must be mesh")
         && contains(result_for(&session, 3), "resize(mesh, float) -> mesh")
@@ -289,7 +289,7 @@ static bool test_configuration_and_lifecycle_errors(void)
     passed = check(empty.status == 0 && empty.framed, "clean EOF", &empty) && passed;
     free(empty.output);
 
-    FuseDialect invalid = TEST_OBJECT_DIALECT;
+    GraficDialect invalid = TEST_OBJECT_DIALECT;
     invalid.required_result_type = VALUE_TYPE_INVALID;
     Session bad_type = run_session(&invalid, NULL, 0);
     passed = check(bad_type.status != 0, "invalid result type", &bad_type) && passed;
@@ -309,18 +309,18 @@ static bool test_configuration_and_lifecycle_errors(void)
     Session no_extension = run_session(&invalid, NULL, 0);
     passed = check(no_extension.status != 0, "missing extension", &no_extension) && passed;
     free(no_extension.output);
-    passed = fuse_lsp_run(NULL, 0, NULL, NULL, NULL) != 0 && passed;
+    passed = grafic_lsp_run(NULL, 0, NULL, NULL, NULL) != 0 && passed;
 
     FILE *input = tmpfile();
     FILE *output = tmpfile();
     if (input == NULL || output == NULL) {
         passed = false;
     } else {
-        const FuseDialect *duplicates[] = {&TEST_OBJECT_DIALECT, &TEST_OBJECT_DIALECT};
-        passed = fuse_lsp_run(duplicates, 2, input, output, NULL) != 0 && passed;
-        passed = fuse_lsp_run(duplicates, 0, input, output, NULL) != 0 && passed;
-        const FuseDialect *missing[] = {NULL};
-        passed = fuse_lsp_run(missing, 1, input, output, NULL) != 0 && passed;
+        const GraficDialect *duplicates[] = {&TEST_OBJECT_DIALECT, &TEST_OBJECT_DIALECT};
+        passed = grafic_lsp_run(duplicates, 2, input, output, NULL) != 0 && passed;
+        passed = grafic_lsp_run(duplicates, 0, input, output, NULL) != 0 && passed;
+        const GraficDialect *missing[] = {NULL};
+        passed = grafic_lsp_run(missing, 1, input, output, NULL) != 0 && passed;
     }
     if (input != NULL) {
         fclose(input);
@@ -348,7 +348,7 @@ static bool test_transport_errors(void)
         FILE *output = tmpfile();
 
         if (input == NULL || output == NULL
-            || fuse_lsp_run((const FuseDialect *[]){&TEST_OBJECT_DIALECT}, 1, input, output, NULL) == 0) {
+            || grafic_lsp_run((const GraficDialect *[]){&TEST_OBJECT_DIALECT}, 1, input, output, NULL) == 0) {
             fprintf(stderr, "FAIL malformed/truncated packet %zu\n", i);
             passed = false;
         }
@@ -370,7 +370,7 @@ static bool test_transport_errors(void)
     } else {
         fprintf(input, "Content-Length: %zu\r\n\r\n%s", strlen(INITIALIZE), INITIALIZE);
         rewind(input);
-        passed = fuse_lsp_run((const FuseDialect *[]){&TEST_POINT_DIALECT}, 1, input, output, NULL) != 0 && passed;
+        passed = grafic_lsp_run((const GraficDialect *[]){&TEST_POINT_DIALECT}, 1, input, output, NULL) != 0 && passed;
     }
 
     if (input != NULL) {

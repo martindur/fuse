@@ -37,7 +37,7 @@ void view_renderer_destroy_mesh(ViewRenderer *renderer)
     destroy_mesh(&renderer->mesh);
 }
 
-static bool mesh_bounds(const FuseMesh *mesh, double center[2], double *extent)
+static bool mesh_bounds(const GraficMesh *mesh, double center[2], double *extent)
 {
     if (mesh == NULL || mesh->positions == NULL || mesh->uvs == NULL || mesh->indices == NULL
         || mesh->vertex_count == 0 || mesh->index_count == 0 || mesh->index_count % 3 != 0
@@ -74,7 +74,7 @@ static bool mesh_bounds(const FuseMesh *mesh, double center[2], double *extent)
     return *extent > 0.0;
 }
 
-bool view_renderer_set_mesh(ViewRenderer *renderer, const FuseMesh *mesh, ViewRenderError *error)
+bool view_renderer_set_mesh(ViewRenderer *renderer, const GraficMesh *mesh, ViewRenderError *error)
 {
     *error = (ViewRenderError){0};
     double center[2];

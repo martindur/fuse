@@ -253,7 +253,7 @@ static const GlobalSignature GLOBALS[] = {
 };
 
 static const SymbolDocumentation DOCUMENTATION[] = {
-    {"show", "Selects this intermediate value in fuse view. The last show() in each file wins; normal compilation returns the value unchanged."},
+    {"show", "Selects this intermediate value in grafic view. The last show() in each file wins; normal compilation returns the value unchanged."},
     {
         "sample",
         "Samples a texture at the input UV coordinate.",
@@ -406,7 +406,7 @@ static const SymbolDocumentation DOCUMENTATION[] = {
 
 static const char *const RESERVED_NAMES[] = {
     "fragColor",
-    "fuseUv",
+    "graficUv",
 };
 
 static const LanguageEnvironment ENVIRONMENT = {
@@ -420,9 +420,9 @@ static const LanguageEnvironment ENVIRONMENT = {
     .reserved_count = sizeof(RESERVED_NAMES) / sizeof(RESERVED_NAMES[0]),
 };
 
-static const FuseDialect DIALECT = {
-    .language_id = "fusegl",
-    .file_extension = ".fgl",
+static const GraficDialect DIALECT = {
+    .language_id = "graficgl",
+    .file_extension = ".gfrag",
     .environment = &ENVIRONMENT,
     .required_result_type = VALUE_TYPE_VEC4,
 };
@@ -547,7 +547,7 @@ bool glsl_stdlib_emit(FILE *output)
     return fputs(GLSL_STDLIB, output) != EOF;
 }
 
-const FuseDialect *fusegl_dialect(void)
+const GraficDialect *graficgl_dialect(void)
 {
     return &DIALECT;
 }
