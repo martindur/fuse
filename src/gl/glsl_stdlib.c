@@ -1,6 +1,9 @@
 #include "glsl_stdlib.h"
 
 static const BuiltinSignature BUILTINS[] = {
+    {"normalize", VALUE_TYPE_VEC3, 1, {VALUE_TYPE_VEC3}},
+    {"dot", VALUE_TYPE_FLOAT, 2, {VALUE_TYPE_VEC3, VALUE_TYPE_VEC3}},
+    {"multiply", VALUE_TYPE_VEC3, 2, {VALUE_TYPE_VEC3, VALUE_TYPE_FLOAT}},
     {"x", VALUE_TYPE_FLOAT, 1, {VALUE_TYPE_VEC3}},
     {"y", VALUE_TYPE_FLOAT, 1, {VALUE_TYPE_VEC3}},
     {"z", VALUE_TYPE_FLOAT, 1, {VALUE_TYPE_VEC3}},
@@ -249,6 +252,7 @@ static const BuiltinSignature BUILTINS[] = {
 };
 
 static const GlobalSignature GLOBALS[] = {
+    {"normal", VALUE_TYPE_VEC3},
     {"position", VALUE_TYPE_VEC3},
     {"uv", VALUE_TYPE_VEC2},
     {"resolution", VALUE_TYPE_VEC2},
@@ -260,6 +264,9 @@ static const GlobalSignature GLOBALS[] = {
 };
 
 static const SymbolDocumentation DOCUMENTATION[] = {
+    {"normal", "Unit normal of the displaced triangle in mesh-local coordinates, derived from position. Follows counterclockwise triangle winding; grid normals point toward +Y, and fullscreen normals toward +Z. This is a face normal, not an interpolated vertex normal."},
+    {"normalize", "Returns a unit vector with the same direction as a nonzero vec3."},
+    {"dot", "Returns the dot product of two vec3 vectors. For unit vectors, this is the cosine of their angle."},
     {"position", "Displaced mesh-local position, interpolated across the triangle before camera transforms. Fullscreen previews use an XY plane from -1 to 1 with Z zero."},
     {"x", "Returns the X component of a vector."},
     {"y", "Returns the Y component of a vector."},
@@ -384,7 +391,7 @@ static const SymbolDocumentation DOCUMENTATION[] = {
     },
     {
         "multiply",
-        "Multiplies two scalar values or two colors component by component.",
+        "Multiplies two scalar values or two colors component by component, or scales an RGB vector by a scalar.",
     },
     {
         "uv",
@@ -420,6 +427,7 @@ static const char *const RESERVED_NAMES[] = {
     "fragColor",
     "graficUv",
     "graficPosition",
+    "grafic_surface_normal",
 };
 
 static const LanguageEnvironment ENVIRONMENT = {
@@ -441,6 +449,14 @@ static const GraficDialect DIALECT = {
 };
 
 static const char GLSL_STDLIB[] =
+    "vec3 grafic_surface_normal(vec3 point) {\n"
+    "    vec3 direction = cross(dFdx(point), dFdy(point));\n"
+    "    float magnitude = length(direction);\n"
+    "    return magnitude > 0.0 ? direction * (gl_FrontFacing ? 1.0 : -1.0) / magnitude : vec3(0.0);\n"
+    "}\n"
+    "\n"
+    "vec3 multiply(vec3 color, float amount) { return color * amount; }\n"
+    "\n"
     "vec2 center(vec2 uv) {\n"
     "    return uv - 0.5;\n"
     "}\n"

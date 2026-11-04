@@ -37,7 +37,8 @@ static const char SHADER_MAIN_PREFIX[] =
     "\n"
     "void main() {\n"
     "    vec2 uv = graficUv;\n"
-    "    vec3 position = graficPosition;\n";
+    "    vec3 position = graficPosition;\n"
+    "    vec3 normal = grafic_surface_normal(position);\n";
 
 static const char SHADER_SUFFIX[] =
     ";\n"

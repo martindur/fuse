@@ -390,6 +390,35 @@ int main(int argc, char **argv)
     view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
     CHECK(pixel_equals(64, 64, 64, 0, 0));
 
+    /* Normal direction is local, includes displacement, and follows triangle winding. */
+    const char *normal_color = "vec4(normal.x().multiply(0.5).add(0.5), normal.y().multiply(0.5).add(0.5), normal.z().multiply(0.5).add(0.5), 1.0)";
+    CHECK(set_mesh_sources(&renderer, NULL, normal_color, &error));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    CHECK(pixel_equals(64, 64, 128, 255, 128));
+    CHECK(set_mesh_sources(&renderer, "vec3(position.x(), position.x().multiply(0.5), position.z())",
+        normal_color, &error));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    CHECK(pixel_equals(64, 64, 70, 242, 128));
+
+    const char *lit_color = "vec4(rgb(0.5, 0.5, 0.5).multiply(normal.dot(vec3(0.0, 3.0, 0.0).normalize()).clamp(0.0, 1.0).multiply(0.8).add(0.2)), 1.0)";
+    CHECK(set_mesh_sources(&renderer, NULL, lit_color, &error));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    CHECK(pixel_equals(64, 64, 128, 128, 128));
+    for (size_t index = 0; index < mesh.index_count; index += 3) {
+        uint32_t swap = mesh.indices[index + 1];
+        mesh.indices[index + 1] = mesh.indices[index + 2];
+        mesh.indices[index + 2] = swap;
+    }
+    CHECK(view_renderer_set_mesh(&renderer, &mesh, &error));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    CHECK(pixel_equals(64, 64, 26, 26, 26));
+    CHECK(set_mesh_sources(&renderer, NULL, normal_color, &error));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    CHECK(pixel_equals(64, 64, 128, 0, 128));
+    CHECK(set_source(&renderer, normal_color, &error));
+    view_renderer_draw(&renderer, 64, 64, 0.0f);
+    CHECK(pixel_equals(16, 48, 128, 128, 255));
+
     /* A farther triangle drawn last must not obscure the nearer triangle. */
     float layered_positions[] = {-1,-1,-0.5f, 1,-1,-0.5f, 0,1,-0.5f,
                                 -1,-1, 0.5f, 1,-1, 0.5f, 0,1, 0.5f};

@@ -1,5 +1,26 @@
 // Blend low water into turquoise, then fade the highest areas toward white.
-let height = position.y().add(0.15).multiply(3.333333).clamp(0.0, 1.0);
-let water = rgb(0.01, 0.05, 0.2).mix(rgb(0.05, 0.65, 0.7), height);
-let crest = height.add(-0.75).multiply(4.0).clamp(0.0, 1.0);
-vec4(water.mix(rgb(0.9, 0.98, 1.0), crest), 1.0)
+let height = position
+  .y()
+  .add(0.15)
+  .multiply(3.333333)
+  .clamp(0.0, 1.0);
+let water = rgb(0.01, 0.05, 0.2)
+  .mix(rgb(0.05, 0.65, 0.7), height);
+let crest = height
+  .add(-0.75)
+  .multiply(4.0)
+  .clamp(0.0, 1.0);
+
+// Ambient light keeps slopes visible when they face away from the light.
+let light = vec3(-0.8, 0.6, 0.4)
+  .normalize();
+let diffuse = normal
+  .dot(light)
+  .clamp(0.0, 1.0);
+let brightness = diffuse
+  .multiply(0.8)
+  .add(0.2);
+let color = water
+  .mix(rgb(0.9, 0.98, 1.0), crest)
+  .multiply(brightness);
+vec4(color, 1.0)

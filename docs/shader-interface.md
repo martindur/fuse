@@ -93,3 +93,42 @@ vec4(rgb(0.01, 0.05, 0.2).mix(rgb(0.05, 0.65, 0.7), height), 1.0)
 `amount`. Position is interpolated from the displaced triangle vertices, so
 the gradient follows the rendered surface. It uses the same local units as
 the vertex program, independent of the camera and model transforms.
+
+## Triangle normals and directional lighting
+
+Fragments expose `normal: vec3`, the unit normal of the displaced triangle in
+mesh-local coordinates. The compiler derives it from `dFdx(position)` and
+`dFdy(position)`, then corrects its sign using `gl_FrontFacing`. Hosts should
+use counterclockwise front faces, as the viewer does. The normal follows
+triangle winding rather than flipping toward the camera: standard grids
+point toward +Y, while fullscreen previews point toward +Z. A zero-area
+derivative returns a zero vector.
+
+Normals describe the rendered triangles, including vertex displacement.
+They are not smoothed between triangles. Increasing mesh subdivisions makes
+faceting finer. Model, view, and projection transforms do not change the
+coordinate space of this normal; the light direction must be expressed in
+that same local space.
+
+`normalize(vec3)` returns a unit vector for a nonzero input. `dot(vec3, vec3)`
+returns their dot product; for unit vectors it is the cosine of their angle.
+`multiply(vec3, float)` scales an RGB color. Lighting stays explicit:
+
+```text
+let light = vec3(-0.8, 0.6, 0.4)
+  .normalize();
+let brightness = normal
+  .dot(light)
+  .clamp(0.0, 1.0)
+  .multiply(0.8)
+  .add(0.2);
+let color = rgb(0.65, 0.65, 0.65)
+  .multiply(brightness);
+vec4(color, 1.0)
+```
+
+The direction points from the surface toward the light. Clamping removes
+negative illumination; the example adds ambient light so other slopes remain
+visible. This models diffuse directional light without cast shadows or
+specular reflection. `normal` and these lighting functions belong to the
+fragment stage.

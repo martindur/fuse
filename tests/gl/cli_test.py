@@ -33,6 +33,30 @@ class ShaderTests(CompilerTests):
         for args in (("--stage",), ("--stage", "geometry"), ("--stage", "vertex", "--stage", "fragment")):
             self.assertNotEqual(self.run_command(*args, source="position").returncode, 0)
 
+    def test_fragment_normals_and_vector_lighting_catalog(self):
+        result = self.run_command(source="vec4(normal.multiply(0.5), 1.0)")
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        self.assertIn(b"cross(dFdx(point), dFdy(point))", result.stdout)
+        self.assertIn(b"gl_FrontFacing", result.stdout)
+        self.assertIn(b"vec3 normal = grafic_surface_normal(position)", result.stdout)
+        for name in ("normal", "grafic_surface_normal"):
+            result = self.run_command(source=f"let {name} = 1.0; vec4(uv, 0.0, 1.0)")
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(b"binding name is reserved", result.stderr)
+        result = self.run_command("--stage", "vertex", source="normal")
+        self.assertNotEqual(result.returncode, 0)
+        uri = "file:///water.gfrag"
+        _, responses = self.lsp_session(
+            opened("normal.", self.language_id, uri),
+            request("textDocument/completion", 2, at("normal.", uri)),
+            request("textDocument/hover", 3, at("nor", uri)),
+        )
+        names = {item["label"] for item in responses[2]["result"]["items"]}
+        self.assertTrue({"normalize", "dot", "multiply", "x", "y", "z"} <= names)
+        self.assertIn("mesh-local coordinates", responses[3]["result"]["contents"]["value"])
+        for source in ("vec4(uv.normalize(), 0.0, 1.0)", "normal.dot(1.0)"):
+            self.assertNotEqual(self.run_command(source=source).returncode, 0)
+
     def test_fragment_position_catalog_and_reserved_varying(self):
         uri = "file:///water.gfrag"
         _, responses = self.lsp_session(

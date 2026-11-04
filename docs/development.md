@@ -205,3 +205,17 @@ each has its own globals, result contract, and entry point. Vertex previews
 set `preview_requires_result_type` to preserve the `vec3` position contract.
 Mesh evaluation produces a tagged disk or grid specification; generators
 produce the same XYZ/UV/index buffers used by OBJ export and the viewer.
+
+## Grafic source layout
+
+Write each chained operation on its own indented line, including chains in
+bindings, so `.show()` can be inserted between steps:
+
+```text
+let brightness = diffuse
+  .multiply(0.8)
+  .add(0.2);
+```
+
+Keep this layout in future formatter work. Short nested arguments can stay
+inline; the outer chain should remain easy to inspect one operation at a time.

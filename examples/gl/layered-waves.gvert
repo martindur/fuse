@@ -1,21 +1,36 @@
 // Three traveling waves: a broad swell, a crossing wave, and smaller ripples.
 // Each phase projects XZ onto a direction, sets frequency, then advances time.
-let swell_phase = position.x().multiply(0.94)
+let swell_phase = position
+  .x()
+  .multiply(0.94)
   .add(position.z().multiply(0.342))
   .multiply(4.0)
   .add(time.multiply(-1.2));
-let cross_phase = position.x().multiply(-0.6)
+let cross_phase = position
+  .x()
+  .multiply(-0.6)
   .add(position.z().multiply(0.8))
   .multiply(7.0)
   .add(time.multiply(-1.6));
-let ripple_phase = position.x().multiply(0.8)
+let ripple_phase = position
+  .x()
+  .multiply(0.8)
   .add(position.z().multiply(-0.6))
   .multiply(13.0)
   .add(time.multiply(-2.6));
 
 // Amplitudes sum to 0.15, matching the height range in waves.gfrag.
-let swell = swell_phase.sin().multiply(0.085);
-let cross = cross_phase.sin().multiply(0.045);
-let ripple = ripple_phase.sin().multiply(0.02);
-let height = swell.add(cross).add(ripple);
-position.add(vec3(0.0, height, 0.0))
+let swell = swell_phase
+  .sin()
+  .multiply(0.085);
+let cross = cross_phase
+  .sin()
+  .multiply(0.045);
+let ripple = ripple_phase
+  .sin()
+  .multiply(0.02);
+let height = swell
+  .add(cross)
+  .add(ripple);
+position
+  .add(vec3(0.0, height, 0.0))

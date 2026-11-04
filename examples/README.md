@@ -64,7 +64,8 @@ build/grafic view examples/gl/waves.gvert --frag examples/gl/waves.gfrag
 ```
 
 The fragment program blends deep blue into turquoise and pale crests using
-interpolated displaced height. Lighting and surface normals come later.
+interpolated displaced height, with ambient and directional lighting derived
+from the displaced triangle normals.
 
 `gl/layered-waves.gvert` combines a broad swell, a crossing wave, and smaller
 ripples with different directions, wavelengths, and speeds:
@@ -80,3 +81,19 @@ at a fixed frequency. The sine is scaled by amplitude, then the three heights
 are added. Their amplitudes total 0.15, so the same height gradient covers the
 result. Edit the individual amplitudes to compare their contributions, or add
 `.show()` after a `position.add(...)` expression to inspect a partial sum.
+
+To judge the shape without the height colors, use the neutral lighting example:
+
+```sh
+build/grafic view examples/gl/layered-waves.gvert --frag examples/gl/waves-neutral.gfrag
+```
+
+The light direction is expressed in mesh-local coordinates, pointing toward
+the light. `normalize()` gives it unit length; `normal.dot(light)` measures
+how much the surface faces it. The clamped result supplies 80% directional
+light, with 20% ambient light keeping other slopes visible. These are triangle
+normals: increase mesh subdivisions for finer faceting, or press `W` to inspect
+the geometry. `U` switches back to UV colors for comparison.
+
+Wave sources put each chained operation on its own line, including bindings,
+so you can insert `.show()` between operations while experimenting.

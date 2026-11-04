@@ -87,7 +87,9 @@ Use `--frag FILE.gfrag` to supply a surface color program. The default vertex
 shader preserves positions; the default fragment shader displays UV colors.
 Fragments receive interpolated displaced local-space `position`, while `uv`
 continues to use the original mesh UVs. The paired `waves.gfrag` example blends
-blue, turquoise, and pale crests using `position.y()`.
+blue, turquoise, and pale crests using `position.y()`, with directional lighting
+from displaced triangle normals. Use `--frag examples/gl/waves-neutral.gfrag`
+for neutral shading that makes the slopes and faceting easier to judge.
 A `.gfrag` source still opens fullscreen unless `--mesh` or `--vert` requests a
 3D surface. Each role can be supplied once; a primary file already fills its
 own role. Use `--tex0` through `--tex3` for fragment texture inputs.
