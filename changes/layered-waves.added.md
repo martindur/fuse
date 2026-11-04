@@ -1,0 +1,1 @@
+Add a layered-wave vertex example combining a broad swell, a crossing wave, and smaller ripples with independent directions, wavelengths, amplitudes, and speeds. Preview it with the existing height-gradient fragment shader.

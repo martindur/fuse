@@ -65,3 +65,18 @@ build/grafic view examples/gl/waves.gvert --frag examples/gl/waves.gfrag
 
 The fragment program blends deep blue into turquoise and pale crests using
 interpolated displaced height. Lighting and surface normals come later.
+
+`gl/layered-waves.gvert` combines a broad swell, a crossing wave, and smaller
+ripples with different directions, wavelengths, and speeds:
+
+```sh
+build/grafic view examples/gl/layered-waves.gvert --frag examples/gl/waves.gfrag
+```
+
+Each phase projects the local XZ position onto a direction, multiplies by an
+angular frequency, and subtracts elapsed time times an angular speed. Increasing
+frequency makes waves shorter; increasing angular speed makes them travel faster
+at a fixed frequency. The sine is scaled by amplitude, then the three heights
+are added. Their amplitudes total 0.15, so the same height gradient covers the
+result. Edit the individual amplitudes to compare their contributions, or add
+`.show()` after a `position.add(...)` expression to inspect a partial sum.
