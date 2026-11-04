@@ -16,7 +16,7 @@ bool graficmesh_render(
     *out_mesh = (GraficMesh){0};
     *out_error = (GraficMeshRenderError){0};
 
-    GraficMeshDiskSpec spec;
+    GraficMeshSpec spec;
     GraficMeshEvalError eval_error;
 
     if (!graficmesh_evaluate_program(
@@ -32,11 +32,10 @@ bool graficmesh_render(
 
     const char *mesh_error = NULL;
 
-    if (!graficmesh_mesh_from_disk(
-            &spec,
-            out_mesh,
-            &mesh_error
-        )) {
+    bool generated = spec.kind == GRAFIC_MESH_GRID
+        ? graficmesh_mesh_from_grid(&spec.grid, out_mesh, &mesh_error)
+        : graficmesh_mesh_from_disk(&spec.disk, out_mesh, &mesh_error);
+    if (!generated) {
         out_error->span = program->result->span;
         out_error->message = mesh_error;
         return false;

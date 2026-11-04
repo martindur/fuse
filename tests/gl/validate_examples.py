@@ -8,18 +8,19 @@ import tempfile
 def main():
     binary = Path(sys.argv[1] if len(sys.argv) > 1 else "build/grafic").resolve()
     root = Path(__file__).resolve().parents[2]
-    sources = sorted((root / "examples").rglob("*.gfrag"))
+    sources = sorted([*(root / "examples").rglob("*.gfrag"), *(root / "examples").rglob("*.gvert")])
     with tempfile.TemporaryDirectory(prefix="grafic-shaders-") as directory:
         shader = Path(directory) / "example.frag"
         for source in sources:
             print(f"Validating {source.relative_to(root)}", flush=True)
+            stage = "vertex" if source.suffix == ".gvert" else "fragment"
             result = subprocess.run(
-                [str(binary), "gl"], input=source.read_bytes(), capture_output=True,
+                [str(binary), "gl", "--stage", stage], input=source.read_bytes(), capture_output=True,
                 check=True, timeout=30,
             )
             shader.write_bytes(result.stdout)
             subprocess.run(
-                ["glslangValidator", "-S", "frag", str(shader)], check=True, timeout=30,
+                ["glslangValidator", "-S", "vert" if stage == "vertex" else "frag", str(shader)], check=True, timeout=30,
             )
     print(f"Validated {len(sources)} shader examples")
 

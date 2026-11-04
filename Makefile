@@ -35,7 +35,7 @@ endif
 LANG_SOURCES := src/lang/lexer.c src/lang/ast.c src/lang/ast_dump.c \
 	src/lang/parser.c src/lang/lower.c src/lang/semantic.c src/lang/help.c \
 	src/lang/preview.c src/lang/compile.c src/lsp/lsp.c src/lsp/json.c
-GL_SOURCES := src/gl/command.c src/gl/glsl_emit.c src/gl/glsl_stdlib.c
+GL_SOURCES := src/gl/command.c src/gl/glsl_emit.c src/gl/glsl_stdlib.c src/gl/vertex.c
 TEX_SOURCES := src/tex/command.c src/tex/builtins.c src/tex/evaluate.c \
 	src/tex/image.c src/tex/png_write.c src/tex/render.c
 MESH_SOURCES := src/mesh/command.c src/mesh/builtins.c src/mesh/evaluate.c \

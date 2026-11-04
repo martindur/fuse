@@ -76,7 +76,7 @@ static bool test_valid_program(void)
     bool analyzed = semantic_analyze(
         program,
         source,
-        graficgl_dialect()->environment,
+        gl_dialect(SHADER_STAGE_FRAGMENT)->environment,
         &info,
         &error
     );
@@ -125,7 +125,7 @@ static bool test_texture_program(void)
     bool analyzed = semantic_analyze(
         program,
         source,
-        graficgl_dialect()->environment,
+        gl_dialect(SHADER_STAGE_FRAGMENT)->environment,
         &info,
         &error
     );
@@ -196,7 +196,7 @@ static bool test_semantic_failures(void)
         bool analyzed = semantic_analyze(
             program,
             test_case->source,
-            graficgl_dialect()->environment,
+            gl_dialect(SHADER_STAGE_FRAGMENT)->environment,
             &info,
             &error
         );
@@ -243,7 +243,7 @@ static bool test_non_vec4_result_inference(void)
     bool analyzed = semantic_analyze(
         program,
         source,
-        graficgl_dialect()->environment,
+        gl_dialect(SHADER_STAGE_FRAGMENT)->environment,
         &info,
         &error
     );

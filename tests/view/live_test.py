@@ -40,6 +40,58 @@ class LiveViewTests(unittest.TestCase):
                     output, _ = process.communicate(timeout=5)
                 self.assertEqual(output, b"")
 
+    def test_vertex_preview_defaults_and_composed_input_recovery(self):
+        with tempfile.TemporaryDirectory(prefix="grafic-vertex-") as directory:
+            directory = Path(directory)
+            vertex = directory / "waves.gvert"
+            fragment = directory / "water.gfrag"
+            mesh = directory / "surface.gmesh"
+            log = directory / "viewer.log"
+            vertex.write_text("position")
+            with self.viewer(log, vertex) as (process, wait):
+                wait(lambda text: f"{vertex}: loaded" in text)
+            for primary in (vertex, mesh, fragment):
+                vertex.write_text("position")
+                fragment.write_text("vec4(uv, 0.0, 1.0)")
+                mesh.write_text("grid().subdivisions(8, 8)")
+                args = [primary]
+                for path, flag in ((vertex, "--vert"), (fragment, "--frag"), (mesh, "--mesh")):
+                    if path != primary: args.extend((flag, path))
+                with self.subTest(primary=primary.suffix), self.viewer(log, *args) as (process, wait):
+                    wait(lambda text: all(f"{path}: loaded" in text for path in (vertex, fragment, mesh)))
+                    vertex.write_text("uv")
+                    wait(lambda text: "program result must be vec3" in text)
+                    vertex.write_text("position.show().missing()")
+                    wait(lambda text: text.count(f"{vertex}: loaded") == 2)
+                    fragment.write_text("uv")
+                    wait(lambda text: "program result must be vec4" in text)
+                    vertex.write_text("position.add(vec3(0.0, time.sin().multiply(0.1), 0.0))")
+                    wait(lambda text: text.count(f"{vertex}: loaded") == 3)
+                    fragment.write_text("vec4(uv, 1.0, 1.0)")
+                    wait(lambda text: text.count(f"{fragment}: loaded") == 2)
+                    mesh.unlink()
+                    wait(lambda text: "cannot read source" in text)
+                    mesh.write_text("grid().subdivisions(16, 8)")
+                    wait(lambda text: text.count(f"{mesh}: loaded") == 2)
+
+    def test_surface_fragment_retries_when_a_texture_recovers(self):
+        with tempfile.TemporaryDirectory(prefix="grafic-surface-texture-") as directory:
+            directory = Path(directory)
+            vertex = directory / "waves.gvert"
+            fragment = directory / "surface.gfrag"
+            texture = directory / "color.gtex"
+            log = directory / "viewer.log"
+            vertex.write_text("position")
+            fragment.write_text("uv.sample(tex0)")
+            texture.write_text("invalid()")
+            with self.viewer(log, vertex, "--frag", fragment, "--tex0", texture,
+                             "--texture-width", "2", "--texture-height", "2") as (process, wait):
+                wait(lambda text: "requires a loaded tex0" in text)
+                vertex.write_text("position.add(vec3(0.0, 0.1, 0.0))")
+                wait(lambda text: text.count(f"{vertex}: loaded") == 2)
+                texture.write_text("vec4(1.0, 0.0, 0.0, 1.0)")
+                wait(lambda text: f"{fragment}: loaded" in text)
+
     def test_texture_reload_is_independent_and_recovers_from_bad_edits(self):
         with tempfile.TemporaryDirectory(prefix="grafic-textures-") as directory:
             directory = Path(directory)

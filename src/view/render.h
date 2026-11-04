@@ -12,11 +12,12 @@ typedef struct GLFWwindow GLFWwindow;
 
 typedef struct {
     unsigned int program;
+    unsigned int inspection_program;
     unsigned int vertex_array;
     unsigned int buffers[3];
     size_t index_count;
-    int aspect_uniform;
-    int wireframe_uniform;
+    float center[3];
+    float extent;
 } ViewMeshRenderer;
 
 typedef struct {
@@ -52,10 +53,14 @@ void view_renderer_draw(const ViewRenderer *renderer, int width, int height, flo
 void view_renderer_draw_texture(const ViewRenderer *renderer, int width, int height, size_t slot);
 /* Upload candidate geometry before replacing the last working mesh. */
 bool view_renderer_set_mesh(ViewRenderer *renderer, const GraficMesh *mesh, ViewRenderError *error);
-void view_renderer_draw_mesh(const ViewRenderer *renderer, int width, int height, bool wireframe);
+/* NULL stages use built-in defaults. Failure preserves both active programs. */
+bool view_renderer_set_mesh_shaders(ViewRenderer *renderer, const char *vertex, const char *fragment, ViewRenderError *error);
+void view_renderer_draw_mesh(const ViewRenderer *renderer, int width, int height, float time,
+    bool wireframe, bool uv_colors);
 void view_renderer_destroy_mesh(ViewRenderer *renderer);
 /* Shared OpenGL program creation; returns zero on failure. Requires a context. */
 unsigned int view_program_create(const char *vertex, const char *fragment, ViewRenderError *error);
+bool view_program_bind_textures(const ViewRenderer *renderer, unsigned int program, ViewRenderError *error);
 void view_renderer_destroy(ViewRenderer *renderer);
 
 #endif

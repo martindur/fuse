@@ -28,6 +28,23 @@ static const char EXPECTED_SHADER[] =
     "#define time u_time\n"
     "#define resolution u_resolution\n"
     "\n"
+    "float oscillate(float value, float low, float high) {\n"
+    "    float phase = 0.5 + 0.5 * sin(value);\n"
+    "    return mix(low, high, phase);\n"
+    "}\n"
+    "\n"
+    "float cycle(float value, float speed, float low, float high) {\n"
+    "    return mix(low, high, fract(value * speed));\n"
+    "}\n"
+    "\n"
+    "float add(float first, float second) {\n"
+    "    return first + second;\n"
+    "}\n"
+    "\n"
+    "float multiply(float first, float second) {\n"
+    "    return first * second;\n"
+    "}\n"
+    "\n"
     "vec2 center(vec2 uv) {\n"
     "    return uv - 0.5;\n"
     "}\n"
@@ -69,15 +86,6 @@ static const char EXPECTED_SHADER[] =
     "    float c = cos(angle);\n"
     "    float s = sin(angle);\n"
     "    return mat2(c, -s, s, c) * p;\n"
-    "}\n"
-    "\n"
-    "float oscillate(float value, float low, float high) {\n"
-    "    float phase = 0.5 + 0.5 * sin(value);\n"
-    "    return mix(low, high, phase);\n"
-    "}\n"
-    "\n"
-    "float cycle(float value, float speed, float low, float high) {\n"
-    "    return mix(low, high, fract(value * speed));\n"
     "}\n"
     "\n"
     "float radial_wave(vec2 point, float time, float frequency, float speed) {\n"
@@ -122,16 +130,8 @@ static const char EXPECTED_SHADER[] =
     "    return vec4(color * mask, mask);\n"
     "}\n"
     "\n"
-    "float add(float first, float second) {\n"
-    "    return first + second;\n"
-    "}\n"
-    "\n"
     "vec4 blend_add(vec4 base, vec4 layer) {\n"
     "    return vec4(base.rgb + layer.rgb, max(base.a, layer.a));\n"
-    "}\n"
-    "\n"
-    "float multiply(float first, float second) {\n"
-    "    return first * second;\n"
     "}\n"
     "\n"
     "vec4 multiply(vec4 base, vec4 layer) {\n"
@@ -162,7 +162,7 @@ static bool emit_to_string(
     }
 
     bool emitted = glsl_emit(
-        stream,
+        stream, SHADER_STAGE_FRAGMENT,
         program,
         semantic_info,
         source
@@ -231,7 +231,7 @@ static bool test_complete_shader(void)
     if (!semantic_analyze(
             lowered,
             source,
-            graficgl_dialect()->environment,
+            gl_dialect(SHADER_STAGE_FRAGMENT)->environment,
             &semantic_info,
             &semantic_error
         )) {
@@ -364,7 +364,7 @@ static bool test_texture_shader(void)
     if (!semantic_analyze(
             lowered,
             source,
-            graficgl_dialect()->environment,
+            gl_dialect(SHADER_STAGE_FRAGMENT)->environment,
             &semantic_info,
             &semantic_error
         )) {
@@ -444,7 +444,7 @@ static bool test_channel_helpers(void)
         && semantic_analyze(
             lowered,
             source,
-            graficgl_dialect()->environment,
+            gl_dialect(SHADER_STAGE_FRAGMENT)->environment,
             &semantic_info,
             &semantic_error
         )
@@ -500,7 +500,7 @@ static bool test_preview_result_conversion(void)
         && semantic_analyze(
             lowered,
             source,
-            graficgl_dialect()->environment,
+            gl_dialect(SHADER_STAGE_FRAGMENT)->environment,
             &semantic_info,
             &semantic_error
         )

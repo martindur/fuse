@@ -66,6 +66,7 @@ class UnifiedTests(CompilerTests):
     def test_source_extensions_select_catalog_without_language_id(self):
         cases = [
             ("gl", "gfrag", "uv.", "sample"),
+            ("gl", "gvert", "position.", "x"),
             ("tex", "gtex", "uv.", "noise"),
             ("mesh", "gmesh", "disk().", "radius"),
         ]
@@ -130,7 +131,7 @@ class UnifiedTests(CompilerTests):
         self.assertNotIn("noise", gl)
         self.assertIn("noise", tex)
         self.assertNotIn("sample", tex)
-        self.assertEqual(geometry, {"radius", "segments", "rings", "uv_radial", "show"})
+        self.assertEqual(geometry, {"size", "subdivisions", "radius", "segments", "rings", "uv_radial", "show"})
         for response, signature in [(5, "sample(vec2, texture)"), (6, "noise(vec2)"), (7, "radius(mesh, float)")]:
             self.assertIn(signature, responses[response]["result"]["contents"]["value"])
         diagnostics = [p["params"] for p in packets if p.get("method") == "textDocument/publishDiagnostics"]

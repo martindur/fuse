@@ -113,7 +113,7 @@ make tree-sitter-parser
 Native grammar builds use the checked-in generated C. Reusable queries express
 syntax and bindings; capability symbol knowledge lives in the catalogs.
 
-`make test-shaders` compiles every `.gfrag` example and validates the output with
+`make test-shaders` compiles every `.gfrag` and `.gvert` example and validates the output with
 `glslangValidator` (provided by `glslang-tools` on Debian/Ubuntu). CI runs the
 compiler, installer, grammar, and shader checks on pushes and pull requests.
 
@@ -198,3 +198,10 @@ OpenGL dependencies. See the [viewer guide](view.md).
 `make install-library` installs the shared C library and headers separately.
 `make install-grammar` installs only the grammar. `PREFIX`, `BINDIR`, `LIBDIR`,
 `INCLUDEDIR`, `MANDIR`, `DATADIR`, and `DESTDIR` control installation paths.
+
+The `gl` capability owns `ShaderStage` and stage-specific dialects. Vertex
+and fragment shaders share expression emission and scalar math definitions;
+each has its own globals, result contract, and entry point. Vertex previews
+set `preview_requires_result_type` to preserve the `vec3` position contract.
+Mesh evaluation produces a tagged disk or grid specification; generators
+produce the same XYZ/UV/index buffers used by OBJ export and the viewer.

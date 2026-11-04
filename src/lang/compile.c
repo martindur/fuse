@@ -88,7 +88,7 @@ static bool prepare(
     }
 
     ValueType result = prepared.semantic_info.result_type;
-    bool numeric_preview = preview != NULL && value_type_is_previewable(dialect->required_result_type);
+    bool numeric_preview = preview != NULL && !dialect->preview_requires_result_type && value_type_is_previewable(dialect->required_result_type);
     if (numeric_preview ? !value_type_is_previewable(result) : result != dialect->required_result_type) {
         set_error(error, "semantic", prepared.program->result->span,
             numeric_preview ? "preview result has unsupported type" : "");

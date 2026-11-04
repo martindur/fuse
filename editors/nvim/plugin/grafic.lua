@@ -1,11 +1,11 @@
 if vim.treesitter and vim.treesitter.language then
-  pcall(vim.treesitter.language.register, "grafic", { "graficgl", "grafictex", "graficmesh" })
+  pcall(vim.treesitter.language.register, "grafic", { "graficgl", "graficvert", "grafictex", "graficmesh" })
 end
 
 vim.api.nvim_set_hl(0, "@function.builtin.grafic", { default = true, link = "Keyword" })
 
 vim.api.nvim_create_autocmd("FileType", {
-  pattern = { "graficgl", "grafictex", "graficmesh" },
+  pattern = { "graficgl", "graficvert", "grafictex", "graficmesh" },
   callback = function(event)
     vim.bo[event.buf].commentstring = "// %s"
     vim.bo[event.buf].comments = "://"

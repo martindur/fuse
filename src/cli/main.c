@@ -19,18 +19,17 @@ typedef struct {
     const char *name;
     const char *description;
     int (*run)(int argc, char **argv);
-    const GraficDialect *(*dialect)(void);
 } Command;
 
 static const Command COMMANDS[] = {
 #ifdef GRAFIC_CAP_GL
-    {"gl", "compile a GLSL fragment shader", grafic_gl_main, graficgl_dialect},
+    {"gl", "compile a GLSL shader", grafic_gl_main},
 #endif
 #ifdef GRAFIC_CAP_TEX
-    {"tex", "generate a PNG texture", grafic_tex_main, grafictex_dialect},
+    {"tex", "generate a PNG texture", grafic_tex_main},
 #endif
 #ifdef GRAFIC_CAP_MESH
-    {"mesh", "generate an OBJ mesh", grafic_mesh_main, graficmesh_dialect},
+    {"mesh", "generate an OBJ mesh", grafic_mesh_main},
 #endif
 };
 
@@ -72,11 +71,18 @@ int main(int argc, char **argv)
             return EXIT_SUCCESS;
         }
         if (argc == 2) {
-            const GraficDialect *dialects[COMMAND_COUNT];
-            for (size_t index = 0; index < COMMAND_COUNT; index += 1) {
-                dialects[index] = COMMANDS[index].dialect();
-            }
-            return grafic_lsp_run(dialects, COMMAND_COUNT, stdin, stdout, stderr);
+            const GraficDialect *dialects[] = {
+#ifdef GRAFIC_CAP_GL
+                gl_dialect(SHADER_STAGE_FRAGMENT), gl_dialect(SHADER_STAGE_VERTEX),
+#endif
+#ifdef GRAFIC_CAP_TEX
+                grafictex_dialect(),
+#endif
+#ifdef GRAFIC_CAP_MESH
+                graficmesh_dialect(),
+#endif
+            };
+            return grafic_lsp_run(dialects, sizeof(dialects) / sizeof(dialects[0]), stdin, stdout, stderr);
         }
     }
     fprintf(stderr, "grafic: unknown command or invalid arguments: %s\n", argv[1]);

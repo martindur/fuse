@@ -13,6 +13,46 @@ class ShaderTests(CompilerTests):
     language_id = "graficgl"
     command = "gl"
 
+    def test_vertex_result_contract_and_generated_interface(self):
+        result = self.run_command("--stage", "vertex", source="position")
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        self.assertIn(b"layout(location = 0) in vec3 a_position", result.stdout)
+        self.assertIn(b"u_projection * u_view * u_model * vec4(position, 1.0)", result.stdout)
+        self.assertIn(b"graficUv = uv", result.stdout)
+        self.assertNotIn(b"fwidth", result.stdout)
+        shown = self.run_command("--stage", "vertex", source="position.show()")
+        self.assertEqual(shown.stdout, result.stdout)
+        for source in ("uv", "1.0", "vec4(0.0, 0.0, 0.0, 1.0)"):
+            result = self.run_command("--stage", "vertex", source=source)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(result.stdout, b"")
+        result = self.run_command("--stage", "vertex", "--preview-line", "2", source="position\n.x()")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(b"program result must be vec3", result.stderr)
+        for args in (("--stage",), ("--stage", "geometry"), ("--stage", "vertex", "--stage", "fragment")):
+            self.assertNotEqual(self.run_command(*args, source="position").returncode, 0)
+
+    def test_vertex_catalog_and_lsp_are_stage_specific(self):
+        for args in (("--stage", "vertex", "--builtins"), ("--builtins", "--stage", "vertex")):
+            result = self.run_command(*args)
+            self.assertEqual(result.returncode, 0)
+            self.assertIn(b"position", result.stdout)
+            self.assertNotIn(b"fill(", result.stdout)
+        uri = "file:///waves.gvert"
+        _, responses = self.lsp_session(
+            opened("position.", None, uri),
+            request("textDocument/completion", 2, at("position.", uri)),
+        )
+        names = {item["label"] for item in responses[2]["result"]["items"]}
+        self.assertTrue({"x", "y", "z", "add", "multiply", "show"} <= names)
+        self.assertNotIn("fill", names)
+        packets, responses = self.lsp_session(
+            opened("position", "graficvert", uri),
+            request("textDocument/hover", 2, at("pos", uri)),
+        )
+        self.assertIn("local coordinates", responses[2]["result"]["contents"]["value"])
+        self.assertTrue(any(p.get("params", {}).get("diagnostics") == [] for p in packets))
+
     def test_line_comments_preserve_shader_output(self):
         self.assert_comments_preserve_output(SOURCE)
 

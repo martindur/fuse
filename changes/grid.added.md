@@ -1,0 +1,1 @@
+Generate subdivided XZ grids with `grid().size(width, depth).subdivisions(x, z)`. Mesh previews preserve full XYZ positions and use a fitted angled orthographic camera with depth testing, wireframe, and UV inspection. Vertex previews use a default grid and keep camera framing steady during animation.

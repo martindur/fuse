@@ -1,0 +1,4 @@
+// A moving wave on the default XZ grid. Position stays in mesh-local units.
+let phase = position.x().multiply(5.0).add(position.z().multiply(2.0)).add(time.multiply(2.0));
+let height = phase.sin().multiply(0.15);
+position.add(vec3(0.0, height, 0.0))

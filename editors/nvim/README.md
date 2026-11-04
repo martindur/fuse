@@ -15,8 +15,8 @@ vim.opt.runtimepath:append(data .. "/tree-sitter-grafic")
 require("grafic.lsp").setup()
 ```
 
-The runtime maps `.gfrag`, `.gtex`, and `.gmesh` to `graficgl`, `grafictex`, and
-`graficmesh`. All use the Grafic highlighter and one `grafic lsp` client per project
+The runtime maps `.gfrag`, `.gvert`, `.gtex`, and `.gmesh` to `graficgl`,
+`graficvert`, `grafictex`, and `graficmesh`. All use the Grafic highlighter and one `grafic lsp` client per project
 root. The server selects the capability per document. Files are grouped by
 Git root where present, otherwise by directory.
 
@@ -35,6 +35,6 @@ vim.treesitter.language.add("grafic", {
 require("grafic.lsp").setup({ command = { repo .. "/build/grafic", "lsp" } })
 ```
 
-Other editors can launch the same `grafic lsp` command and configure the three
+Other editors can launch the same `grafic lsp` command and configure these
 language IDs or filename extensions. Selective builds serve only their
 included capabilities.

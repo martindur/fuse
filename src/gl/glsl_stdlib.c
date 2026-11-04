@@ -471,15 +471,6 @@ static const char GLSL_STDLIB[] =
     "    return mat2(c, -s, s, c) * p;\n"
     "}\n"
     "\n"
-    "float oscillate(float value, float low, float high) {\n"
-    "    float phase = 0.5 + 0.5 * sin(value);\n"
-    "    return mix(low, high, phase);\n"
-    "}\n"
-    "\n"
-    "float cycle(float value, float speed, float low, float high) {\n"
-    "    return mix(low, high, fract(value * speed));\n"
-    "}\n"
-    "\n"
     "float radial_wave(vec2 point, float time, float frequency, float speed) {\n"
     "    vec2 centered = point - 0.5;\n"
     "    centered.x *= resolution.x / resolution.y;\n"
@@ -522,32 +513,48 @@ static const char GLSL_STDLIB[] =
     "    return vec4(color * mask, mask);\n"
     "}\n"
     "\n"
-    "float add(float first, float second) {\n"
-    "    return first + second;\n"
-    "}\n"
-    "\n"
     "vec4 blend_add(vec4 base, vec4 layer) {\n"
     "    return vec4(base.rgb + layer.rgb, max(base.a, layer.a));\n"
-    "}\n"
-    "\n"
-    "float multiply(float first, float second) {\n"
-    "    return first * second;\n"
     "}\n"
     "\n"
     "vec4 multiply(vec4 base, vec4 layer) {\n"
     "    return base * layer;\n"
     "}\n";
 
-bool glsl_stdlib_emit(FILE *output)
+bool glsl_stdlib_emit(FILE *output, ShaderStage stage)
 {
     if (output == NULL) {
         return false;
     }
 
-    return fputs(GLSL_STDLIB, output) != EOF;
+    return glsl_math_emit(output) && (stage == SHADER_STAGE_VERTEX
+        ? glsl_vertex_stdlib_emit(output) : fputs(GLSL_STDLIB, output) != EOF);
 }
 
-const GraficDialect *graficgl_dialect(void)
+const GraficDialect *gl_dialect(ShaderStage stage)
 {
-    return &DIALECT;
+    return stage == SHADER_STAGE_VERTEX ? gl_vertex_dialect() : &DIALECT;
+}
+
+bool glsl_math_emit(FILE *output)
+{
+    static const char MATH[] =
+    "float oscillate(float value, float low, float high) {\n"
+    "    float phase = 0.5 + 0.5 * sin(value);\n"
+    "    return mix(low, high, phase);\n"
+    "}\n"
+    "\n"
+    "float cycle(float value, float speed, float low, float high) {\n"
+    "    return mix(low, high, fract(value * speed));\n"
+    "}\n"
+    "\n"
+    "float add(float first, float second) {\n"
+    "    return first + second;\n"
+    "}\n"
+    "\n"
+    "float multiply(float first, float second) {\n"
+    "    return first * second;\n"
+    "}\n"
+    "\n";
+    return fputs(MATH, output) != EOF;
 }

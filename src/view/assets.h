@@ -2,6 +2,7 @@
 #define GRAFIC_VIEW_ASSETS_H
 
 #include "grafic/compile.h"
+#include "gl/shader.h"
 #include "tex/render.h"
 #include "mesh/mesh.h"
 
@@ -20,7 +21,7 @@ typedef enum {
 /* Zero-initialize before use. Polling compares bytes and detects atomic saves. */
 ViewSourceStatus view_source_poll(ViewSource *source, const char *path, char *error, size_t capacity);
 void view_source_destroy(ViewSource *source);
-bool view_shader_compile(const ViewSource *source, size_t preview_line, char **out_glsl, CompileError *error);
+bool view_shader_compile(const ViewSource *source, ShaderStage stage, size_t preview_line, char **out_glsl, CompileError *error);
 /* Replaces a zero-initialized image on success; preserves it on failure. */
 bool view_texture_render(const ViewSource *source, size_t preview_line, const RenderConfig *config, Image *out, CompileError *error);
 /* Replaces a zero-initialized mesh on success; preserves it on failure. */

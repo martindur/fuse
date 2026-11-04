@@ -10,7 +10,7 @@
 typedef struct {
     ValueType type;
     float number;
-    GraficMeshDiskSpec disk;
+    GraficMeshSpec mesh;
 } GraficMeshRuntimeValue;
 
 typedef struct {
@@ -21,7 +21,7 @@ typedef struct {
 bool graficmesh_evaluate_program(
     const Program *program,
     const char *source,
-    GraficMeshDiskSpec *out_spec,
+    GraficMeshSpec *out_spec,
     GraficMeshEvalError *out_error
 );
 

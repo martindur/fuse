@@ -15,7 +15,8 @@
 typedef enum {
     VIEW_SHADER,
     VIEW_TEXTURE,
-    VIEW_MESH
+    VIEW_MESH,
+    VIEW_VERTEX
 } ViewKind;
 
 typedef struct {
@@ -28,6 +29,15 @@ typedef struct {
 typedef struct {
     ViewRenderer renderer;
     ViewInput primary;
+    ViewInput vertex;
+    ViewInput fragment;
+    ViewInput mesh;
+    char *vertex_glsl;
+    char *fragment_glsl;
+    bool scene;
+    bool uv_colors;
+    bool vertex_pending;
+    bool fragment_pending;
     ViewInput textures[VIEW_TEXTURE_COUNT];
     RenderConfig texture_config;
     size_t preview_line;
@@ -40,9 +50,12 @@ typedef struct {
 
 static void usage(FILE *output)
 {
-    fputs("Usage: grafic view [OPTION]... FILE.gfrag|FILE.gtex|FILE.gmesh\n\n"
-        "Preview Grafic shader (.gfrag), texture (.gtex), and mesh (.gmesh) source files with live reload.\n\n"
+    fputs("Usage: grafic view [OPTION]... FILE.gfrag|FILE.gvert|FILE.gtex|FILE.gmesh\n\n"
+        "Preview Grafic shader (.gfrag/.gvert), texture (.gtex), and mesh (.gmesh) source files with live reload.\n\n"
         "Options:\n"
+        "  --mesh FILE.gmesh   geometry for a vertex or fragment preview\n"
+        "  --vert FILE.gvert   vertex shader for a mesh or fragment preview\n"
+        "  --frag FILE.gfrag   fragment shader for a mesh or vertex preview\n"
         "  --width N           initial window width (default: 960)\n"
         "  --height N          initial window height (default: 640)\n"
         "  --preview-line N    display the intermediate result on a line\n"
@@ -93,6 +106,7 @@ static bool has_errors(const ViewApp *app)
     if (app->primary.error[0] != '\0') {
         return true;
     }
+    if (app->vertex.error[0] || app->fragment.error[0] || app->mesh.error[0]) return true;
     for (size_t slot = 0; slot < VIEW_TEXTURE_COUNT; slot += 1) {
         if (app->textures[slot].error[0] != '\0') {
             return true;
@@ -106,10 +120,10 @@ static void update_title(const ViewApp *app)
     const char *name = strrchr(app->primary.path, '/');
     name = name == NULL ? app->primary.path : name + 1;
     char title[1024];
-    const char *output = app->kind == VIEW_MESH ? (app->wireframe ? "wireframe" : "UV colors")
+    const char *output = app->scene && app->selected_texture < 0 ? (app->wireframe ? "wireframe" : app->uv_colors ? "UV colors" : "surface")
         : (app->kind == VIEW_TEXTURE) ? "texture"
         : app->selected_texture < 0 ? "shader" : view_texture_name((size_t)app->selected_texture);
-    const char *controls = app->kind == VIEW_MESH ? "W: wireframe  U: UV colors | "
+    const char *controls = app->scene ? "W: wireframe  U: UV colors  1: surface  2-5: textures | "
         : app->kind == VIEW_TEXTURE ? "" : "1: shader  2-5: textures | ";
     snprintf(title, sizeof(title), "Grafic%s%s: %s [%s] | %sSpace: %s | Esc: close",
         has_errors(app) ? " [error]" : "", app->paused ? " [paused]" : "",
@@ -130,10 +144,12 @@ static void on_key(GLFWwindow *window, int key, int scancode, int action, int mo
     } else if (key == GLFW_KEY_SPACE) {
         app->paused = !app->paused;
         update_title(app);
-    } else if (app->kind == VIEW_MESH && (key == GLFW_KEY_W || key == GLFW_KEY_U)) {
-        app->wireframe = key == GLFW_KEY_W ? !app->wireframe : false;
+    } else if (app->scene && (key == GLFW_KEY_W || key == GLFW_KEY_U)) {
+        if (key == GLFW_KEY_W) app->wireframe = !app->wireframe;
+        else { app->uv_colors = !app->uv_colors; app->wireframe = false; }
+        app->selected_texture = -1;
         update_title(app);
-    } else if (app->kind == VIEW_SHADER && key >= GLFW_KEY_1 && key <= GLFW_KEY_5) {
+    } else if ((app->scene || app->kind == VIEW_SHADER) && key >= GLFW_KEY_1 && key <= GLFW_KEY_5) {
         int slot = key - GLFW_KEY_2;
         if (slot < 0 || app->textures[slot].path != NULL) {
             app->selected_texture = slot;
@@ -180,7 +196,7 @@ static void reload_shader(ViewApp *app)
     CompileError compile_error;
     char message[4608];
     app->shader_pending = true;
-    if (!view_shader_compile(&app->primary.source, app->preview_line, &glsl, &compile_error)) {
+    if (!view_shader_compile(&app->primary.source, SHADER_STAGE_FRAGMENT, app->preview_line, &glsl, &compile_error)) {
         report_compile_error(app, &app->primary, &compile_error);
         return;
     }
@@ -222,12 +238,54 @@ static bool reload_texture(ViewApp *app, size_t slot)
     return true;
 }
 
+static ViewInput *mesh_input(ViewApp *app)
+{
+    return app->kind == VIEW_MESH ? &app->primary : &app->mesh;
+}
+
+static ViewInput *stage_input(ViewApp *app, ShaderStage stage)
+{
+    if (stage == SHADER_STAGE_VERTEX) return app->kind == VIEW_VERTEX ? &app->primary : &app->vertex;
+    return app->kind == VIEW_SHADER ? &app->primary : &app->fragment;
+}
+
+static void reload_scene_stage(ViewApp *app, ShaderStage stage)
+{
+    ViewInput *input = stage_input(app, stage);
+    if (input->path == NULL || !input->source.available) return;
+    bool *pending = stage == SHADER_STAGE_VERTEX ? &app->vertex_pending : &app->fragment_pending;
+    *pending = false;
+    char *glsl = NULL;
+    CompileError error;
+    if (!view_shader_compile(&input->source, stage, input == &app->primary ? app->preview_line : 0, &glsl, &error)) {
+        report_compile_error(app, input, &error);
+        return;
+    }
+    const char *vertex = stage == SHADER_STAGE_VERTEX ? glsl : app->vertex_glsl;
+    const char *fragment = stage == SHADER_STAGE_FRAGMENT ? glsl : app->fragment_glsl;
+    ViewRenderError render_error;
+    if (!view_renderer_set_mesh_shaders(&app->renderer, vertex, fragment, &render_error)) {
+        report_error(app, input, render_error.message);
+        *pending = true;
+        free(glsl);
+        return;
+    }
+    char **cached = stage == SHADER_STAGE_VERTEX ? &app->vertex_glsl : &app->fragment_glsl;
+    free(*cached);
+    *cached = glsl;
+    input->error[0] = '\0';
+    update_title(app);
+    fprintf(stderr, "grafic view: %s: loaded\n", input->path);
+}
+
 static void reload_mesh(ViewApp *app)
 {
+    ViewInput *input = mesh_input(app);
+    ViewSource fallback = {.available = true, .text = "grid()", .length = 6};
     GraficMesh mesh = {0};
     CompileError compile_error;
-    if (!view_mesh_render(&app->primary.source, app->preview_line, &mesh, &compile_error)) {
-        report_compile_error(app, &app->primary, &compile_error);
+    if (!view_mesh_render(input->path == NULL ? &fallback : &input->source, input == &app->primary ? app->preview_line : 0, &mesh, &compile_error)) {
+        report_compile_error(app, input, &compile_error);
         return;
     }
     ViewRenderError render_error;
@@ -235,18 +293,24 @@ static void reload_mesh(ViewApp *app)
     graficmesh_mesh_destroy(&mesh);
     if (!uploaded) {
         char message[4608];
-        snprintf(message, sizeof(message), "%s: %s", app->primary.path, render_error.message);
-        report_error(app, &app->primary, message);
+        snprintf(message, sizeof(message), "%s: %s", input->path, render_error.message);
+        report_error(app, input, message);
         return;
     }
-    app->primary.error[0] = '\0';
+    input->error[0] = '\0';
     update_title(app);
-    fprintf(stderr, "grafic view: mesh: %s: loaded\n", app->primary.path);
+    if (input->path != NULL) fprintf(stderr, "grafic view: mesh: %s: loaded\n", input->path);
 }
 
 static void reload_primary(ViewApp *app)
 {
+    if (app->scene) {
+        if (app->kind == VIEW_MESH) reload_mesh(app);
+        else reload_scene_stage(app, app->kind == VIEW_VERTEX ? SHADER_STAGE_VERTEX : SHADER_STAGE_FRAGMENT);
+        return;
+    }
     switch (app->kind) {
+    case VIEW_VERTEX: break;
     case VIEW_SHADER: reload_shader(app); break;
     case VIEW_TEXTURE: reload_texture(app, 0); break;
     case VIEW_MESH: reload_mesh(app); break;
@@ -255,7 +319,8 @@ static void reload_primary(ViewApp *app)
 
 int grafic_view_main(int argc, char **argv)
 {
-    ViewApp app = {.primary = {.label = "shader"}, .shader_pending = true, .selected_texture = -1,
+    ViewApp app = {.vertex = {.label = "vertex"}, .fragment = {.label = "fragment"},
+        .mesh = {.label = "mesh"}, .primary = {.label = "shader"}, .shader_pending = true, .selected_texture = -1,
         .texture_config = {.width = 512, .height = 512, .seed = 42}};
     for (size_t slot = 0; slot < VIEW_TEXTURE_COUNT; slot += 1) {
         app.textures[slot].label = view_texture_name(slot);
@@ -271,6 +336,14 @@ int grafic_view_main(int argc, char **argv)
         }
         if (!files_only && strcmp(argument, "--") == 0) {
             files_only = true;
+        } else if (!files_only && (strcmp(argument, "--mesh") == 0
+                || strcmp(argument, "--vert") == 0 || strcmp(argument, "--frag") == 0)) {
+            ViewInput *input = strcmp(argument, "--mesh") == 0 ? &app.mesh
+                : strcmp(argument, "--vert") == 0 ? &app.vertex : &app.fragment;
+            if (input->path != NULL || index + 1 >= argc || argv[index + 1][0] == '-') {
+                usage(stderr); return EXIT_FAILURE;
+            }
+            input->path = argv[++index];
         } else if (!files_only && strncmp(argument, "--tex", 5) == 0
             && argument[5] >= '0' && argument[5] < '0' + VIEW_TEXTURE_COUNT && argument[6] == '\0') {
             size_t slot = (size_t)(argument[5] - '0');
@@ -315,6 +388,9 @@ int grafic_view_main(int argc, char **argv)
     const char *extension = strrchr(app.primary.path, '.');
     if (extension != NULL && strcmp(extension, ".gfrag") == 0) {
         app.kind = VIEW_SHADER;
+    } else if (extension != NULL && strcmp(extension, ".gvert") == 0) {
+        app.kind = VIEW_VERTEX;
+        app.primary.label = "vertex";
     } else if (extension != NULL && strcmp(extension, ".gtex") == 0) {
         app.kind = VIEW_TEXTURE;
         app.primary.label = "texture";
@@ -323,15 +399,28 @@ int grafic_view_main(int argc, char **argv)
         app.kind = VIEW_MESH;
         app.primary.label = "mesh";
     } else {
-        fprintf(stderr, "grafic view: unsupported source extension; expected .gfrag, .gtex, or .gmesh\n");
+        fprintf(stderr, "grafic view: unsupported source extension; expected .gfrag, .gvert, .gtex, or .gmesh\n");
         return EXIT_FAILURE;
     }
+    ViewInput *extras[] = {&app.mesh, &app.vertex, &app.fragment};
+    const char *suffixes[] = {".gmesh", ".gvert", ".gfrag"};
+    for (size_t index = 0; index < 3; index += 1) {
+        if (extras[index]->path == NULL) continue;
+        const char *suffix = strrchr(extras[index]->path, '.');
+        bool duplicate = (index == 0 && app.kind == VIEW_MESH)
+            || (index == 1 && app.kind == VIEW_VERTEX) || (index == 2 && app.kind == VIEW_SHADER);
+        if (app.kind == VIEW_TEXTURE || duplicate || suffix == NULL || strcmp(suffix, suffixes[index]) != 0) {
+            fprintf(stderr, "grafic view: conflicting input or invalid %s source extension\n", extras[index]->label);
+            return EXIT_FAILURE;
+        }
+    }
+    app.scene = app.kind == VIEW_VERTEX || app.kind == VIEW_MESH || app.mesh.path != NULL || app.vertex.path != NULL;
     for (size_t slot = 0; slot < VIEW_TEXTURE_COUNT; slot += 1) {
         if (app.textures[slot].path == NULL) {
             continue;
         }
         const char *texture_extension = strrchr(app.textures[slot].path, '.');
-        if (app.kind != VIEW_SHADER) {
+        if (app.kind == VIEW_TEXTURE || (app.kind == VIEW_MESH && app.vertex.path == NULL && app.fragment.path == NULL)) {
             fprintf(stderr, "grafic view: --texN inputs require a shader file\n");
             return EXIT_FAILURE;
         }
@@ -343,6 +432,9 @@ int grafic_view_main(int argc, char **argv)
     int result = EXIT_FAILURE;
     if (poll_input(&app, &app.primary) == VIEW_SOURCE_ERROR) {
         goto cleanup;
+    }
+    for (size_t index = 0; index < 3; index += 1) {
+        if (extras[index]->path != NULL && poll_input(&app, extras[index]) == VIEW_SOURCE_ERROR) goto cleanup;
     }
     bool has_textures = (app.kind == VIEW_TEXTURE);
     for (size_t slot = 0; slot < VIEW_TEXTURE_COUNT; slot += 1) {
@@ -370,7 +462,11 @@ int grafic_view_main(int argc, char **argv)
             reload_texture(&app, slot);
         }
     }
-    reload_primary(&app);
+    if (app.scene) {
+        reload_mesh(&app);
+        reload_scene_stage(&app, SHADER_STAGE_VERTEX);
+        reload_scene_stage(&app, SHADER_STAGE_FRAGMENT);
+    } else reload_primary(&app);
     double previous = glfwGetTime();
     double next_poll = previous + 0.2;
     double time = 0.0;
@@ -389,7 +485,17 @@ int grafic_view_main(int argc, char **argv)
                     texture_loaded = reload_texture(&app, slot) || texture_loaded;
                 }
             }
-            if (primary_changed || (app.kind == VIEW_SHADER && texture_loaded
+            for (size_t index = 0; index < 3; index += 1) {
+                if (extras[index]->path != NULL && poll_input(&app, extras[index]) == VIEW_SOURCE_CHANGED) {
+                    if (index == 0) reload_mesh(&app);
+                    else reload_scene_stage(&app, index == 1 ? SHADER_STAGE_VERTEX : SHADER_STAGE_FRAGMENT);
+                }
+            }
+            if (app.scene && texture_loaded) {
+                if (app.vertex_pending) reload_scene_stage(&app, SHADER_STAGE_VERTEX);
+                if (app.fragment_pending) reload_scene_stage(&app, SHADER_STAGE_FRAGMENT);
+            }
+            if (primary_changed || (!app.scene && app.kind == VIEW_SHADER && texture_loaded
                     && app.shader_pending && app.primary.source.available)) {
                 reload_primary(&app);
             }
@@ -400,8 +506,15 @@ int grafic_view_main(int argc, char **argv)
         glfwGetFramebufferSize(app.renderer.window, &framebuffer_width, &framebuffer_height);
         if (framebuffer_width > 0 && framebuffer_height > 0
             && !glfwGetWindowAttrib(app.renderer.window, GLFW_ICONIFIED)) {
-            if (app.kind == VIEW_MESH) {
-                view_renderer_draw_mesh(&app.renderer, framebuffer_width, framebuffer_height, app.wireframe);
+            if (app.scene && app.selected_texture < 0) {
+                bool ready = (stage_input(&app, SHADER_STAGE_VERTEX)->path == NULL || app.vertex_glsl != NULL)
+                    && (stage_input(&app, SHADER_STAGE_FRAGMENT)->path == NULL || app.fragment_glsl != NULL);
+                if (ready) {
+                    view_renderer_draw_mesh(&app.renderer, framebuffer_width, framebuffer_height,
+                        (float)time, app.wireframe, app.uv_colors);
+                } else {
+                    view_renderer_draw(&app.renderer, framebuffer_width, framebuffer_height, (float)time);
+                }
             } else if (app.selected_texture >= 0) {
                 view_renderer_draw_texture(&app.renderer, framebuffer_width, framebuffer_height,
                     (size_t)app.selected_texture);
@@ -418,6 +531,11 @@ int grafic_view_main(int argc, char **argv)
 cleanup:
     view_renderer_destroy(&app.renderer);
     view_source_destroy(&app.primary.source);
+    view_source_destroy(&app.vertex.source);
+    view_source_destroy(&app.fragment.source);
+    view_source_destroy(&app.mesh.source);
+    free(app.vertex_glsl);
+    free(app.fragment_glsl);
     for (size_t slot = 0; slot < VIEW_TEXTURE_COUNT; slot += 1) {
         view_source_destroy(&app.textures[slot].source);
     }

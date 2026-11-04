@@ -42,7 +42,7 @@ int main(void)
     bool passed = true;
     CHECK(write_source(path, valid, strlen(valid)));
     CHECK(view_source_poll(&source, path, error, sizeof(error)) == VIEW_SOURCE_CHANGED);
-    CHECK(view_shader_compile(&source, 0, &glsl, &compile_error));
+    CHECK(view_shader_compile(&source, SHADER_STAGE_FRAGMENT, 0, &glsl, &compile_error));
     CHECK(strstr(glsl, "#version 330 core") != NULL);
     free(glsl);
     glsl = NULL;
@@ -54,19 +54,19 @@ int main(void)
     CHECK(strcmp(source.text, changed) == 0);
     CHECK(write_source(path, invalid, strlen(invalid)));
     CHECK(view_source_poll(&source, path, error, sizeof(error)) == VIEW_SOURCE_CHANGED);
-    CHECK(!view_shader_compile(&source, 0, &glsl, &compile_error));
+    CHECK(!view_shader_compile(&source, SHADER_STAGE_FRAGMENT, 0, &glsl, &compile_error));
     CHECK(glsl == NULL && strcmp(compile_error.kind, "semantic") == 0);
     CHECK(view_source_poll(&source, path, error, sizeof(error)) == VIEW_SOURCE_UNCHANGED);
 
     CHECK(unlink(path) == 0);
     CHECK(view_source_poll(&source, path, error, sizeof(error)) == VIEW_SOURCE_ERROR);
     CHECK(!source.available);
-    CHECK(!view_shader_compile(&source, 0, &glsl, &compile_error));
+    CHECK(!view_shader_compile(&source, SHADER_STAGE_FRAGMENT, 0, &glsl, &compile_error));
     CHECK(write_source(path, invalid, strlen(invalid)));
     CHECK(view_source_poll(&source, path, error, sizeof(error)) == VIEW_SOURCE_CHANGED);
     CHECK(write_source(path, valid, strlen(valid)));
     CHECK(view_source_poll(&source, path, error, sizeof(error)) == VIEW_SOURCE_CHANGED);
-    CHECK(view_shader_compile(&source, 0, &glsl, &compile_error));
+    CHECK(view_shader_compile(&source, SHADER_STAGE_FRAGMENT, 0, &glsl, &compile_error));
     free(glsl);
     glsl = NULL;
 
@@ -76,7 +76,7 @@ int main(void)
     CHECK(strstr(error, "NUL") != NULL);
     CHECK(write_source(path, "", 0));
     CHECK(view_source_poll(&source, path, error, sizeof(error)) == VIEW_SOURCE_CHANGED);
-    CHECK(!view_shader_compile(&source, 0, &glsl, &compile_error));
+    CHECK(!view_shader_compile(&source, SHADER_STAGE_FRAGMENT, 0, &glsl, &compile_error));
     CHECK(strcmp(compile_error.kind, "parse") == 0);
     CHECK(view_source_poll(&source, directory, error, sizeof(error)) == VIEW_SOURCE_ERROR);
 

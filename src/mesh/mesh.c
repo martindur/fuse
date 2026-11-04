@@ -270,3 +270,60 @@ bool graficmesh_mesh_write_obj(
 
     return fflush(output) == 0;
 }
+
+bool graficmesh_mesh_from_grid(const GraficMeshGridSpec *spec, GraficMesh *out_mesh,
+    const char **out_error)
+{
+    if (out_error != NULL) *out_error = NULL;
+    if (out_mesh == NULL || spec == NULL || !isfinite(spec->width) || !isfinite(spec->depth)
+        || spec->width <= 0 || spec->depth <= 0
+        || spec->subdivisions_x < 1 || spec->subdivisions_x > 4096
+        || spec->subdivisions_z < 1 || spec->subdivisions_z > 4096) {
+        if (out_error != NULL) *out_error = "invalid grid specification";
+        return false;
+    }
+    size_t columns = spec->subdivisions_x + 1;
+    size_t rows = spec->subdivisions_z + 1;
+    size_t vertices = columns * rows;
+    size_t indices = spec->subdivisions_x * spec->subdivisions_z * 6;
+    if (vertices > UINT32_MAX || vertices > SIZE_MAX / (3 * sizeof(float))
+        || indices > SIZE_MAX / sizeof(uint32_t)) {
+        if (out_error != NULL) *out_error = "grid specification is too large";
+        return false;
+    }
+    GraficMesh mesh = {.vertex_count = vertices, .index_count = indices};
+    mesh.positions = malloc(vertices * 3 * sizeof(float));
+    mesh.uvs = malloc(vertices * 2 * sizeof(float));
+    mesh.indices = malloc(indices * sizeof(uint32_t));
+    if (mesh.positions == NULL || mesh.uvs == NULL || mesh.indices == NULL) {
+        graficmesh_mesh_destroy(&mesh);
+        if (out_error != NULL) *out_error = ERROR_OUT_OF_MEMORY;
+        return false;
+    }
+    for (size_t z = 0; z < rows; z += 1) {
+        for (size_t x = 0; x < columns; x += 1) {
+            size_t index = z * columns + x;
+            float u = (float)x / (float)spec->subdivisions_x;
+            float v = (float)z / (float)spec->subdivisions_z;
+            mesh.positions[index * 3] = (u - 0.5f) * spec->width;
+            mesh.positions[index * 3 + 1] = 0;
+            mesh.positions[index * 3 + 2] = (v - 0.5f) * spec->depth;
+            mesh.uvs[index * 2] = u;
+            mesh.uvs[index * 2 + 1] = v;
+        }
+    }
+    size_t next = 0;
+    for (size_t z = 0; z < spec->subdivisions_z; z += 1) {
+        for (size_t x = 0; x < spec->subdivisions_x; x += 1) {
+            uint32_t a = (uint32_t)(z * columns + x);
+            uint32_t b = a + 1;
+            uint32_t c = a + (uint32_t)columns;
+            uint32_t d = c + 1;
+            /* Counterclockwise when viewed from +Y. */
+            mesh.indices[next++] = a; mesh.indices[next++] = c; mesh.indices[next++] = b;
+            mesh.indices[next++] = b; mesh.indices[next++] = c; mesh.indices[next++] = d;
+        }
+    }
+    *out_mesh = mesh;
+    return true;
+}

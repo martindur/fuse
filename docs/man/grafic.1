@@ -3,6 +3,7 @@
 grafic \- compose shaders, textures, and geometry
 .SH SYNOPSIS
 .B grafic gl
+[\fB--stage\fR \fIfragment|vertex\fR]
 [\fB--builtins\fR | \fB--preview-line\fR \fIN\fR]
 .br
 .B grafic tex
@@ -15,11 +16,13 @@ grafic \- compose shaders, textures, and geometry
 .B grafic lsp
 .br
 .B grafic view
+[\fB--mesh\fR \fIFILE.gmesh\fR] [\fB--vert\fR \fIFILE.gvert\fR]
+[\fB--frag\fR \fIFILE.gfrag\fR]
 [\fB--width\fR \fIN\fR] [\fB--height\fR \fIN\fR]
 [\fB--preview-line\fR \fIN\fR]
 [\fB--tex0\fR \fIFILE.gtex\fR] ... [\fB--tex3\fR \fIFILE.gtex\fR]
 [\fB--texture-width\fR \fIN\fR] [\fB--texture-height\fR \fIN\fR]
-[\fB--seed\fR \fIN\fR] \fIFILE.gfrag|FILE.gtex|FILE.gmesh\fR
+[\fB--seed\fR \fIN\fR] \fIFILE.gfrag|FILE.gvert|FILE.gtex|FILE.gmesh\fR
 .SH DESCRIPTION
 Grafic composes graphics from chained transformations. Compiler commands read
 source from standard input, write output to standard output, and report
@@ -27,26 +30,31 @@ diagnostics on standard error.
 .SH COMMANDS
 .TP
 .B gl
-Compile .gfrag source to a GLSL 330 core fragment shader. Complete programs return
+Compile .gfrag source to a GLSL 330 core fragment shader by default. Complete programs return
 vec4. A rendering host supplies the graficUv input, u_time and u_resolution
 uniforms, and any used texture inputs tex0 through tex3.
+With --stage vertex, compile .gvert source returning a local-space vec3 position.
+Inputs are position, uv, and time. The host binds XYZ at attribute 0, UV at
+attribute 1, and supplies u_model, u_view, u_projection, and u_time uniforms.
 .TP
 .B tex
 Evaluate .gtex source to an RGBA PNG image. Complete programs return vec4.
 The default width and height are 256 pixels; the default noise seed is zero.
 .TP
 .B mesh
-Evaluate .gmesh source to a Wavefront OBJ mesh. Complete programs return mesh.
+Evaluate .gmesh source to a Wavefront OBJ mesh. Complete programs return mesh. Use grid().size(width, depth).subdivisions(x, z)
+for an XZ grid with Y up, or disk() for an XY disk. Grid defaults are 2 by 2
+units and 64 subdivisions per axis; counts range from 1 through 4096.
 .TP
 .B lsp
 Run the shared language server over JSON-RPC on standard input and output.
 It provides diagnostics, receiver-aware completion, and hover for mixed
-shader, texture, and geometry documents. A recognized language ID (graficgl,
+shader, texture, and geometry documents. A recognized language ID (graficgl, graficvert,
 grafictex, or graficmesh) selects the capability; otherwise the filename extension
 is used. Unknown types receive a diagnostic and no completion or hover results.
 .TP
 .B view
-Preview Grafic shader (.gfrag), texture (.gtex), and mesh (.gmesh) sources with live reload. Supplies
+Preview Grafic shader (.gfrag/.gvert), texture (.gtex), and mesh (.gmesh) sources with live reload. Supplies
 time, resolution, and UV coordinates using an OpenGL 3.3 core context. Space
 pauses or resumes animation; Escape closes the window. Errors go to standard
 error and leave the last working shader and textures running. Bind procedural
@@ -56,17 +64,22 @@ The default initial window size is 960 by 640. Press 1 for the shader or 2 throu
 The last show() call in each file selects its viewer output; normal compilation
 treats show() as an identity function. An explicit --preview-line overrides
 markers in the directly opened file.
-Mesh previews use a fitted front view. Press W to toggle wireframe or U for UV
-colors. Mesh show() markers require a mesh value and preserve normal OBJ export.
+Mesh previews use a fitted angled orthographic camera. Vertex sources use a
+default subdivided XZ grid. Use --mesh FILE.gmesh, --vert FILE.gvert, and
+--frag FILE.gfrag to compose geometry and shaders. Each source reloads independently.
+Press W to toggle wireframe or U to toggle UV colors. Mesh show() markers require a mesh value and preserve normal OBJ export.
 .SH OPTIONS
+.TP
+.BI --stage " fragment|vertex"
+Select the shader stage for gl. The default is fragment.
 .TP
 .B --builtins
 Available on gl, tex, and mesh. Print the command's function signatures,
 globals, and documentation.
 .TP
 .BI --preview-line " N"
-Compile the intermediate result on a one-based source line. Shader and texture
-previews accept numeric or vector values; geometry previews require a mesh.
+Compile the intermediate result on a one-based source line. Fragment and texture
+previews accept numeric or vector values; vertex previews require vec3 positions; geometry previews require a mesh.
 .TP
 .BI --width " N"
 Set the texture width in pixels (tex), or initial window width (view).
@@ -92,6 +105,8 @@ Show available commands or help for a subcommand.
 .SH EXAMPLES
 .nf
 grafic gl < shader.gfrag > shader.frag
+grafic gl --stage vertex < waves.gvert > waves.vert
+grafic view waves.gvert --mesh surface.gmesh
 grafic tex --width 512 --height 512 --seed 42 < clouds.gtex > clouds.png
 grafic mesh < disk.gmesh > disk.obj
 grafic gl --preview-line 4 < shader.gfrag > preview.frag

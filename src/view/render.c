@@ -136,6 +136,7 @@ bool view_renderer_init(ViewRenderer *renderer, int width, int height, const cha
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
+    glfwWindowHint(GLFW_DEPTH_BITS, 24);
     glfwWindowHint(GLFW_VISIBLE, visible ? GLFW_TRUE : GLFW_FALSE);
     renderer->window = glfwCreateWindow(width, height, title, NULL, NULL);
     if (renderer->window == NULL) {
@@ -225,20 +226,9 @@ bool view_renderer_set_shader(ViewRenderer *renderer, const char *glsl, ViewRend
     if (program == 0) {
         return false;
     }
-    GLint samplers[VIEW_TEXTURE_COUNT];
-    for (size_t slot = 0; slot < VIEW_TEXTURE_COUNT; slot += 1) {
-        const char *name = view_texture_name(slot);
-        samplers[slot] = glGetUniformLocation(program, name);
-        if (samplers[slot] >= 0 && renderer->textures[slot] == 0) {
-            snprintf(error->message, sizeof(error->message),
-                "shader requires a loaded %s; provide --%s FILE.gtex and fix any texture errors", name, name);
-            glDeleteProgram(program);
-            return false;
-        }
-    }
-    glUseProgram(program);
-    for (size_t slot = 0; slot < VIEW_TEXTURE_COUNT; slot += 1) {
-        glUniform1i(samplers[slot], (GLint)slot);
+    if (!view_program_bind_textures(renderer, program, error)) {
+        glDeleteProgram(program);
+        return false;
     }
     if (renderer->program != 0) {
         glDeleteProgram(renderer->program);
@@ -288,4 +278,23 @@ void view_renderer_draw_texture(const ViewRenderer *renderer, int width, int hei
     if (slot < VIEW_TEXTURE_COUNT) {
         draw_output(renderer, width, height, 0.0f, (int)slot);
     }
+}
+
+bool view_program_bind_textures(const ViewRenderer *renderer, unsigned int program, ViewRenderError *error)
+{
+    GLint samplers[VIEW_TEXTURE_COUNT];
+    for (size_t slot = 0; slot < VIEW_TEXTURE_COUNT; slot += 1) {
+        const char *name = view_texture_name(slot);
+        samplers[slot] = glGetUniformLocation(program, name);
+        if (samplers[slot] >= 0 && renderer->textures[slot] == 0) {
+            snprintf(error->message, sizeof(error->message),
+                "shader requires a loaded %s; provide --%s FILE.gtex and fix any texture errors", name, name);
+            return false;
+        }
+    }
+    glUseProgram(program);
+    for (size_t slot = 0; slot < VIEW_TEXTURE_COUNT; slot += 1) {
+        glUniform1i(samplers[slot], (GLint)slot);
+    }
+    return true;
 }

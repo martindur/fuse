@@ -13,6 +13,32 @@ class MeshTests(CompilerTests):
     language_id = "graficmesh"
     command = "mesh"
 
+    def test_grid_topology_uvs_and_winding(self):
+        result = self.run_command(source="grid().size(4.0, 2.0).subdivisions(2, 1)")
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        lines = result.stdout.decode().splitlines()
+        vertices = [tuple(map(float, line.split()[1:])) for line in lines if line.startswith("v ")]
+        uvs = [tuple(map(float, line.split()[1:])) for line in lines if line.startswith("vt ")]
+        faces = [[int(v.split("/")[0]) - 1 for v in line.split()[1:]] for line in lines if line.startswith("f ")]
+        self.assertEqual(len(vertices), 6)
+        self.assertEqual(len(faces), 4)
+        self.assertEqual(vertices[0], (-2, 0, -1))
+        self.assertEqual(vertices[-1], (2, 0, 1))
+        self.assertEqual(uvs[0], (0, 0))
+        self.assertEqual(uvs[-1], (1, 1))
+        for face in faces:
+            a, b, c = [vertices[index] for index in face]
+            normal_y = (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2])
+            self.assertGreater(normal_y, 0)
+
+    def test_invalid_grid_operations_do_not_export_partial_meshes(self):
+        for source in ("grid().size(0, 1)", "grid().subdivisions(1.5, 2)",
+                       "grid().subdivisions(4097, 1)", "grid().radius(2)",
+                       "grid().rings(2)", "grid().segments(8)", "grid().uv_radial()", "disk().size(1, 1)"):
+            result = self.run_command(source=source)
+            self.assertNotEqual(result.returncode, 0, source)
+            self.assertEqual(result.stdout, b"")
+
     def test_line_comments_preserve_mesh_output(self):
         self.assert_comments_preserve_output(SOURCE)
 
@@ -50,11 +76,11 @@ class MeshTests(CompilerTests):
         result = self.run_command("--builtins")
         names = set(re.findall(r"^  ([a-zA-Z_]\w*)[(:]", result.stdout.decode(), re.MULTILINE))
         self.assertEqual(set(self.completions("")), names)
-        self.assertEqual(names, {"disk", "radius", "segments", "rings", "uv_radial", "show"})
+        self.assertEqual(names, {"disk", "grid", "size", "subdivisions", "radius", "segments", "rings", "uv_radial", "show"})
 
     def test_binding_completion_without_globals(self):
         items = self.completions("let m = disk().")
-        self.assertEqual(set(items), {"radius", "segments", "rings", "uv_radial", "show"})
+        self.assertEqual(set(items), {"size", "subdivisions", "radius", "segments", "rings", "uv_radial", "show"})
 
     def test_hover_and_diagnostics(self):
         packets, responses = self.lsp_session(

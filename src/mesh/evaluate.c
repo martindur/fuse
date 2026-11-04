@@ -218,15 +218,41 @@ static bool evaluate_call(
         && argument_count == 0) {
         *out_value = (GraficMeshRuntimeValue){
             .type = VALUE_TYPE_MESH,
-            .disk = {
+            .mesh = {.kind = GRAFIC_MESH_DISK, .disk = {
                 .radius = 1.0f,
                 .segments = 64,
                 .rings = 16,
-            },
+            }},
         };
         evaluated = true;
+    } else if (call_name_is(evaluator, expression, "grid") && argument_count == 0) {
+        *out_value = (GraficMeshRuntimeValue){.type = VALUE_TYPE_MESH,
+            .mesh = {.kind = GRAFIC_MESH_GRID, .grid = {2.0f, 2.0f, 64, 64}}};
+        evaluated = true;
+    } else if ((call_name_is(evaluator, expression, "size")
+            || call_name_is(evaluator, expression, "subdivisions"))
+        && argument_count == 3 && value_is_mesh(&arguments[0])
+        && arguments[0].mesh.kind == GRAFIC_MESH_GRID) {
+        *out_value = arguments[0];
+        if (call_name_is(evaluator, expression, "size")) {
+            if (!value_is_number(&arguments[1]) || !value_is_number(&arguments[2])
+                || !isfinite(arguments[1].number) || !isfinite(arguments[2].number)
+                || arguments[1].number <= 0 || arguments[2].number <= 0) {
+                evaluator_fail(evaluator, expression->span, "grid dimensions must be positive and finite");
+            } else {
+                out_value->mesh.grid.width = arguments[1].number;
+                out_value->mesh.grid.depth = arguments[2].number;
+                evaluated = true;
+            }
+        } else {
+            evaluated = parse_subdivision(evaluator, expression, &arguments[1], 1, 4096,
+                    "grid subdivisions must be between 1 and 4096", &out_value->mesh.grid.subdivisions_x)
+                && parse_subdivision(evaluator, expression, &arguments[2], 1, 4096,
+                    "grid subdivisions must be between 1 and 4096", &out_value->mesh.grid.subdivisions_z);
+        }
     } else if (call_name_is(evaluator, expression, "radius")
-        && argument_count == 2) {
+        && argument_count == 2 && value_is_mesh(&arguments[0])
+        && arguments[0].mesh.kind == GRAFIC_MESH_DISK) {
         if (!value_is_mesh(&arguments[0])
             || !value_is_number(&arguments[1])) {
             evaluator_fail(
@@ -243,12 +269,12 @@ static bool evaluate_call(
             );
         } else {
             *out_value = arguments[0];
-            out_value->disk.radius = arguments[1].number;
+            out_value->mesh.disk.radius = arguments[1].number;
             evaluated = true;
         }
     } else if (call_name_is(evaluator, expression, "segments")
         && argument_count == 2
-        && value_is_mesh(&arguments[0])) {
+        && value_is_mesh(&arguments[0]) && arguments[0].mesh.kind == GRAFIC_MESH_DISK) {
         size_t count;
 
         if (parse_subdivision(
@@ -261,12 +287,12 @@ static bool evaluate_call(
                 &count
             )) {
             *out_value = arguments[0];
-            out_value->disk.segments = count;
+            out_value->mesh.disk.segments = count;
             evaluated = true;
         }
     } else if (call_name_is(evaluator, expression, "rings")
         && argument_count == 2
-        && value_is_mesh(&arguments[0])) {
+        && value_is_mesh(&arguments[0]) && arguments[0].mesh.kind == GRAFIC_MESH_DISK) {
         size_t count;
 
         if (parse_subdivision(
@@ -279,14 +305,14 @@ static bool evaluate_call(
                 &count
             )) {
             *out_value = arguments[0];
-            out_value->disk.rings = count;
+            out_value->mesh.disk.rings = count;
             evaluated = true;
         }
     } else if (call_name_is(evaluator, expression, "uv_radial")
         && argument_count == 1
-        && value_is_mesh(&arguments[0])) {
+        && value_is_mesh(&arguments[0]) && arguments[0].mesh.kind == GRAFIC_MESH_DISK) {
         *out_value = arguments[0];
-        out_value->disk.uv_mapping = GRAFIC_MESH_UV_RADIAL;
+        out_value->mesh.disk.uv_mapping = GRAFIC_MESH_UV_RADIAL;
         evaluated = true;
     }
 
@@ -358,7 +384,7 @@ static bool evaluate_expression(
 bool graficmesh_evaluate_program(
     const Program *program,
     const char *source,
-    GraficMeshDiskSpec *out_spec,
+    GraficMeshSpec *out_spec,
     GraficMeshEvalError *out_error
 )
 {
@@ -366,7 +392,7 @@ bool graficmesh_evaluate_program(
         return false;
     }
 
-    *out_spec = (GraficMeshDiskSpec){0};
+    *out_spec = (GraficMeshSpec){0};
     *out_error = (GraficMeshEvalError){0};
 
     if (program == NULL || program->result == NULL || source == NULL) {
@@ -435,7 +461,7 @@ bool graficmesh_evaluate_program(
     }
 
     if (evaluated) {
-        *out_spec = result.disk;
+        *out_spec = result.mesh;
     }
 
     free(bindings);

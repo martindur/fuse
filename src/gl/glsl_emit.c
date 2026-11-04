@@ -23,6 +23,14 @@ static const char SHADER_HEADER[] =
     "#define resolution u_resolution\n"
     "\n";
 
+static const char VERTEX_HEADER[] =
+    "#version 330 core\n"
+    "layout(location = 0) in vec3 a_position;\n"
+    "layout(location = 1) in vec2 a_uv;\n"
+    "out vec2 graficUv;\n"
+    "uniform mat4 u_model; uniform mat4 u_view; uniform mat4 u_projection;\n"
+    "uniform float u_time;\n#define time u_time\n";
+
 static const char SHADER_MAIN_PREFIX[] =
     "\n"
     "void main() {\n"
@@ -107,6 +115,12 @@ static bool emit_expression(
         if (span_equals_text(source, expression->as.call.name, "show")) {
             return expression->as.call.arguments.count == 1
                 && emit_expression(output, expression->as.call.arguments.items[0], source);
+        }
+        const char *components[] = {"x", "y", "z"};
+        for (size_t index = 0; index < 3; index += 1) {
+            if (span_equals_text(source, expression->as.call.name, components[index])) {
+                return emit_channel_call(output, expression, source, components[index]);
+            }
         }
         if (span_equals_text(source, expression->as.call.name, "r")) {
             return emit_channel_call(output, expression, source, "r");
@@ -283,38 +297,40 @@ static bool emit_result(
 
 bool glsl_emit(
     FILE *output,
+    ShaderStage stage,
     const Program *program,
     const SemanticInfo *semantic_info,
     const char *source
 )
 {
     if (output == NULL
+        || (stage != SHADER_STAGE_FRAGMENT && stage != SHADER_STAGE_VERTEX)
         || program == NULL
         || program->result == NULL
         || semantic_info == NULL
         || semantic_info->binding_count != program->binding_count
         || (program->binding_count > 0
             && semantic_info->binding_types == NULL)
-        || !value_type_is_previewable(semantic_info->result_type)
+        || (stage == SHADER_STAGE_VERTEX ? semantic_info->result_type != VALUE_TYPE_VEC3
+            : !value_type_is_previewable(semantic_info->result_type))
         || source == NULL) {
         return false;
     }
 
-    return fputs(SHADER_HEADER, output) != EOF
-        && glsl_stdlib_emit(output)
-        && fputs(SHADER_MAIN_PREFIX, output) != EOF
-        && emit_bindings(
-            output,
-            program,
-            semantic_info,
-            source
-        )
-        && fputs("    fragColor = ", output) != EOF
-        && emit_result(
-            output,
-            program->result,
-            semantic_info->result_type,
-            source
-        )
+    bool vertex = stage == SHADER_STAGE_VERTEX;
+    if (fputs(vertex ? VERTEX_HEADER : SHADER_HEADER, output) == EOF
+        || !glsl_stdlib_emit(output, stage)
+        || fputs(vertex ? "\nvoid main() {\n    vec3 position = a_position;\n    vec2 uv = a_uv;\n    graficUv = uv;\n"
+            : SHADER_MAIN_PREFIX, output) == EOF
+        || !emit_bindings(output, program, semantic_info, source)) {
+        return false;
+    }
+    if (vertex) {
+        return fputs("    gl_Position = u_projection * u_view * u_model * vec4(", output) != EOF
+            && emit_expression(output, program->result, source)
+            && fputs(", 1.0);\n}\n", output) != EOF;
+    }
+    return fputs("    fragColor = ", output) != EOF
+        && emit_result(output, program->result, semantic_info->result_type, source)
         && fputs(SHADER_SUFFIX, output) != EOF;
 }

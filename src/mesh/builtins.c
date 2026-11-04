@@ -1,6 +1,9 @@
 #include "builtins.h"
 
 static const BuiltinSignature BUILTINS[] = {
+    {"grid", VALUE_TYPE_MESH, 0, {0}},
+    {"size", VALUE_TYPE_MESH, 3, {VALUE_TYPE_MESH, VALUE_TYPE_FLOAT, VALUE_TYPE_FLOAT}},
+    {"subdivisions", VALUE_TYPE_MESH, 3, {VALUE_TYPE_MESH, VALUE_TYPE_FLOAT, VALUE_TYPE_FLOAT}},
     {"show", VALUE_TYPE_MESH, 1, {VALUE_TYPE_MESH}},
     {
         "disk",
@@ -35,6 +38,9 @@ static const BuiltinSignature BUILTINS[] = {
 };
 
 static const SymbolDocumentation DOCUMENTATION[] = {
+    {"grid", "Creates a centered XZ grid with Y up, unit-square UVs, size 2 by 2, and 64 subdivisions per axis."},
+    {"size", "Sets grid width along X and depth along Z; both must be positive."},
+    {"subdivisions", "Sets grid cell counts along X and Z, each from 1 through 4096."},
     {"show", "Selects this intermediate mesh in grafic view. The last show() in each file wins; normal compilation returns the mesh unchanged."},
     {
         "disk",

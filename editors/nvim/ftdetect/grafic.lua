@@ -1,3 +1,3 @@
 vim.filetype.add({
-  extension = { gfrag = "graficgl", gtex = "grafictex", gmesh = "graficmesh" },
+  extension = { gfrag = "graficgl", gvert = "graficvert", gtex = "grafictex", gmesh = "graficmesh" },
 })

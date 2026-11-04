@@ -17,17 +17,19 @@ static void usage(FILE *output)
 {
     fprintf(
         output,
-        "Usage: grafic gl [OPTION]... < source.gfrag > shader.glsl\n"
+        "Usage: grafic gl [OPTION]... < source > shader.glsl\n"
         "\n"
-        "Compile a GraficGL program to a GLSL fragment shader.\n"
+        "Compile a Grafic program to a GLSL fragment or vertex shader.\n"
         "\n"
         "Options:\n"
-        "  --preview-line N  compile the intermediate result at source line N\n"
+        "  --stage STAGE      fragment (default) or vertex\n"
+        "  --preview-line N   compile the intermediate result at source line N\n"
         "  --builtins         list available functions and globals\n"
         "  -h, --help         show this help\n"
         "\n"
         "Examples:\n"
         "  grafic gl < main.gfrag > main.frag\n"
+        "  grafic gl --stage vertex < waves.gvert > waves.vert\n"
         "  grafic gl --preview-line 4 < main.gfrag > preview.frag\n"
     );
 }
@@ -64,7 +66,9 @@ static bool parse_line(const char *text, size_t *out_line)
 
 int grafic_gl_main(int argument_count, char **arguments)
 {
-    const GraficDialect *dialect = graficgl_dialect();
+    ShaderStage stage = SHADER_STAGE_FRAGMENT;
+    bool stage_set = false;
+    bool builtins = false;
 
     size_t preview_line = 0;
 
@@ -75,14 +79,16 @@ int grafic_gl_main(int argument_count, char **arguments)
             return EXIT_SUCCESS;
         }
 
-        if (strcmp(arguments[index], "--builtins") == 0) {
-            if (argument_count != 2) {
-                usage(stderr);
-                return EXIT_FAILURE;
-            }
-
-            language_print_builtins(stdout, dialect->environment);
-            return EXIT_SUCCESS;
+        if (strcmp(arguments[index], "--builtins") == 0 && !builtins) {
+            builtins = true;
+            continue;
+        }
+        if (strcmp(arguments[index], "--stage") == 0 && !stage_set && index + 1 < argument_count) {
+            const char *name = arguments[++index];
+            if (strcmp(name, "vertex") == 0) stage = SHADER_STAGE_VERTEX;
+            else if (strcmp(name, "fragment") != 0) { usage(stderr); return EXIT_FAILURE; }
+            stage_set = true;
+            continue;
         }
 
         if (strcmp(arguments[index], "--preview-line") != 0
@@ -96,11 +102,18 @@ int grafic_gl_main(int argument_count, char **arguments)
         index += 1;
     }
 
+    const GraficDialect *dialect = gl_dialect(stage);
+    if (builtins) {
+        if (preview_line != 0) { usage(stderr); return EXIT_FAILURE; }
+        language_print_builtins(stdout, dialect->environment);
+        return EXIT_SUCCESS;
+    }
+
     char *source = NULL;
     size_t capacity = 0;
 
     /*
-     * A NUL byte cannot be part of GraficGL source, so getdelim reads until
+     * A NUL byte cannot be part of Grafic shader source, so getdelim reads until
      * end-of-file and gives us the complete input as one owned buffer.
      */
     ssize_t length = getdelim(
@@ -132,7 +145,7 @@ int grafic_gl_main(int argument_count, char **arguments)
     }
 
     if (!glsl_emit(
-            stdout,
+            stdout, stage,
             prepared.program,
             &prepared.semantic_info,
             source

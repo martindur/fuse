@@ -84,7 +84,7 @@ ViewSourceStatus view_source_poll(ViewSource *source, const char *path, char *er
     return VIEW_SOURCE_CHANGED;
 }
 
-bool view_shader_compile(const ViewSource *source, size_t preview_line, char **out_glsl, CompileError *error)
+bool view_shader_compile(const ViewSource *source, ShaderStage stage, size_t preview_line, char **out_glsl, CompileError *error)
 {
     *out_glsl = NULL;
     if (!source->available) {
@@ -93,12 +93,12 @@ bool view_shader_compile(const ViewSource *source, size_t preview_line, char **o
         return false;
     }
     PreparedProgram prepared = {0};
-    if (!prepare_view_program(source->text, source->length, graficgl_dialect(), preview_line, &prepared, error)) {
+    if (!prepare_view_program(source->text, source->length, gl_dialect(stage), preview_line, &prepared, error)) {
         return false;
     }
     size_t length = 0;
     FILE *output = open_memstream(out_glsl, &length);
-    bool emitted = output != NULL && glsl_emit(output, prepared.program, &prepared.semantic_info, source->text);
+    bool emitted = output != NULL && glsl_emit(output, stage, prepared.program, &prepared.semantic_info, source->text);
     if (output != NULL && fclose(output) != 0) {
         emitted = false;
     }

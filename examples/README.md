@@ -15,11 +15,12 @@ Preview sources directly with live reload:
 
 ```sh
 build/grafic view examples/gl/ring.gfrag
+build/grafic view examples/gl/waves.gvert
 build/grafic view examples/tex/clouds.gtex
 build/grafic view examples/mesh/radial.gmesh
 ```
 
-Mesh previews fit the geometry in front view; `W` toggles wireframe and `U`
+Mesh previews fit the geometry in an angled orthographic view; `W` toggles wireframe and `U`
 shows UV colors. See the [viewer guide](../docs/view.md) for controls and options.
 
 ## Source compositions
@@ -46,3 +47,14 @@ rendering host, compile textures to PNG with `grafic tex` and shaders with `graf
 | `liquid-movement/` | `liquid-movement.gfrag` | `tex0` = `distortion.gtex`, `tex1` = `surface.gtex` | 512 × 512, seed 42 |
 | `masked-reveal/` | `masked-reveal.gfrag` | `tex0` = `mask.gtex`, `tex1` = `rings.gtex` | 512 × 512, seed 42 |
 | `rippling-ink/` | `rippling-ink.gfrag` | `tex0` = `clouds.gtex`, `tex1` = `rings.gtex` | 512 × 512, seed 42 |
+
+`gl/waves.gvert` displaces a subdivided grid on the GPU. Open it directly for
+the default surface, or use `--mesh examples/mesh/grid.gmesh` to edit its size
+and subdivisions separately. `W` toggles wireframe to inspect displacement.
+Compile it for another host with:
+
+```sh
+build/grafic gl --stage vertex < examples/gl/waves.gvert > build/waves.vert
+```
+
+The initial example uses UV colors; lighting and surface normals come later.

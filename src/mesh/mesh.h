@@ -26,6 +26,23 @@ typedef struct {
 } GraficMeshDiskSpec;
 
 typedef struct {
+    float width;
+    float depth;
+    size_t subdivisions_x;
+    size_t subdivisions_z;
+} GraficMeshGridSpec;
+
+typedef enum { GRAFIC_MESH_DISK, GRAFIC_MESH_GRID } GraficMeshKind;
+
+typedef struct {
+    GraficMeshKind kind;
+    union {
+        GraficMeshDiskSpec disk;
+        GraficMeshGridSpec grid;
+    };
+} GraficMeshSpec;
+
+typedef struct {
     float *positions;
     float *uvs;
     uint32_t *indices;
@@ -37,6 +54,12 @@ void graficmesh_mesh_destroy(GraficMesh *mesh);
 
 bool graficmesh_mesh_from_disk(
     const GraficMeshDiskSpec *spec,
+    GraficMesh *out_mesh,
+    const char **out_error
+);
+
+bool graficmesh_mesh_from_grid(
+    const GraficMeshGridSpec *spec,
     GraficMesh *out_mesh,
     const char **out_error
 );

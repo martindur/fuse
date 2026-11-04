@@ -42,6 +42,17 @@ class ViewTests(unittest.TestCase):
             self.assertIn(b"--texN inputs require a shader file", result.stderr)
             self.assertNotIn(b"window", result.stderr)
 
+    def test_invalid_scene_inputs_fail_before_opening_a_window(self):
+        for args in (("waves.gvert", "--vert", "other.gvert"),
+                     ("mesh.gmesh", "--mesh", "other.gmesh"),
+                     ("water.gfrag", "--frag", "other.gfrag"),
+                     ("waves.gvert", "--mesh", "wrong.gfrag"),
+                     ("water.gtex", "--vert", "waves.gvert")):
+            result = self.run_view(*args)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(b"conflicting input or invalid", result.stderr)
+            self.assertNotIn(b"window", result.stderr)
+
     def test_unknown_and_legacy_extensions_are_rejected(self):
         for source in ("source.pgl", "source.ptex", "source.pmesh", "source.glsl", "source.txt"):
             result = self.run_view(source)

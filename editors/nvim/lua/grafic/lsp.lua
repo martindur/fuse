@@ -7,7 +7,7 @@ function M.setup(options)
 
   vim.api.nvim_create_autocmd("FileType", {
     group = group,
-    pattern = { "graficgl", "grafictex", "graficmesh" },
+    pattern = { "graficgl", "graficvert", "grafictex", "graficmesh" },
     callback = function(event)
       local filename = vim.api.nvim_buf_get_name(event.buf)
       local directory = filename == "" and vim.fn.getcwd() or vim.fs.dirname(filename)

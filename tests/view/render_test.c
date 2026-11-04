@@ -9,13 +9,14 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#include "gl/shader.h"
 
 static bool set_source(ViewRenderer *renderer, const char *text, ViewRenderError *error)
 {
     ViewSource source = {.text = (char *)text, .length = strlen(text), .available = true};
     char *glsl = NULL;
     CompileError compile_error;
-    if (!view_shader_compile(&source, 0, &glsl, &compile_error)) {
+    if (!view_shader_compile(&source, SHADER_STAGE_FRAGMENT, 0, &glsl, &compile_error)) {
         fprintf(stderr, "source failed: %s\n", compile_error.message);
         return false;
     }
@@ -93,6 +94,7 @@ int main(int argc, char **argv)
     ViewRenderError error = {0};
     GLuint framebuffer = 0;
     GLuint color = 0;
+    GLuint depth = 0;
     GraficMesh mesh = {0};
     bool passed = true;
     CHECK(view_renderer_init(&renderer, 64, 64, "Grafic render test", false, &error));
@@ -104,6 +106,10 @@ int main(int argc, char **argv)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, color, 0);
+    glGenRenderbuffers(1, &depth);
+    glBindRenderbuffer(GL_RENDERBUFFER, depth);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, 512, 512);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth);
     CHECK(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
 
     CHECK(set_source(&renderer, "vec4(uv, time, 1.0)", &error));
@@ -230,14 +236,17 @@ int main(int argc, char **argv)
     const char *mesh_error;
     CHECK(graficmesh_mesh_from_disk(&spec, &mesh, &mesh_error));
     CHECK(view_renderer_set_mesh(&renderer, &mesh, &error));
-    view_renderer_draw_mesh(&renderer, 128, 128, false);
-    CHECK(pixel_equals(96, 64, 199, 129, 0));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    unsigned char center_pixel[4];
+    glReadPixels(64, 64, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, center_pixel);
+    CHECK(center_pixel[0] > 100 && center_pixel[0] < 155 && center_pixel[1] > 100 && center_pixel[1] < 155);
+    CHECK(pixel_equals(64, 64, center_pixel[0], center_pixel[1], center_pixel[2]));
     CHECK(pixel_equals(0, 0, 31, 31, 31));
-    view_renderer_draw_mesh(&renderer, 256, 128, false);
-    CHECK(pixel_equals(160, 64, 199, 129, 0));
+    view_renderer_draw_mesh(&renderer, 256, 128, 0.0f, false, false);
+    CHECK(pixel_equals(128, 64, center_pixel[0], center_pixel[1], center_pixel[2]));
     CHECK(pixel_equals(192, 64, 31, 31, 31));
-    view_renderer_draw_mesh(&renderer, 128, 256, false);
-    CHECK(pixel_equals(96, 128, 199, 129, 0));
+    view_renderer_draw_mesh(&renderer, 128, 256, 0.0f, false, false);
+    CHECK(pixel_equals(64, 128, center_pixel[0], center_pixel[1], center_pixel[2]));
     GLuint previous_mesh = renderer.mesh.vertex_array;
     uint32_t first_index = mesh.indices[0];
     mesh.indices[0] = (uint32_t)mesh.vertex_count;
@@ -248,12 +257,12 @@ int main(int argc, char **argv)
     CHECK(!view_renderer_set_mesh(&renderer, &mesh, &error));
     CHECK(renderer.mesh.vertex_array == previous_mesh);
     mesh.positions[0] = 0.0f;
-    view_renderer_draw_mesh(&renderer, 128, 128, false);
-    CHECK(pixel_equals(96, 64, 199, 129, 0));
-    view_renderer_draw_mesh(&renderer, 0, 0, false);
-    CHECK(pixel_equals(96, 64, 199, 129, 0));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    CHECK(pixel_equals(64, 64, center_pixel[0], center_pixel[1], center_pixel[2]));
+    view_renderer_draw_mesh(&renderer, 0, 0, 0.0f, false, false);
+    CHECK(pixel_equals(64, 64, center_pixel[0], center_pixel[1], center_pixel[2]));
 
-    view_renderer_draw_mesh(&renderer, 128, 128, true);
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, true, false);
     unsigned char wire[128 * 128 * 4];
     glReadPixels(0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, wire);
     size_t lines = 0;
@@ -266,8 +275,8 @@ int main(int argc, char **argv)
     GLint polygon_modes[2];
     glGetIntegerv(GL_POLYGON_MODE, polygon_modes);
     CHECK(polygon_modes[0] == GL_FILL && polygon_modes[1] == GL_FILL);
-    view_renderer_draw_mesh(&renderer, 128, 128, false);
-    CHECK(pixel_equals(96, 64, 199, 129, 0));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    CHECK(pixel_equals(64, 64, center_pixel[0], center_pixel[1], center_pixel[2]));
     CHECK(set_source(&renderer, "vec4(0.0, 1.0, 0.0, 1.0)", &error));
     view_renderer_draw(&renderer, 128, 128, 0.0f);
     CHECK(pixel_equals(0, 0, 0, 255, 0));
@@ -277,20 +286,72 @@ int main(int argc, char **argv)
     CHECK(graficmesh_mesh_from_disk(&spec, &mesh, &mesh_error));
     CHECK(view_renderer_set_mesh(&renderer, &mesh, &error));
     CHECK(renderer.mesh.vertex_array != previous_mesh);
-    view_renderer_draw_mesh(&renderer, 512, 512, false);
+    view_renderer_draw_mesh(&renderer, 512, 512, 0.0f, false, false);
     CHECK(glGetError() == GL_NO_ERROR);
     if (argc > 3) {
         CHECK(snapshot(argv[3]));
     }
-    view_renderer_draw_mesh(&renderer, 512, 512, true);
+    view_renderer_draw_mesh(&renderer, 512, 512, 0.0f, true, false);
     if (argc > 4) {
         CHECK(snapshot(argv[4]));
     }
+
+    graficmesh_mesh_destroy(&mesh);
+    GraficMeshGridSpec grid = {2, 2, 32, 32};
+    CHECK(graficmesh_mesh_from_grid(&grid, &mesh, &mesh_error));
+    CHECK(view_renderer_set_mesh(&renderer, &mesh, &error));
+    float original[3];
+    glBindBuffer(GL_ARRAY_BUFFER, renderer.mesh.buffers[0]);
+    glGetBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(original), original);
+    CHECK(original[0] == -1 && original[1] == 0 && original[2] == -1);
+    ViewSource wave = {.available = true,
+        .text = "position.add(vec3(0.0, position.x().multiply(5.0).add(time).sin().multiply(0.3), 0.0))"};
+    wave.length = strlen(wave.text);
+    char *vertex_glsl = NULL;
+    CompileError compile_error;
+    CHECK(view_shader_compile(&wave, SHADER_STAGE_VERTEX, 0, &vertex_glsl, &compile_error));
+    bool wave_loaded = view_renderer_set_mesh_shaders(&renderer, vertex_glsl, NULL, &error);
+    free(vertex_glsl);
+    CHECK(wave_loaded);
+    float extent = renderer.mesh.extent;
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    unsigned char before_wave[128 * 128 * 4], after_wave[128 * 128 * 4];
+    glReadPixels(0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, before_wave);
+    view_renderer_draw_mesh(&renderer, 128, 128, 2.0f, false, false);
+    glReadPixels(0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, after_wave);
+    CHECK(memcmp(before_wave, after_wave, sizeof(before_wave)) != 0);
+    CHECK(renderer.mesh.extent == extent);
+    GLuint wave_program = renderer.mesh.program;
+    CHECK(!view_renderer_set_mesh_shaders(&renderer, "invalid vertex shader", NULL, &error));
+    CHECK(renderer.mesh.program == wave_program);
+    view_renderer_draw_mesh(&renderer, 128, 128, 2.0f, false, false);
+    glReadPixels(0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, before_wave);
+    CHECK(memcmp(before_wave, after_wave, sizeof(before_wave)) == 0);
+    if (argc > 5) {
+        view_renderer_draw_mesh(&renderer, 512, 512, 2.0f, true, false);
+        CHECK(snapshot(argv[5]));
+    }
+
+    /* A farther triangle drawn last must not obscure the nearer triangle. */
+    float layered_positions[] = {-1,-1,-0.5f, 1,-1,-0.5f, 0,1,-0.5f,
+                                -1,-1, 0.5f, 1,-1, 0.5f, 0,1, 0.5f};
+    float layered_uvs[] = {1,0, 1,0, 1,0, 0,1, 0,1, 0,1};
+    uint32_t layered_indices[] = {0,1,2,3,4,5};
+    GraficMesh layered = {.positions = layered_positions, .uvs = layered_uvs, .indices = layered_indices,
+        .vertex_count = 6, .index_count = 6};
+    CHECK(view_renderer_set_mesh(&renderer, &layered, &error));
+    CHECK(view_renderer_set_mesh_shaders(&renderer,
+        "#version 330 core\nlayout(location=0) in vec3 a_position; layout(location=1) in vec2 a_uv;"
+        "out vec2 graficUv; void main(){graficUv=a_uv;gl_Position=vec4(a_position,1);}", NULL, &error));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    CHECK(pixel_equals(64, 64, 255, 0, 0));
+    CHECK(glGetError() == GL_NO_ERROR);
 
 cleanup:
     graficmesh_mesh_destroy(&mesh);
     if (renderer.window != NULL) {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glDeleteRenderbuffers(1, &depth);
         glDeleteFramebuffers(1, &framebuffer);
         glDeleteTextures(1, &color);
     }
