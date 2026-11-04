@@ -15,7 +15,7 @@ grafic gl --stage vertex < examples/gl/waves.gvert > waves.vert
 
 A complete fragment program returns `vec4`. The shader capability provides coordinates,
 texture sampling, animation, shape masks, and color composition. Globals are
-`uv`, `resolution`, `time`, and texture inputs `tex0` through `tex3`.
+`uv`, displaced mesh-local `position`, `resolution`, `time`, and texture inputs `tex0` through `tex3`.
 
 Use `--stage vertex` for a `.gvert` program returning a mesh-local `vec3`
 position, with `position`, `uv`, and `time` inputs. The output is a complete

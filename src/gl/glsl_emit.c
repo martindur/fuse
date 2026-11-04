@@ -10,6 +10,7 @@ static const char SHADER_HEADER[] =
     "#version 330 core\n"
     "\n"
     "in vec2 graficUv;\n"
+    "in vec3 graficPosition;\n"
     "out vec4 fragColor;\n"
     "\n"
     "uniform float u_time;\n"
@@ -28,13 +29,15 @@ static const char VERTEX_HEADER[] =
     "layout(location = 0) in vec3 a_position;\n"
     "layout(location = 1) in vec2 a_uv;\n"
     "out vec2 graficUv;\n"
+    "out vec3 graficPosition;\n"
     "uniform mat4 u_model; uniform mat4 u_view; uniform mat4 u_projection;\n"
     "uniform float u_time;\n#define time u_time\n";
 
 static const char SHADER_MAIN_PREFIX[] =
     "\n"
     "void main() {\n"
-    "    vec2 uv = graficUv;\n";
+    "    vec2 uv = graficUv;\n"
+    "    vec3 position = graficPosition;\n";
 
 static const char SHADER_SUFFIX[] =
     ";\n"
@@ -326,9 +329,9 @@ bool glsl_emit(
         return false;
     }
     if (vertex) {
-        return fputs("    gl_Position = u_projection * u_view * u_model * vec4(", output) != EOF
+        return fputs("    graficPosition = ", output) != EOF
             && emit_expression(output, program->result, source)
-            && fputs(", 1.0);\n}\n", output) != EOF;
+            && fputs(";\n    gl_Position = u_projection * u_view * u_model * vec4(graficPosition, 1.0);\n}\n", output) != EOF;
     }
     return fputs("    fragColor = ", output) != EOF
         && emit_result(output, program->result, semantic_info->result_type, source)

@@ -31,10 +31,13 @@ diagnostics on standard error.
 .TP
 .B gl
 Compile .gfrag source to a GLSL 330 core fragment shader by default. Complete programs return
-vec4. A rendering host supplies the graficUv input, u_time and u_resolution
+vec4. A rendering host supplies graficUv and displaced local-space graficPosition
+inputs, u_time and u_resolution
 uniforms, and any used texture inputs tex0 through tex3.
 With --stage vertex, compile .gvert source returning a local-space vec3 position.
-Inputs are position, uv, and time. The host binds XYZ at attribute 0, UV at
+Inputs are position, uv, and time. Displaced position passes to fragments as
+position, interpolated across triangles. Use position.y() for height colors
+and first.mix(second, amount) to interpolate RGB colors. The host binds XYZ at attribute 0, UV at
 attribute 1, and supplies u_model, u_view, u_projection, and u_time uniforms.
 .TP
 .B tex

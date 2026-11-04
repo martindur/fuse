@@ -1,6 +1,12 @@
 #include "glsl_stdlib.h"
 
 static const BuiltinSignature BUILTINS[] = {
+    {"x", VALUE_TYPE_FLOAT, 1, {VALUE_TYPE_VEC3}},
+    {"y", VALUE_TYPE_FLOAT, 1, {VALUE_TYPE_VEC3}},
+    {"z", VALUE_TYPE_FLOAT, 1, {VALUE_TYPE_VEC3}},
+    {"x", VALUE_TYPE_FLOAT, 1, {VALUE_TYPE_VEC2}},
+    {"y", VALUE_TYPE_FLOAT, 1, {VALUE_TYPE_VEC2}},
+    {"mix", VALUE_TYPE_VEC3, 3, {VALUE_TYPE_VEC3, VALUE_TYPE_VEC3, VALUE_TYPE_FLOAT}},
     {"show", VALUE_TYPE_FLOAT, 1, {VALUE_TYPE_FLOAT}},
     {"show", VALUE_TYPE_VEC2, 1, {VALUE_TYPE_VEC2}},
     {"show", VALUE_TYPE_VEC3, 1, {VALUE_TYPE_VEC3}},
@@ -243,6 +249,7 @@ static const BuiltinSignature BUILTINS[] = {
 };
 
 static const GlobalSignature GLOBALS[] = {
+    {"position", VALUE_TYPE_VEC3},
     {"uv", VALUE_TYPE_VEC2},
     {"resolution", VALUE_TYPE_VEC2},
     {"time", VALUE_TYPE_FLOAT},
@@ -253,6 +260,11 @@ static const GlobalSignature GLOBALS[] = {
 };
 
 static const SymbolDocumentation DOCUMENTATION[] = {
+    {"position", "Displaced mesh-local position, interpolated across the triangle before camera transforms. Fullscreen previews use an XY plane from -1 to 1 with Z zero."},
+    {"x", "Returns the X component of a vector."},
+    {"y", "Returns the Y component of a vector."},
+    {"z", "Returns the Z component of a vector."},
+    {"mix", "Linearly interpolates between two RGB colors: amount 0 selects the first, and 1 the second. Clamp the amount for a bounded gradient."},
     {"show", "Selects this intermediate value in grafic view. The last show() in each file wins; normal compilation returns the value unchanged."},
     {
         "sample",
@@ -407,6 +419,7 @@ static const SymbolDocumentation DOCUMENTATION[] = {
 static const char *const RESERVED_NAMES[] = {
     "fragColor",
     "graficUv",
+    "graficPosition",
 };
 
 static const LanguageEnvironment ENVIRONMENT = {

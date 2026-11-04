@@ -56,7 +56,7 @@ Preview Grafic source files with live reload:
 
 ```sh
 build/grafic view examples/gl/ring.gfrag
-build/grafic view examples/gl/waves.gvert
+build/grafic view examples/gl/waves.gvert --frag examples/gl/waves.gfrag
 build/grafic view examples/tex/clouds.gtex
 build/grafic view examples/mesh/radial.gmesh
 ```

@@ -57,4 +57,11 @@ Compile it for another host with:
 build/grafic gl --stage vertex < examples/gl/waves.gvert > build/waves.vert
 ```
 
-The initial example uses UV colors; lighting and surface normals come later.
+For a height-colored surface, pair the vertex and fragment examples:
+
+```sh
+build/grafic view examples/gl/waves.gvert --frag examples/gl/waves.gfrag
+```
+
+The fragment program blends deep blue into turquoise and pale crests using
+interpolated displaced height. Lighting and surface normals come later.

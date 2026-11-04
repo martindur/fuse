@@ -25,6 +25,28 @@ static bool set_source(ViewRenderer *renderer, const char *text, ViewRenderError
     return loaded;
 }
 
+static bool set_mesh_sources(ViewRenderer *renderer, const char *vertex, const char *fragment,
+    ViewRenderError *error)
+{
+    const char *texts[] = {fragment, vertex};
+    char *glsl[2] = {NULL, NULL};
+    bool loaded = false;
+    for (size_t stage = 0; stage < 2; stage += 1) {
+        if (texts[stage] == NULL) continue;
+        ViewSource source = {.available = true, .text = (char *)texts[stage], .length = strlen(texts[stage])};
+        CompileError compile_error;
+        if (!view_shader_compile(&source, (ShaderStage)stage, 0, &glsl[stage], &compile_error)) {
+            snprintf(error->message, sizeof(error->message), "%s", compile_error.message);
+            goto cleanup;
+        }
+    }
+    loaded = view_renderer_set_mesh_shaders(renderer, glsl[SHADER_STAGE_VERTEX], glsl[SHADER_STAGE_FRAGMENT], error);
+cleanup:
+    free(glsl[0]);
+    free(glsl[1]);
+    return loaded;
+}
+
 static bool pixel_equals(int x, int y, int r, int g, int b)
 {
     unsigned char pixel[4];
@@ -151,6 +173,11 @@ int main(int argc, char **argv)
     CHECK(width > 0 && height > 0);
     view_renderer_draw(&renderer, width, height, 0.0f);
     CHECK(pixel_equals(0, 0, (int)(width * 255.0f / 512.0f), (int)(height * 255.0f / 512.0f), 0));
+
+    CHECK(set_source(&renderer,
+        "vec4(position.x().multiply(0.5).add(0.5), position.y().multiply(0.5).add(0.5), position.z(), 1.0)", &error));
+    view_renderer_draw(&renderer, 64, 64, 0.0f);
+    CHECK(pixel_equals(16, 48, 66, 193, 0));
 
     CHECK(set_texture(&renderer, 0, "vec4(uv, 0.0, 1.0)", 4, 2, &error));
     CHECK(set_source(&renderer, "uv.sample(tex0)", &error));
@@ -331,6 +358,37 @@ int main(int argc, char **argv)
         view_renderer_draw_mesh(&renderer, 512, 512, 2.0f, true, false);
         CHECK(snapshot(argv[5]));
     }
+
+    /* Fragment positions are local coordinates after displacement, before the camera. */
+    CHECK(set_mesh_sources(&renderer, NULL, "vec4(position.y().add(0.25), 0.0, 0.0, 1.0)", &error));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    CHECK(pixel_equals(64, 64, 64, 0, 0));
+    CHECK(set_mesh_sources(&renderer, "position.add(vec3(0.0, time, 0.0))",
+        "vec4(position.y(), 0.0, 0.0, 1.0)", &error));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.25f, false, false);
+    CHECK(pixel_equals(64, 64, 64, 0, 0));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.5f, false, false);
+    CHECK(pixel_equals(64, 64, 128, 0, 0));
+
+    /* A height varying from 0 to 1 across the grid produces intermediate colors. */
+    CHECK(set_mesh_sources(&renderer, "vec3(position.x(), uv.x(), position.z())",
+        "vec4(rgb(0.0, 0.0, 1.0).mix(rgb(1.0, 0.0, 0.0), position.y()), 1.0)", &error));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    unsigned char gradient[128 * 128 * 4];
+    glReadPixels(0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, gradient);
+    size_t blended = 0;
+    for (size_t index = 0; index < 128 * 128; index += 1) {
+        const unsigned char *pixel = &gradient[index * 4];
+        if (pixel[1] == 0 && pixel[0] > 20 && pixel[2] > 20) {
+            CHECK(abs((int)pixel[0] + pixel[2] - 255) <= 1);
+            blended += 1;
+        }
+    }
+    CHECK(blended > 100);
+    CHECK(set_mesh_sources(&renderer, "position.add(vec3(0.0, 0.25, 0.0)).show().add(vec3(0.0, 0.25, 0.0))",
+        "vec4(position.y(), 0.0, 0.0, 1.0)", &error));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    CHECK(pixel_equals(64, 64, 64, 0, 0));
 
     /* A farther triangle drawn last must not obscure the nearer triangle. */
     float layered_positions[] = {-1,-1,-0.5f, 1,-1,-0.5f, 0,1,-0.5f,

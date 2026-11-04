@@ -17,7 +17,8 @@ class ShaderTests(CompilerTests):
         result = self.run_command("--stage", "vertex", source="position")
         self.assertEqual(result.returncode, 0, result.stderr.decode())
         self.assertIn(b"layout(location = 0) in vec3 a_position", result.stdout)
-        self.assertIn(b"u_projection * u_view * u_model * vec4(position, 1.0)", result.stdout)
+        self.assertIn(b"graficPosition = position;", result.stdout)
+        self.assertIn(b"u_projection * u_view * u_model * vec4(graficPosition, 1.0)", result.stdout)
         self.assertIn(b"graficUv = uv", result.stdout)
         self.assertNotIn(b"fwidth", result.stdout)
         shown = self.run_command("--stage", "vertex", source="position.show()")
@@ -31,6 +32,22 @@ class ShaderTests(CompilerTests):
         self.assertIn(b"program result must be vec3", result.stderr)
         for args in (("--stage",), ("--stage", "geometry"), ("--stage", "vertex", "--stage", "fragment")):
             self.assertNotEqual(self.run_command(*args, source="position").returncode, 0)
+
+    def test_fragment_position_catalog_and_reserved_varying(self):
+        uri = "file:///water.gfrag"
+        _, responses = self.lsp_session(
+            opened("position.", self.language_id, uri),
+            request("textDocument/completion", 2, at("position.", uri)),
+            request("textDocument/hover", 3, at("pos", uri)),
+        )
+        names = {item["label"] for item in responses[2]["result"]["items"]}
+        self.assertTrue({"x", "y", "z", "show"} <= names)
+        self.assertIn("Displaced mesh-local position", responses[3]["result"]["contents"]["value"])
+        for stage, source in (("fragment", "let graficPosition = 1.0; vec4(uv, 0.0, 1.0)"),
+                              ("vertex", "let graficPosition = 1.0; position")):
+            result = self.run_command("--stage", stage, source=source)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(b"binding name is reserved", result.stderr)
 
     def test_vertex_catalog_and_lsp_are_stage_specific(self):
         for args in (("--stage", "vertex", "--builtins"), ("--builtins", "--stage", "vertex")):

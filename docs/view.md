@@ -79,11 +79,15 @@ size 2 by 2, with 64 subdivisions along X and Z, and Y up.
 ```sh
 grafic view examples/gl/waves.gvert
 grafic view examples/gl/waves.gvert --mesh examples/mesh/grid.gmesh
+grafic view examples/gl/waves.gvert --frag examples/gl/waves.gfrag
 grafic view examples/mesh/grid.gmesh --vert examples/gl/waves.gvert
 ```
 
 Use `--frag FILE.gfrag` to supply a surface color program. The default vertex
 shader preserves positions; the default fragment shader displays UV colors.
+Fragments receive interpolated displaced local-space `position`, while `uv`
+continues to use the original mesh UVs. The paired `waves.gfrag` example blends
+blue, turquoise, and pale crests using `position.y()`.
 A `.gfrag` source still opens fullscreen unless `--mesh` or `--vert` requests a
 3D surface. Each role can be supplied once; a primary file already fills its
 own role. Use `--tex0` through `--tex3` for fragment texture inputs.

@@ -1,0 +1,1 @@
+Expose interpolated displaced local-space `position` in fragment shaders, with `x()`, `y()`, and `z()` accessors and RGB `mix()` for height gradients. Generated vertex shaders pass their result as `graficPosition` before camera transforms; default mesh and fullscreen previews supply positions too. Add `waves.gfrag` to color animated waves by height.

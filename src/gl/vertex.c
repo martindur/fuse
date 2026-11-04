@@ -39,7 +39,7 @@ static const SymbolDocumentation DOCUMENTATION[] = {
     {"cycle", "Repeats a linear ramp between low and high at the given speed."},
 };
 static const char *const RESERVED[] = {
-    "a_position", "a_uv", "graficUv", "u_model", "u_view", "u_projection", "u_time", "gl_Position",
+    "a_position", "a_uv", "graficUv", "graficPosition", "u_model", "u_view", "u_projection", "u_time", "gl_Position",
 };
 static const LanguageEnvironment ENVIRONMENT = {
     .builtins = BUILTINS, .builtin_count = sizeof(BUILTINS) / sizeof(BUILTINS[0]),
