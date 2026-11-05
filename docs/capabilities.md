@@ -10,7 +10,7 @@ Run a command with `--builtins` for the authoritative signatures and docs.
 ```sh
 grafic gl < examples/gl/ring.gfrag > ring.frag
 grafic gl --preview-line 4 < examples/gl/ring.gfrag > preview.frag
-grafic gl --stage vertex < examples/gl/waves.gvert > waves.vert
+grafic gl --stage vertex < examples/waves/waves.gvert > waves.vert
 ```
 
 A complete fragment program returns `vec4`. The shader capability provides coordinates,

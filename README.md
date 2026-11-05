@@ -46,7 +46,7 @@ The C library and headers can be installed separately with `make install-library
 ```sh
 make
 build/grafic gl < examples/gl/ring.gfrag > build/ring.frag
-build/grafic gl --stage vertex < examples/gl/waves.gvert > build/waves.vert
+build/grafic gl --stage vertex < examples/waves/waves.gvert > build/waves.vert
 build/grafic tex --width 256 --height 256 --seed 42 \
   < examples/tex/clouds.gtex > build/clouds.png
 build/grafic mesh < examples/mesh/radial.gmesh > build/radial.obj
@@ -56,7 +56,8 @@ Preview Grafic source files with live reload:
 
 ```sh
 build/grafic view examples/gl/ring.gfrag
-build/grafic view examples/gl/waves.gvert --frag examples/gl/waves.gfrag
+build/grafic view examples/waves/waves.gmesh \
+  --vert examples/waves/waves.gvert --frag examples/waves/waves.gfrag
 build/grafic view examples/tex/clouds.gtex
 build/grafic view examples/mesh/radial.gmesh
 ```

@@ -11,11 +11,11 @@ build/grafic mesh < examples/mesh/radial.gmesh > build/radial.obj
 
 `gl/` contains standalone shader examples; `tex/` contains gradients, rings,
 stripes, and noise textures; `mesh/` contains planar and radial-UV disks.
+`waves/` groups the current animated surface, geometry, and material together.
 Preview sources directly with live reload:
 
 ```sh
 build/grafic view examples/gl/ring.gfrag
-build/grafic view examples/gl/waves.gvert
 build/grafic view examples/tex/clouds.gtex
 build/grafic view examples/mesh/radial.gmesh
 ```
@@ -48,52 +48,28 @@ rendering host, compile textures to PNG with `grafic tex` and shaders with `graf
 | `masked-reveal/` | `masked-reveal.gfrag` | `tex0` = `mask.gtex`, `tex1` = `rings.gtex` | 512 × 512, seed 42 |
 | `rippling-ink/` | `rippling-ink.gfrag` | `tex0` = `clouds.gtex`, `tex1` = `rings.gtex` | 512 × 512, seed 42 |
 
-`gl/waves.gvert` displaces a subdivided grid on the GPU. Open it directly for
-the default surface, or use `--mesh examples/mesh/grid.gmesh` to edit its size
-and subdivisions separately. `W` toggles wireframe to inspect displacement.
-Compile it for another host with:
+## Waves
+
+`waves/` contains one complete animated surface:
+
+- `waves.gmesh` sets the grid size and subdivisions.
+- `waves.gvert` combines a broad swell, a crossing wave, and smaller ripples.
+- `waves.gfrag` blends deep blue, turquoise, and pale crests, with ambient and directional lighting.
 
 ```sh
-build/grafic gl --stage vertex < examples/gl/waves.gvert > build/waves.vert
+build/grafic view examples/waves/waves.gmesh \
+  --vert examples/waves/waves.gvert \
+  --frag examples/waves/waves.gfrag
 ```
 
-For a height-colored surface, pair the vertex and fragment examples:
+Edit any source to reload it independently. Press `W` to inspect triangles or
+`U` to compare UV colors. Increase mesh subdivisions for finer faceting.
 
-```sh
-build/grafic view examples/gl/waves.gvert --frag examples/gl/waves.gfrag
-```
+The vertex shader adds three sine waves with different directions, frequencies,
+speeds, and amplitudes. Their amplitudes total 0.15; the fragment shader maps
+heights from -0.15 to 0.15 into the water palette. Adjust both ranges together
+when changing the overall wave height. The light direction is mesh-local and
+points toward the light; ambient light keeps other slopes visible.
 
-The fragment program blends deep blue into turquoise and pale crests using
-interpolated displaced height, with ambient and directional lighting derived
-from the displaced triangle normals.
-
-`gl/layered-waves.gvert` combines a broad swell, a crossing wave, and smaller
-ripples with different directions, wavelengths, and speeds:
-
-```sh
-build/grafic view examples/gl/layered-waves.gvert --frag examples/gl/waves.gfrag
-```
-
-Each phase projects the local XZ position onto a direction, multiplies by an
-angular frequency, and subtracts elapsed time times an angular speed. Increasing
-frequency makes waves shorter; increasing angular speed makes them travel faster
-at a fixed frequency. The sine is scaled by amplitude, then the three heights
-are added. Their amplitudes total 0.15, so the same height gradient covers the
-result. Edit the individual amplitudes to compare their contributions, or add
-`.show()` after a `position.add(...)` expression to inspect a partial sum.
-
-To judge the shape without the height colors, use the neutral lighting example:
-
-```sh
-build/grafic view examples/gl/layered-waves.gvert --frag examples/gl/waves-neutral.gfrag
-```
-
-The light direction is expressed in mesh-local coordinates, pointing toward
-the light. `normalize()` gives it unit length; `normal.dot(light)` measures
-how much the surface faces it. The clamped result supplies 80% directional
-light, with 20% ambient light keeping other slopes visible. These are triangle
-normals: increase mesh subdivisions for finer faceting, or press `W` to inspect
-the geometry. `U` switches back to UV colors for comparison.
-
-Wave sources put each chained operation on its own line, including bindings,
-so you can insert `.show()` between operations while experimenting.
+Each chained operation has its own line, including bindings, so `.show()` can
+be inserted between steps while exploring the example.

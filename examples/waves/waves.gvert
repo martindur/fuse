@@ -4,14 +4,16 @@ let swell_phase = position
   .x()
   .multiply(0.94)
   .add(position.z().multiply(0.342))
-  .multiply(4.0)
+  .multiply(6.0)
   .add(time.multiply(-1.2));
+
 let cross_phase = position
   .x()
   .multiply(-0.6)
   .add(position.z().multiply(0.8))
   .multiply(7.0)
   .add(time.multiply(-1.6));
+
 let ripple_phase = position
   .x()
   .multiply(0.8)
@@ -23,14 +25,18 @@ let ripple_phase = position
 let swell = swell_phase
   .sin()
   .multiply(0.085);
+
 let cross = cross_phase
   .sin()
   .multiply(0.045);
+
 let ripple = ripple_phase
   .sin()
   .multiply(0.02);
+
 let height = swell
   .add(cross)
   .add(ripple);
+
 position
   .add(vec3(0.0, height, 0.0))
