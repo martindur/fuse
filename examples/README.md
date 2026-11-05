@@ -68,8 +68,12 @@ Edit any source to reload it independently. Press `W` to inspect triangles or
 The vertex shader adds three sine waves with different directions, frequencies,
 speeds, and amplitudes. Their amplitudes total 0.15; the fragment shader maps
 heights from -0.15 to 0.15 into the water palette. Adjust both ranges together
-when changing the overall wave height. The light direction is mesh-local and
-points toward the light; ambient light keeps other slopes visible.
+when changing the overall wave height. The vertex shader derives an authored normal from the same wave phases,
+amplitudes, and frequencies as the displacement. The fragment shader uses
+`surface.position`, `surface.uv`, and normalized `surface.normal` for shading.
+The light direction is mesh-local and points toward the light; ambient light
+keeps other slopes visible. `screen.uv.y()` adds an artistic fade toward the
+chosen background color, independent of surface UVs. This is not distance fog.
 
 Each chained operation has its own line, including bindings, so `.show()` can
 be inserted between steps while exploring the example.

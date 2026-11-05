@@ -196,7 +196,7 @@ static Expr *parse_pipeline(Parser *parser) {
       parser_fail(
           parser,
           parser->current.span,
-          "expected function call after '.'"
+          "expected field or function call after '.'"
       );
       expr_destroy(input);
       return NULL;
@@ -206,13 +206,15 @@ static Expr *parse_pipeline(Parser *parser) {
     parser_advance(parser);
 
     if (!parser_check(parser, TOKEN_LEFT_PAREN)) {
-      parser_fail(
-          parser,
-          parser->current.span,
-          "expected function call after '.'"
-      );
-      expr_destroy(input);
-      return NULL;
+      SourceSpan span = span_covering(input->span, name.span);
+      Expr *field = expr_create_field(span, input, name.span);
+      if (field == NULL) {
+        expr_destroy(input);
+        parser_fail(parser, span, "out of memory");
+        return NULL;
+      }
+      input = field;
+      continue;
     }
 
     Expr *stage = parse_call_after_name(parser, name);

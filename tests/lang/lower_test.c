@@ -36,6 +36,8 @@ static bool contains_pipeline(const Expr *expression)
 
         return false;
 
+    case EXPR_FIELD:
+        return contains_pipeline(expression->as.field.input);
     case EXPR_PIPELINE:
         return true;
     }

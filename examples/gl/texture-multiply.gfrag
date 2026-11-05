@@ -1,9 +1,9 @@
-let first = uv
+let first = surface.uv
     .scroll(vec2(0.04, 0.01), time)
     .repeat()
     .sample(tex0);
 
-let second = uv
+let second = surface.uv
     .scroll(vec2(-0.02, 0.03), time)
     .repeat()
     .sample(tex1);

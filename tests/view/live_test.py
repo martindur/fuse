@@ -47,12 +47,12 @@ class LiveViewTests(unittest.TestCase):
             fragment = directory / "water.gfrag"
             mesh = directory / "surface.gmesh"
             log = directory / "viewer.log"
-            vertex.write_text("position")
+            vertex.write_text("vertex(position, uv)")
             with self.viewer(log, vertex) as (process, wait):
                 wait(lambda text: f"{vertex}: loaded" in text)
             for primary in (vertex, mesh, fragment):
-                vertex.write_text("position")
-                fragment.write_text("vec4(uv, 0.0, 1.0)")
+                vertex.write_text("vertex(position, uv)")
+                fragment.write_text("vec4(surface.uv, 0.0, 1.0)")
                 mesh.write_text("grid().subdivisions(8, 8)")
                 args = [primary]
                 for path, flag in ((vertex, "--vert"), (fragment, "--frag"), (mesh, "--mesh")):
@@ -60,14 +60,14 @@ class LiveViewTests(unittest.TestCase):
                 with self.subTest(primary=primary.suffix), self.viewer(log, *args) as (process, wait):
                     wait(lambda text: all(f"{path}: loaded" in text for path in (vertex, fragment, mesh)))
                     vertex.write_text("uv")
-                    wait(lambda text: "program result must be vec3" in text)
+                    wait(lambda text: "program result must be vertex" in text)
                     vertex.write_text("position.show().missing()")
                     wait(lambda text: text.count(f"{vertex}: loaded") == 2)
-                    fragment.write_text("uv")
+                    fragment.write_text("surface.uv")
                     wait(lambda text: "program result must be vec4" in text)
-                    vertex.write_text("position.add(vec3(0.0, time.sin().multiply(0.1), 0.0))")
+                    vertex.write_text("vertex(position.add(vec3(0.0, time.sin().multiply(0.1), 0.0)), uv)")
                     wait(lambda text: text.count(f"{vertex}: loaded") == 3)
-                    fragment.write_text("vec4(uv, 1.0, 1.0)")
+                    fragment.write_text("vec4(surface.uv, 1.0, 1.0)")
                     wait(lambda text: text.count(f"{fragment}: loaded") == 2)
                     mesh.unlink()
                     wait(lambda text: "cannot read source" in text)
@@ -81,13 +81,13 @@ class LiveViewTests(unittest.TestCase):
             fragment = directory / "surface.gfrag"
             texture = directory / "color.gtex"
             log = directory / "viewer.log"
-            vertex.write_text("position")
-            fragment.write_text("uv.sample(tex0)")
+            vertex.write_text("vertex(position, uv)")
+            fragment.write_text("surface.uv.sample(tex0)")
             texture.write_text("invalid()")
             with self.viewer(log, vertex, "--frag", fragment, "--tex0", texture,
                              "--texture-width", "2", "--texture-height", "2") as (process, wait):
                 wait(lambda text: "requires a loaded tex0" in text)
-                vertex.write_text("position.add(vec3(0.0, 0.1, 0.0))")
+                vertex.write_text("vertex(position.add(vec3(0.0, 0.1, 0.0)), uv)")
                 wait(lambda text: text.count(f"{vertex}: loaded") == 2)
                 texture.write_text("vec4(1.0, 0.0, 0.0, 1.0)")
                 wait(lambda text: f"{fragment}: loaded" in text)
@@ -99,7 +99,7 @@ class LiveViewTests(unittest.TestCase):
             tex0 = directory / "first.gtex"
             tex1 = directory / "second.gtex"
             log = directory / "viewer.log"
-            shader.write_text("uv.sample(tex0).multiply(uv.sample(tex1))")
+            shader.write_text("surface.uv.sample(tex0).multiply(surface.uv.sample(tex1))")
             tex0.write_text("vec4(uv, 0.0, 1.0)")
             tex1.write_text("vec4(1.0, 1.0, 1.0, 1.0)")
 
@@ -116,7 +116,7 @@ class LiveViewTests(unittest.TestCase):
                 tex0.write_text("uv.missing()")
                 wait(lambda text: f"tex0: {tex0}:1:4: semantic error:" in text)
                 self.assertEqual(counts(), (1, 1, 1))
-                shader.write_text("// shader still reloads with the last good texture\nuv.sample(tex0)")
+                shader.write_text("// shader still reloads with the last good texture\nsurface.uv.sample(tex0)")
                 wait(lambda text: counts() == (2, 1, 1))
                 replacement = tex0.with_suffix(".new")
                 replacement.write_text("vec4(uv, 1.0, 1.0)")
@@ -136,7 +136,7 @@ class LiveViewTests(unittest.TestCase):
             shader = directory / "shader.gfrag"
             texture = directory / "texture.gtex"
             log = directory / "viewer.log"
-            shader.write_text("uv.sample(tex3)")
+            shader.write_text("surface.uv.sample(tex3)")
             texture.write_text("uv.missing()")
             with self.viewer(log, shader, "--tex3", texture,
                              "--texture-width", "8", "--texture-height", "4") as (process, wait):
@@ -223,8 +223,8 @@ class LiveViewTests(unittest.TestCase):
                 path.write_text(valid)
                 time.sleep(0.45)
                 self.assertEqual(log.read_text().count(": loaded"), 1)
-                path.write_text("// broken edit\nuv.missing()")
-                wait(lambda text: ":2:4: semantic error: unknown function" in text)
+                path.write_text("// broken edit\nsurface.uv.missing()")
+                wait(lambda text: ":2:12: semantic error: unknown function" in text)
                 self.assertIsNone(process.poll())
                 staged = path.with_suffix(".new")
                 staged.write_text(replacement)

@@ -251,10 +251,15 @@ static const BuiltinSignature BUILTINS[] = {
     },
 };
 
+static const FieldSignature FIELDS[] = {
+    {VALUE_TYPE_SURFACE, "position", VALUE_TYPE_VEC3, "Displaced mesh-local position, interpolated across the triangle before camera transforms."},
+    {VALUE_TYPE_SURFACE, "uv", VALUE_TYPE_VEC2, "Interpolated UV supplied by the vertex program."},
+    {VALUE_TYPE_SURFACE, "normal", VALUE_TYPE_VEC3, "Normalized interpolated authored local normal, or winding-oriented triangle normal when none was supplied."},
+    {VALUE_TYPE_SCREEN, "position", VALUE_TYPE_VEC2, "Framebuffer pixel-center coordinates, with bottom-left origin."},
+    {VALUE_TYPE_SCREEN, "uv", VALUE_TYPE_VEC2, "Framebuffer pixel-center coordinates divided by resolution, independent of mesh UVs."},
+};
 static const GlobalSignature GLOBALS[] = {
-    {"normal", VALUE_TYPE_VEC3},
-    {"position", VALUE_TYPE_VEC3},
-    {"uv", VALUE_TYPE_VEC2},
+    {"surface", VALUE_TYPE_SURFACE}, {"screen", VALUE_TYPE_SCREEN},
     {"resolution", VALUE_TYPE_VEC2},
     {"time", VALUE_TYPE_FLOAT},
     {"tex0", VALUE_TYPE_TEXTURE},
@@ -264,10 +269,10 @@ static const GlobalSignature GLOBALS[] = {
 };
 
 static const SymbolDocumentation DOCUMENTATION[] = {
-    {"normal", "Unit normal of the displaced triangle in mesh-local coordinates, derived from position. Follows counterclockwise triangle winding; grid normals point toward +Y, and fullscreen normals toward +Z. This is a face normal, not an interpolated vertex normal."},
+    {"surface", "Interpolated surface.position, surface.uv, and surface.normal supplied by the preceding vertex stage."},
+    {"screen", "Framebuffer screen.position in pixels and screen.uv normalized by resolution, with bottom-left origin."},
     {"normalize", "Returns a unit vector with the same direction as a nonzero vec3."},
     {"dot", "Returns the dot product of two vec3 vectors. For unit vectors, this is the cosine of their angle."},
-    {"position", "Displaced mesh-local position, interpolated across the triangle before camera transforms. Fullscreen previews use an XY plane from -1 to 1 with Z zero."},
     {"x", "Returns the X component of a vector."},
     {"y", "Returns the Y component of a vector."},
     {"z", "Returns the Z component of a vector."},
@@ -394,10 +399,6 @@ static const SymbolDocumentation DOCUMENTATION[] = {
         "Multiplies two scalar values or two colors component by component, or scales an RGB vector by a scalar.",
     },
     {
-        "uv",
-        "Normalized coordinates for the current fragment.",
-    },
-    {
         "resolution",
         "Width and height of the output in pixels.",
     },
@@ -427,10 +428,12 @@ static const char *const RESERVED_NAMES[] = {
     "fragColor",
     "graficUv",
     "graficPosition",
-    "grafic_surface_normal",
+    "grafic_surface_normal", "grafic_normalize", "GraficSurface", "GraficScreen",
+    "graficAuthoredNormal", "graficHasNormal", "graficFaceNormal",
 };
 
 static const LanguageEnvironment ENVIRONMENT = {
+    .fields = FIELDS, .field_count = sizeof(FIELDS) / sizeof(FIELDS[0]),
     .builtins = BUILTINS,
     .builtin_count = sizeof(BUILTINS) / sizeof(BUILTINS[0]),
     .globals = GLOBALS,
@@ -449,6 +452,7 @@ static const GraficDialect DIALECT = {
 };
 
 static const char GLSL_STDLIB[] =
+    "vec3 grafic_normalize(vec3 value) { float magnitude = length(value); return magnitude > 0.0 ? value / magnitude : vec3(0.0); }\n"
     "vec3 grafic_surface_normal(vec3 point) {\n"
     "    vec3 direction = cross(dFdx(point), dFdy(point));\n"
     "    float magnitude = length(direction);\n"

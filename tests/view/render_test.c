@@ -134,7 +134,7 @@ int main(int argc, char **argv)
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth);
     CHECK(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
 
-    CHECK(set_source(&renderer, "vec4(uv, time, 1.0)", &error));
+    CHECK(set_source(&renderer, "vec4(surface.uv, time, 1.0)", &error));
     view_renderer_draw(&renderer, 64, 64, 0.25f);
     CHECK(pixel_equals(16, 48, 66, 193, 64));
     GLuint previous = renderer.program;
@@ -175,12 +175,12 @@ int main(int argc, char **argv)
     CHECK(pixel_equals(0, 0, (int)(width * 255.0f / 512.0f), (int)(height * 255.0f / 512.0f), 0));
 
     CHECK(set_source(&renderer,
-        "vec4(position.x().multiply(0.5).add(0.5), position.y().multiply(0.5).add(0.5), position.z(), 1.0)", &error));
+        "vec4(surface.position.x().multiply(0.5).add(0.5), surface.position.y().multiply(0.5).add(0.5), surface.position.z(), 1.0)", &error));
     view_renderer_draw(&renderer, 64, 64, 0.0f);
     CHECK(pixel_equals(16, 48, 66, 193, 0));
 
     CHECK(set_texture(&renderer, 0, "vec4(uv, 0.0, 1.0)", 4, 2, &error));
-    CHECK(set_source(&renderer, "uv.sample(tex0)", &error));
+    CHECK(set_source(&renderer, "surface.uv.sample(tex0)", &error));
     view_renderer_draw(&renderer, 4, 2, 0.0f);
     CHECK(pixel_equals(0, 0, 32, 64, 0));
     CHECK(pixel_equals(3, 1, 223, 191, 0));
@@ -193,11 +193,11 @@ int main(int argc, char **argv)
 
     CHECK(set_texture(&renderer, 1, "vec4(0.0, 1.0, 0.0, 1.0)", 1, 1, &error));
     CHECK(set_texture(&renderer, 3, "vec4(0.0, 0.0, 1.0, 1.0)", 1, 1, &error));
-    CHECK(set_source(&renderer, "uv.sample(tex1).blend_add(uv.sample(tex3)).multiply(vec4(0.5, 0.5, 0.5, 1.0))", &error));
+    CHECK(set_source(&renderer, "surface.uv.sample(tex1).blend_add(surface.uv.sample(tex3)).multiply(vec4(0.5, 0.5, 0.5, 1.0))", &error));
     view_renderer_draw(&renderer, 4, 2, 0.0f);
     CHECK(pixel_equals(0, 0, 0, 128, 128));
     previous = renderer.program;
-    CHECK(!set_source(&renderer, "uv.sample(tex2)", &error));
+    CHECK(!set_source(&renderer, "surface.uv.sample(tex2)", &error));
     CHECK(strstr(error.message, "--tex2") != NULL && renderer.program == previous);
     GLuint previous_texture = renderer.textures[1];
     float white[] = {1, 1, 1, 1};
@@ -211,14 +211,14 @@ int main(int argc, char **argv)
     CHECK(renderer.program == previous);
     view_renderer_draw(&renderer, 4, 2, 0.0f);
     CHECK(pixel_equals(0, 0, 128, 0, 128));
-    CHECK(set_source(&renderer, "uv.sample(tex1).blend_add(uv.sample(tex3)).multiply(vec4(0.5, 0.5, 0.5, 1.0))", &error));
+    CHECK(set_source(&renderer, "surface.uv.sample(tex1).blend_add(surface.uv.sample(tex3)).multiply(vec4(0.5, 0.5, 0.5, 1.0))", &error));
     view_renderer_draw(&renderer, 4, 2, 0.0f);
     CHECK(pixel_equals(0, 0, 128, 0, 128));
 
     CHECK(set_texture(&renderer, 0,
         "vec4(1.0, 0.0, 0.0, 1.0).show().multiply(vec4(0.0, 1.0, 0.0, 1.0))", 4, 2, &error));
     CHECK(set_source(&renderer,
-        "uv.sample(tex0).multiply(vec4(0.5, 1.0, 1.0, 1.0)).show().missing()", &error));
+        "surface.uv.sample(tex0).multiply(vec4(0.5, 1.0, 1.0, 1.0)).show().missing()", &error));
     previous = renderer.program;
     view_renderer_draw(&renderer, 4, 2, 1.0f);
     CHECK(pixel_equals(0, 0, 128, 0, 0));
@@ -229,7 +229,7 @@ int main(int argc, char **argv)
     CHECK(renderer.program == previous);
     view_renderer_draw(&renderer, 4, 2, 2.0f);
     CHECK(pixel_equals(0, 0, 128, 0, 0));
-    CHECK(set_source(&renderer, "uv.show().missing()", &error));
+    CHECK(set_source(&renderer, "surface.uv.show().missing()", &error));
     view_renderer_draw(&renderer, 4, 2, 0.0f);
     CHECK(pixel_equals(0, 0, 32, 64, 0));
 
@@ -332,7 +332,7 @@ int main(int argc, char **argv)
     glGetBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(original), original);
     CHECK(original[0] == -1 && original[1] == 0 && original[2] == -1);
     ViewSource wave = {.available = true,
-        .text = "position.add(vec3(0.0, position.x().multiply(5.0).add(time).sin().multiply(0.3), 0.0))"};
+        .text = "vertex(position.add(vec3(0.0, position.x().multiply(5.0).add(time).sin().multiply(0.3), 0.0)), uv)"};
     wave.length = strlen(wave.text);
     char *vertex_glsl = NULL;
     CompileError compile_error;
@@ -360,19 +360,19 @@ int main(int argc, char **argv)
     }
 
     /* Fragment positions are local coordinates after displacement, before the camera. */
-    CHECK(set_mesh_sources(&renderer, NULL, "vec4(position.y().add(0.25), 0.0, 0.0, 1.0)", &error));
+    CHECK(set_mesh_sources(&renderer, NULL, "vec4(surface.position.y().add(0.25), 0.0, 0.0, 1.0)", &error));
     view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
     CHECK(pixel_equals(64, 64, 64, 0, 0));
-    CHECK(set_mesh_sources(&renderer, "position.add(vec3(0.0, time, 0.0))",
-        "vec4(position.y(), 0.0, 0.0, 1.0)", &error));
+    CHECK(set_mesh_sources(&renderer, "vertex(position.add(vec3(0.0, time, 0.0)), uv)",
+        "vec4(surface.position.y(), 0.0, 0.0, 1.0)", &error));
     view_renderer_draw_mesh(&renderer, 128, 128, 0.25f, false, false);
     CHECK(pixel_equals(64, 64, 64, 0, 0));
     view_renderer_draw_mesh(&renderer, 128, 128, 0.5f, false, false);
     CHECK(pixel_equals(64, 64, 128, 0, 0));
 
     /* A height varying from 0 to 1 across the grid produces intermediate colors. */
-    CHECK(set_mesh_sources(&renderer, "vec3(position.x(), uv.x(), position.z())",
-        "vec4(rgb(0.0, 0.0, 1.0).mix(rgb(1.0, 0.0, 0.0), position.y()), 1.0)", &error));
+    CHECK(set_mesh_sources(&renderer, "vertex(vec3(position.x(), uv.x(), position.z()), uv)",
+        "vec4(rgb(0.0, 0.0, 1.0).mix(rgb(1.0, 0.0, 0.0), surface.position.y()), 1.0)", &error));
     view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
     unsigned char gradient[128 * 128 * 4];
     glReadPixels(0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, gradient);
@@ -385,22 +385,22 @@ int main(int argc, char **argv)
         }
     }
     CHECK(blended > 100);
-    CHECK(set_mesh_sources(&renderer, "position.add(vec3(0.0, 0.25, 0.0)).show().add(vec3(0.0, 0.25, 0.0))",
-        "vec4(position.y(), 0.0, 0.0, 1.0)", &error));
+    CHECK(set_mesh_sources(&renderer, "vertex(position.add(vec3(0.0, 0.25, 0.0)).show().add(vec3(0.0, 0.25, 0.0)), uv)",
+        "vec4(surface.position.y(), 0.0, 0.0, 1.0)", &error));
     view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
     CHECK(pixel_equals(64, 64, 64, 0, 0));
 
     /* Normal direction is local, includes displacement, and follows triangle winding. */
-    const char *normal_color = "vec4(normal.x().multiply(0.5).add(0.5), normal.y().multiply(0.5).add(0.5), normal.z().multiply(0.5).add(0.5), 1.0)";
+    const char *normal_color = "vec4(surface.normal.x().multiply(0.5).add(0.5), surface.normal.y().multiply(0.5).add(0.5), surface.normal.z().multiply(0.5).add(0.5), 1.0)";
     CHECK(set_mesh_sources(&renderer, NULL, normal_color, &error));
     view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
     CHECK(pixel_equals(64, 64, 128, 255, 128));
-    CHECK(set_mesh_sources(&renderer, "vec3(position.x(), position.x().multiply(0.5), position.z())",
+    CHECK(set_mesh_sources(&renderer, "vertex(vec3(position.x(), position.x().multiply(0.5), position.z()), uv)",
         normal_color, &error));
     view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
     CHECK(pixel_equals(64, 64, 70, 242, 128));
 
-    const char *lit_color = "vec4(rgb(0.5, 0.5, 0.5).multiply(normal.dot(vec3(0.0, 3.0, 0.0).normalize()).clamp(0.0, 1.0).multiply(0.8).add(0.2)), 1.0)";
+    const char *lit_color = "vec4(rgb(0.5, 0.5, 0.5).multiply(surface.normal.dot(vec3(0.0, 3.0, 0.0).normalize()).clamp(0.0, 1.0).multiply(0.8).add(0.2)), 1.0)";
     CHECK(set_mesh_sources(&renderer, NULL, lit_color, &error));
     view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
     CHECK(pixel_equals(64, 64, 128, 128, 128));
@@ -418,6 +418,58 @@ int main(int argc, char **argv)
     CHECK(set_source(&renderer, normal_color, &error));
     view_renderer_draw(&renderer, 64, 64, 0.0f);
     CHECK(pixel_equals(16, 48, 128, 128, 255));
+
+    /* Structured outputs preserve authored UVs and normalize interpolated normals. */
+    CHECK(set_mesh_sources(&renderer, "vertex(position, vec2(0.25, 0.75), vec3(position.x(), 1.0, 0.0))",
+        "vec4(surface.uv, screen.uv.y(), 1.0)", &error));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    CHECK(pixel_equals(64, 64, 64, 191, 128));
+    view_renderer_draw_mesh(&renderer, 128, 256, 0.0f, false, false);
+    CHECK(pixel_equals(64, 128, 64, 191, 128));
+    CHECK(set_mesh_sources(&renderer, "vertex(position, uv, vec3(position.x(), 1.0, 0.0))",
+        "vec4(surface.normal.x().multiply(0.5).add(0.5), surface.normal.y().multiply(0.5).add(0.5), surface.position.x().multiply(0.5).add(0.5), 1.0)", &error));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    for (int x = 48; x <= 80; x += 16) {
+        unsigned char pixel[4];
+        glReadPixels(x, 64, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
+        float nx = pixel[0] / 127.5f - 1, ny = pixel[1] / 127.5f - 1;
+        float px = pixel[2] / 127.5f - 1;
+        CHECK(fabsf(nx * nx + ny * ny - 1) < 0.03f);
+        CHECK(fabsf(nx / ny - px) < 0.03f);
+    }
+    CHECK(set_mesh_sources(&renderer,
+        "let p = position.show(); vertex(p.add(vec3(0.0, 0.2, 0.0)), vec2(0.2, 0.8), vec3(1.0, 0.0, 0.0))",
+        "vec4(surface.uv, surface.normal.x(), 1.0)", &error));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    CHECK(pixel_equals(64, 64, 51, 204, 255));
+    CHECK(set_mesh_sources(&renderer,
+        "vertex(position, vec2(0.3, 0.7), vec3(0.0, 0.0, 1.0)).show()",
+        "vec4(surface.uv, surface.normal.z(), 1.0)", &error));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    CHECK(pixel_equals(64, 64, 77, 179, 255));
+    CHECK(set_source(&renderer, "vec4(screen.position.x().multiply(0.01), screen.position.y().multiply(0.01), 0.0, 1.0)", &error));
+    view_renderer_draw(&renderer, 64, 64, 0.0f);
+    CHECK(pixel_equals(0, 0, 1, 1, 0));
+    CHECK(pixel_equals(10, 20, 27, 52, 0));
+
+    CHECK(set_source(&renderer,
+        "vec4(rgb(1.0, 0.0, 0.0).mix(rgb(0.0, 0.0, 1.0), screen.uv.y()), 1.0)", &error));
+    view_renderer_draw(&renderer, 4, 4, 0.0f);
+    CHECK(pixel_equals(0, 0, 223, 0, 32));
+    CHECK(pixel_equals(0, 3, 32, 0, 223));
+
+    ViewSource wave_file = {0}, water_file = {0};
+    CHECK(view_source_poll(&wave_file, "examples/waves/waves.gvert", read_error, sizeof(read_error)) == VIEW_SOURCE_CHANGED);
+    CHECK(view_source_poll(&water_file, "examples/waves/waves.gfrag", read_error, sizeof(read_error)) == VIEW_SOURCE_CHANGED);
+    bool water_loaded = set_mesh_sources(&renderer, wave_file.text, water_file.text, &error);
+    view_source_destroy(&wave_file);
+    view_source_destroy(&water_file);
+    CHECK(water_loaded);
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    glReadPixels(0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, before_wave);
+    view_renderer_draw_mesh(&renderer, 128, 128, 1.0f, false, false);
+    glReadPixels(0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, after_wave);
+    CHECK(memcmp(before_wave, after_wave, sizeof(before_wave)) != 0);
 
     /* A farther triangle drawn last must not obscure the nearer triangle. */
     float layered_positions[] = {-1,-1,-0.5f, 1,-1,-0.5f, 0,1,-0.5f,

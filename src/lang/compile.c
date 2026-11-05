@@ -18,6 +18,8 @@ void prepared_program_destroy(PreparedProgram *prepared)
     if (prepared != NULL) {
         semantic_info_destroy(&prepared->semantic_info);
         program_destroy(prepared->program);
+        program_destroy(prepared->context_program);
+        semantic_info_destroy(&prepared->context_semantic_info);
         *prepared = (PreparedProgram){0};
     }
 }
@@ -38,7 +40,7 @@ static bool prepare(
     *error = (CompileError){0};
     if (source == NULL || out == NULL || dialect == NULL || dialect->environment == NULL
         || dialect->required_result_type < VALUE_TYPE_FLOAT
-        || dialect->required_result_type > VALUE_TYPE_MESH) {
+        || dialect->required_result_type > VALUE_TYPE_SCREEN) {
         set_error(error, "compile", (SourceSpan){0}, "invalid compilation input");
         return false;
     }
@@ -89,7 +91,9 @@ static bool prepare(
 
     ValueType result = prepared.semantic_info.result_type;
     bool numeric_preview = preview != NULL && !dialect->preview_requires_result_type && value_type_is_previewable(dialect->required_result_type);
-    if (numeric_preview ? !value_type_is_previewable(result) : result != dialect->required_result_type) {
+    bool alternate_preview = preview != NULL && dialect->preview_result_type != VALUE_TYPE_INVALID
+        && result == dialect->preview_result_type;
+    if (!alternate_preview && (numeric_preview ? !value_type_is_previewable(result) : result != dialect->required_result_type)) {
         set_error(error, "semantic", prepared.program->result->span,
             numeric_preview ? "preview result has unsupported type" : "");
         if (!numeric_preview) {
@@ -99,6 +103,14 @@ static bool prepare(
         goto cleanup;
     }
 
+    if (alternate_preview) {
+        PreparedProgram context = {0};
+        CompileError ignored;
+        if (prepare(source, length, dialect, 0, false, &context, &ignored)) {
+            prepared.context_program = context.program;
+            prepared.context_semantic_info = context.semantic_info;
+        }
+    }
     prepared_program_destroy(out);
     *out = prepared;
     prepared = (PreparedProgram){0};

@@ -11,6 +11,10 @@ static const char SHADER_HEADER[] =
     "\n"
     "in vec2 graficUv;\n"
     "in vec3 graficPosition;\n"
+    "in vec3 graficAuthoredNormal;\n"
+    "flat in int graficHasNormal;\n"
+    "struct GraficSurface { vec3 position; vec2 uv; vec3 normal; };\n"
+    "struct GraficScreen { vec2 position; vec2 uv; };\n"
     "out vec4 fragColor;\n"
     "\n"
     "uniform float u_time;\n"
@@ -30,15 +34,18 @@ static const char VERTEX_HEADER[] =
     "layout(location = 1) in vec2 a_uv;\n"
     "out vec2 graficUv;\n"
     "out vec3 graficPosition;\n"
+    "out vec3 graficAuthoredNormal;\n"
+    "flat out int graficHasNormal;\n"
+    "struct GraficVertex { vec3 position; vec2 uv; vec3 normal; bool has_normal; };\n"
     "uniform mat4 u_model; uniform mat4 u_view; uniform mat4 u_projection;\n"
     "uniform float u_time;\n#define time u_time\n";
 
 static const char SHADER_MAIN_PREFIX[] =
     "\n"
     "void main() {\n"
-    "    vec2 uv = graficUv;\n"
-    "    vec3 position = graficPosition;\n"
-    "    vec3 normal = grafic_surface_normal(position);\n";
+    "    vec3 graficFaceNormal = grafic_surface_normal(graficPosition);\n"
+    "    GraficSurface surface = GraficSurface(graficPosition, graficUv, graficHasNormal != 0 ? grafic_normalize(graficAuthoredNormal) : graficFaceNormal);\n"
+    "    GraficScreen screen = GraficScreen(gl_FragCoord.xy, gl_FragCoord.xy / u_resolution);\n";
 
 static const char SHADER_SUFFIX[] =
     ";\n"
@@ -194,6 +201,10 @@ static bool emit_expression(
 
         return fputc(')', output) != EOF;
 
+    case EXPR_FIELD:
+        return emit_expression(output, expression->as.field.input, source)
+            && fputc('.', output) != EOF
+            && write_span(output, source, expression->as.field.name);
     case EXPR_PIPELINE:
         return false;
     }
@@ -214,6 +225,9 @@ static const char *value_type_glsl_name(ValueType type)
         return "vec4";
     case VALUE_TYPE_TEXTURE:
         return "sampler2D";
+    case VALUE_TYPE_VERTEX: return "GraficVertex";
+    case VALUE_TYPE_SURFACE: return "GraficSurface";
+    case VALUE_TYPE_SCREEN: return "GraficScreen";
     case VALUE_TYPE_MESH:
         return NULL;
     case VALUE_TYPE_INVALID:
@@ -291,6 +305,9 @@ static bool emit_result(
     case VALUE_TYPE_INVALID:
     case VALUE_TYPE_TEXTURE:
     case VALUE_TYPE_MESH:
+    case VALUE_TYPE_VERTEX:
+    case VALUE_TYPE_SURFACE:
+    case VALUE_TYPE_SCREEN:
         return false;
     }
 
@@ -302,20 +319,21 @@ static bool emit_result(
 bool glsl_emit(
     FILE *output,
     ShaderStage stage,
-    const Program *program,
-    const SemanticInfo *semantic_info,
+    const PreparedProgram *prepared,
     const char *source
 )
 {
+    if (prepared == NULL) return false;
+    const Program *program = prepared->program;
+    const SemanticInfo *semantic_info = &prepared->semantic_info;
     if (output == NULL
         || (stage != SHADER_STAGE_FRAGMENT && stage != SHADER_STAGE_VERTEX)
         || program == NULL
         || program->result == NULL
-        || semantic_info == NULL
         || semantic_info->binding_count != program->binding_count
         || (program->binding_count > 0
             && semantic_info->binding_types == NULL)
-        || (stage == SHADER_STAGE_VERTEX ? semantic_info->result_type != VALUE_TYPE_VEC3
+        || (stage == SHADER_STAGE_VERTEX ? (semantic_info->result_type != VALUE_TYPE_VERTEX && semantic_info->result_type != VALUE_TYPE_VEC3)
             : !value_type_is_previewable(semantic_info->result_type))
         || source == NULL) {
         return false;
@@ -324,15 +342,27 @@ bool glsl_emit(
     bool vertex = stage == SHADER_STAGE_VERTEX;
     if (fputs(vertex ? VERTEX_HEADER : SHADER_HEADER, output) == EOF
         || !glsl_stdlib_emit(output, stage)
-        || fputs(vertex ? "\nvoid main() {\n    vec3 position = a_position;\n    vec2 uv = a_uv;\n    graficUv = uv;\n"
+        || fputs(vertex ? "\nvoid main() {\n    vec3 position = a_position;\n    vec2 uv = a_uv;\n"
             : SHADER_MAIN_PREFIX, output) == EOF
-        || !emit_bindings(output, program, semantic_info, source)) {
+        || !emit_bindings(output, prepared->context_program != NULL ? prepared->context_program : program,
+            prepared->context_program != NULL ? &prepared->context_semantic_info : semantic_info, source)) {
         return false;
     }
     if (vertex) {
-        return fputs("    graficPosition = ", output) != EOF
-            && emit_expression(output, program->result, source)
-            && fputs(";\n    gl_Position = u_projection * u_view * u_model * vec4(graficPosition, 1.0);\n}\n", output) != EOF;
+        bool position_preview = semantic_info->result_type == VALUE_TYPE_VEC3;
+        if (position_preview && prepared->context_program != NULL) {
+            if (fputs("    GraficVertex graficContext = ", output) == EOF
+                || !emit_expression(output, prepared->context_program->result, source)
+                || fputs(";\n", output) == EOF) return false;
+        }
+        if (fputs("    GraficVertex graficResult = ", output) == EOF) return false;
+        if (position_preview && fputs(prepared->context_program != NULL ? "GraficVertex(" : "vertex(", output) == EOF) return false;
+        if (!emit_expression(output, program->result, source)) return false;
+        if (position_preview && fputs(prepared->context_program != NULL
+                ? ", graficContext.uv, graficContext.normal, graficContext.has_normal)" : ", uv)", output) == EOF) return false;
+        return fputs(";\n    graficUv = graficResult.uv;\n    graficPosition = graficResult.position;\n"
+            "    graficAuthoredNormal = graficResult.normal;\n    graficHasNormal = graficResult.has_normal ? 1 : 0;\n"
+            "    gl_Position = u_projection * u_view * u_model * vec4(graficPosition, 1.0);\n}\n", output) != EOF;
     }
     return fputs("    fragColor = ", output) != EOF
         && emit_result(output, program->result, semantic_info->result_type, source)

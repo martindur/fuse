@@ -24,7 +24,7 @@ int main(void)
         const char *kind;
         const char *message;
     } failures[] = {
-        {"point.", 0, "parse", "expected function call"},
+        {"point.", 0, "parse", "expected field or function call"},
         {"point.missing()", 0, "semantic", "unknown function"},
         {"point", 0, "semantic", "must be vec4"},
         {"point\n\n.magnitude().finish()", 2, "preview", "no previewable expression"},

@@ -10,7 +10,8 @@ typedef enum {
   EXPR_IDENTIFIER,
   EXPR_NUMBER,
   EXPR_CALL,
-  EXPR_PIPELINE
+  EXPR_PIPELINE,
+  EXPR_FIELD
 } ExprKind;
 
 typedef struct Expr Expr;
@@ -39,6 +40,11 @@ struct Expr {
 
   union {
     struct {
+      Expr *input;
+      SourceSpan name;
+    } field;
+
+    struct {
       SourceSpan name;
       ExprList arguments;
     } call;
@@ -50,6 +56,7 @@ struct Expr {
   } as;
 };
 
+Expr *expr_create_field(SourceSpan span, Expr *input, SourceSpan name);
 Expr *expr_create_identifier(SourceSpan span);
 Expr *expr_create_number(SourceSpan span);
 

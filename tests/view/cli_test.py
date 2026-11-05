@@ -81,7 +81,7 @@ class ViewTests(unittest.TestCase):
     def test_texture_read_errors_require_no_window(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "shader.gfrag"
-            path.write_text("uv.sample(tex0)")
+            path.write_text("surface.uv.sample(tex0)")
             texture_directory = Path(directory) / "directory.gtex"
             texture_directory.mkdir()
             for texture in (Path(directory) / "missing.gtex", texture_directory):

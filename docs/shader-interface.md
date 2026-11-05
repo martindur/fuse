@@ -1,134 +1,132 @@
 # Shader host interface
 
-By default, `grafic gl` emits a complete GLSL 330 core fragment shader. A host provides the
-vertex stage, textures, uniform values, and drawing context.
+`grafic gl` emits complete GLSL 330 core shaders. Fragment is the default stage;
+use `--stage vertex` for `.gvert` programs. The host supplies geometry, transforms,
+textures, and uniform values. Inactive uniforms and inputs may be optimized out.
+
+## Vertex results
+
+Vertex inputs remain `position: vec3`, `uv: vec2`, and `time: float`. Positions
+are original mesh-local XYZ coordinates. A complete program returns a vertex:
+
+```text
+vertex(position, uv)
+```
+
+The optional third argument supplies an authored mesh-local normal:
+
+```text
+let direction = vec3(0.0, 1.0, 0.0);
+vertex(position, uv, direction)
+```
+
+Omitting the normal requests triangle-normal shading. Supplying it requests
+interpolated normal shading; the fragment stage normalizes the interpolated
+vector. Authors are responsible for choosing normals that describe their surface.
+A zero normal produces zero rather than an undefined normalized direction.
+UVs may be transformed before being passed to `vertex(...)`.
+
+Vertex values have `.position`, `.uv`, and `.normal` fields. An omitted authored
+normal reads as zero on a vertex value. The vertex result is a dedicated typed
+value; arbitrary record literals are not supported.
+
+| Host input | GLSL type | Meaning |
+| --- | --- | --- |
+| `a_position` | `vec3`, attribute 0 | Original mesh-local position |
+| `a_uv` | `vec2`, attribute 1 | Mesh UV coordinates |
+| `u_model` | `mat4` | Local-to-world transform |
+| `u_view` | `mat4` | World-to-camera transform |
+| `u_projection` | `mat4` | Camera-to-clip transform |
+| `u_time` | `float` | Elapsed seconds |
+
+The compiler evaluates the vertex result once, passes its attributes onward,
+and computes `u_projection * u_view * u_model * vec4(result.position, 1.0)`.
+The model and camera do not change the coordinate space of surface inputs.
+
+## Fragment inputs
+
+A complete fragment program returns RGBA as `vec4`. Surface and screen inputs
+are distinct typed values; the old bare `position`, `uv`, and `normal` fragment
+globals have been replaced.
+
+| Grafic input | Type | Meaning |
+| --- | --- | --- |
+| `surface.position` | `vec3` | Displaced mesh-local position, interpolated across the triangle |
+| `surface.uv` | `vec2` | Interpolated UV supplied by the vertex result |
+| `surface.normal` | `vec3` | Normalized interpolated authored normal, or geometric triangle normal |
+| `screen.position` | `vec2` | Framebuffer pixel-center coordinates, bottom-left origin |
+| `screen.uv` | `vec2` | `screen.position` divided by framebuffer resolution |
+| `resolution` | `vec2` | Framebuffer width and height in pixels |
+| `time` | `float` | Elapsed seconds |
+| `tex0` through `tex3` | `texture` | Configured texture inputs |
+
+Pixel centers start at `(0.5, 0.5)`. Resizing changes screen coordinates without
+changing mesh UVs. Field access can be chained with calls or used through aliases:
+
+```text
+let data = surface;
+let height = data.position
+  .y();
+let coordinate = screen.uv
+  .y();
+vec4(data.uv, height, 1.0)
+```
+
+The fragment GLSL interface is:
 
 | Name | GLSL type | Host responsibility |
 | --- | --- | --- |
-| `graficUv` | Fragment input `vec2` | Supply interpolated UV coordinates from the vertex stage |
-| `graficPosition` | Fragment input `vec3` | Supply displaced mesh-local position before model/view/projection transforms |
-| `fragColor` | Fragment output `vec4` | Use as the shader's RGBA color output |
-| `u_time` | Uniform `float` | Set elapsed animation time |
-| `u_resolution` | Uniform `vec2` | Set output width and height in pixels |
-| `tex0` through `tex3` | Uniform `sampler2D` | Bind the texture inputs used by the program |
+| `graficPosition` | `in vec3` | Displaced local position |
+| `graficUv` | `in vec2` | Surface UV |
+| `graficAuthoredNormal` | `in vec3` | Authored local normal, or zero |
+| `graficHasNormal` | `flat in int` | 1 for an authored normal; 0 for triangle normals |
+| `fragColor` | `out vec4` | RGBA output |
+| `u_time` | `uniform float` | Elapsed seconds |
+| `u_resolution` | `uniform vec2` | Framebuffer size |
+| `tex0` through `tex3` | `uniform sampler2D` | Texture inputs |
 
-The language's `uv` value comes from `graficUv`, and `position` comes from
-`graficPosition`. Both are interpolated across each triangle. Its `time` and `resolution`
-globals refer to the corresponding uniforms. Builtins that correct aspect
-ratio use `resolution.x / resolution.y`, so the host supplies a nonzero height.
+A compatible vertex shader declares matching outputs, including `flat out int`
+for `graficHasNormal`. Grafic-generated vertex shaders supply them automatically.
+Default mesh previews pass original positions and UVs without authored normals.
+Fullscreen previews supply an XY plane with visible X/Y from -1 to 1 and Z zero,
+unit-square UVs, and no authored normals.
 
-A compatible vertex shader declares `out vec2 graficUv` and assigns UVs
-appropriate for its geometry. For a full-screen surface, these typically span
-the unit square. Mesh rendering can use the mesh's own UV coordinates. If the
-fragment program uses `position`, the vertex shader also supplies
-`out vec3 graficPosition`. Grafic-generated vertex shaders assign it from their
-final local-space result. The viewer's fullscreen vertex shader uses
-`vec3(uv * 2.0 - 1.0, 0.0)`, so visible X and Y range from -1 to 1.
+## Lighting and wave normals
 
-Complete source programs must return `vec4`. Intermediate previews can return
-`float`, `vec2`, `vec3`, or `vec4`; emission converts them as follows:
+Without an authored normal, `surface.normal` comes from derivatives of the
+displaced position. Its direction follows counterclockwise triangle winding;
+hosts should use counterclockwise front faces. Standard grids point toward +Y,
+and fullscreen previews toward +Z. Degenerate derivatives produce zero.
+These normals describe individual triangles and can appear faceted.
 
-| Result | Emitted RGBA |
+With an authored normal, the GPU interpolates the supplied vectors and the
+fragment stage normalizes the result. These normals are not automatically
+flipped toward the camera. Light directions must use the same mesh-local space.
+`dot`, `normalize`, and RGB scalar `multiply` support explicit diffuse lighting.
+
+The wave example calculates height and its gradient from the same sine phases.
+Its authored normal is proportional to `(-gradient.x, 1, -gradient.z)`. This
+smooths lighting while geometry and silhouettes still depend on subdivisions.
+
+The fragment shader uses `surface.position.y()` for height colors and
+`screen.uv.y()` to fade toward a chosen background color. This is an artistic
+screen-space fade, not physical distance fog; it does not change the viewer's
+background color.
+
+## Inspection
+
+Fragment `.show()` and `--preview-line` results display as follows:
+
+| Result | RGBA |
 | --- | --- |
 | `float x` | `vec4(vec3(x), 1.0)` |
 | `vec2 xy` | `vec4(xy, 0.0, 1.0)` |
 | `vec3 rgb` | `vec4(rgb, 1.0)` |
-| `vec4 rgba` | Used directly |
+| `vec4 rgba` | Unchanged |
 
-The shader text includes its builtin GLSL definitions and `main`. Hosts can
-compile it directly as a fragment stage; no additional shader prelude is
-required. Standard GLSL optimization may remove unused uniforms, so hosts can
-skip uniform locations that are inactive.
-
-## Vertex shaders
-
-Compile `.gvert` sources with `grafic gl --stage vertex`. A complete program
-returns a `vec3` position in mesh-local coordinates. `position` is the original
-vertex position, `uv` its original UV, and `time` elapsed seconds. UVs pass
-unchanged to the fragment shader through `graficUv`. The transformed local
-position passes through `graficPosition`, exposed as `position` in fragments.
-
-```text
-let phase = position.x().multiply(5.0).add(time.multiply(2.0));
-position.add(vec3(0.0, phase.sin().multiply(0.15), 0.0))
-```
-
-The host binds these vertex inputs and uniforms:
-
-| Name | GLSL type | Host responsibility |
-| --- | --- | --- |
-| `a_position` | `vec3`, attribute location 0 | Original mesh-local XYZ position |
-| `a_uv` | `vec2`, attribute location 1 | Mesh UV coordinates |
-| `u_model` | `mat4` | Local-to-world transform |
-| `u_view` | `mat4` | World-to-camera transform |
-| `u_projection` | `mat4` | Camera-to-clip transform |
-| `u_time` | `float` | Elapsed animation time in seconds |
-
-Generated code evaluates the result once into `graficPosition`, then computes
-`u_projection * u_view * u_model * vec4(graficPosition, 1.0)`.
-Vertices use the same coordinate units as the generated mesh. Grids lie in the
-XZ plane, centered at the origin, with Y up. The host can use any camera.
-
-Vertex functions include `vec2`, `vec3`, component accessors `x`, `y`, and `z`,
-scalar `sin`, `cos`, `oscillate`, and `cycle`, scalar/vector `add`, and scalar
-`multiply` or vector scaling. Run `grafic gl --stage vertex --builtins` for
-signatures. Fragment-only functions, screen resolution, and texture inputs are
-not exposed in this initial vertex environment.
-
-Vertex `.show()` markers and `--preview-line` results must also be `vec3`.
-Inspection renders the mesh at those intermediate positions. Normal compilation
-treats `.show()` as an identity and exports the complete transformation.
-
-## Height-based color
-
-Fragments can read `position.x()`, `.y()`, and `.z()`. For a grid with Y up,
-map `position.y()` into a clamped range and interpolate RGB colors with `mix`:
-
-```text
-let height = position.y().add(0.15).multiply(3.333333).clamp(0.0, 1.0);
-vec4(rgb(0.01, 0.05, 0.2).mix(rgb(0.05, 0.65, 0.7), height), 1.0)
-```
-
-`first.mix(second, amount)` performs linear interpolation; it does not clamp
-`amount`. Position is interpolated from the displaced triangle vertices, so
-the gradient follows the rendered surface. It uses the same local units as
-the vertex program, independent of the camera and model transforms.
-
-## Triangle normals and directional lighting
-
-Fragments expose `normal: vec3`, the unit normal of the displaced triangle in
-mesh-local coordinates. The compiler derives it from `dFdx(position)` and
-`dFdy(position)`, then corrects its sign using `gl_FrontFacing`. Hosts should
-use counterclockwise front faces, as the viewer does. The normal follows
-triangle winding rather than flipping toward the camera: standard grids
-point toward +Y, while fullscreen previews point toward +Z. A zero-area
-derivative returns a zero vector.
-
-Normals describe the rendered triangles, including vertex displacement.
-They are not smoothed between triangles. Increasing mesh subdivisions makes
-faceting finer. Model, view, and projection transforms do not change the
-coordinate space of this normal; the light direction must be expressed in
-that same local space.
-
-`normalize(vec3)` returns a unit vector for a nonzero input. `dot(vec3, vec3)`
-returns their dot product; for unit vectors it is the cosine of their angle.
-`multiply(vec3, float)` scales an RGB color. Lighting stays explicit:
-
-```text
-let light = vec3(-0.8, 0.6, 0.4)
-  .normalize();
-let brightness = normal
-  .dot(light)
-  .clamp(0.0, 1.0)
-  .multiply(0.8)
-  .add(0.2);
-let color = rgb(0.65, 0.65, 0.65)
-  .multiply(brightness);
-vec4(color, 1.0)
-```
-
-The direction points from the surface toward the light. Clamping removes
-negative illumination; the example adds ambient light so other slopes remain
-visible. This models diffuse directional light without cast shadows or
-specular reflection. `normal` and these lighting functions belong to the
-fragment stage.
+Vertex inspection accepts a complete vertex value or a `vec3` position. A
+vertex value previews all its attributes. A position preview retains the final
+program's UV and normal attributes when that complete program is valid. If a
+later semantic error prevents preparing that context, inspection still works
+using original mesh UVs and triangle normals. The whole source must parse.
+Normal compilation treats `.show()` as an identity and requires a vertex result.

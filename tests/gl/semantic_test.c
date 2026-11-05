@@ -59,7 +59,7 @@ static Program *parse_and_lower(const char *source)
 static bool test_valid_program(void)
 {
     const char *source =
-        "let p = uv.center().aspect();\n"
+        "let p = surface.uv.center().aspect();\n"
         "let shape = p.circle(0.2);\n"
         "shape\n"
         ".fill()\n"
@@ -104,11 +104,11 @@ static bool test_valid_program(void)
 static bool test_texture_program(void)
 {
     const char *source =
-        "let first = uv"
+        "let first = surface.uv"
         " .scroll(vec2(0.04, 0.01), time)"
         " .repeat()"
         " .sample(tex0);\n"
-        "let second = uv"
+        "let second = surface.uv"
         " .scroll(vec2(-0.02, 0.03), time)"
         " .repeat()"
         " .sample(tex1);\n"
@@ -159,22 +159,22 @@ static bool test_semantic_failures(void)
         },
         {
             "let p = q;\n"
-            "let q = uv;\n"
+            "let q = surface.uv;\n"
             "p.vec4(0.0, 1.0)",
             "forward reference is not allowed",
         },
         {
-            "let p = uv;\n"
-            "let p = uv;\n"
+            "let p = surface.uv;\n"
+            "let p = surface.uv;\n"
             "p.vec4(0.0, 1.0)",
             "duplicate binding",
         },
         {
-            "uv.fill().colorize(rgb(1.0, 1.0, 1.0))",
+            "surface.uv.fill().colorize(rgb(1.0, 1.0, 1.0))",
             "argument type mismatch",
         },
         {
-            "uv.mystery().vec4(0.0, 1.0)",
+            "surface.uv.mystery().vec4(0.0, 1.0)",
             "unknown function",
         },
     };
@@ -231,7 +231,7 @@ static bool test_semantic_failures(void)
 
 static bool test_non_vec4_result_inference(void)
 {
-    const char *source = "uv.center()";
+    const char *source = "surface.uv.center()";
     Program *program = parse_and_lower(source);
 
     if (program == NULL) {

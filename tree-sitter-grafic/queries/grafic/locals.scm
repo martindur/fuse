@@ -1,2 +1,2 @@
 (binding name: (identifier) @local.definition)
-(identifier) @local.reference
+(primary (identifier) @local.reference)

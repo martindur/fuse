@@ -65,7 +65,7 @@ class UnifiedTests(CompilerTests):
 
     def test_source_extensions_select_catalog_without_language_id(self):
         cases = [
-            ("gl", "gfrag", "uv.", "sample"),
+            ("gl", "gfrag", "surface.uv.", "sample"),
             ("gl", "gvert", "position.", "x"),
             ("tex", "gtex", "uv.", "noise"),
             ("mesh", "gmesh", "disk().", "radius"),
@@ -109,16 +109,16 @@ class UnifiedTests(CompilerTests):
         texture = "file:///tmp/texture.gtex"
         mesh = "file:///tmp/geometry.gmesh"
         packets, responses = self.lsp_session(
-            opened("uv.sample(tex0)", "graficgl", shader),
+            opened("surface.uv.sample(tex0)", "graficgl", shader),
             opened("uv.noise().colorize(rgb(1.0, 0.5, 0.0))", "grafictex", texture),
             opened("disk().radius(2.0)", "graficmesh", mesh),
-            request("textDocument/completion", 2, at("uv.", shader)),
+            request("textDocument/completion", 2, at("surface.uv.", shader)),
             request("textDocument/completion", 3, at("uv.", texture)),
             request("textDocument/completion", 4, at("disk().", mesh)),
-            request("textDocument/hover", 5, at("uv.sam", shader)),
+            request("textDocument/hover", 5, at("surface.uv.sam", shader)),
             request("textDocument/hover", 6, at("uv.no", texture)),
             request("textDocument/hover", 7, at("disk().ra", mesh)),
-            changed("uv.noise()", 2, shader),
+            changed("surface.uv.noise()", 2, shader),
             changed("disk()", 2, texture),
             changed("1.0", 2, mesh),
             notification("textDocument/didClose", {"textDocument": {"uri": shader}}),
@@ -152,9 +152,10 @@ class UnifiedTests(CompilerTests):
         for identity, included, excluded in [("graficgl", "sample", "noise"), ("plaintext", "noise", "sample"),
                                               (None, "noise", "sample")]:
             with self.subTest(identity=identity):
+                source = "surface.uv." if identity == "graficgl" else "uv."
                 _, responses = self.lsp_session(
-                    opened("uv.", identity, uri),
-                    request("textDocument/completion", 2, at("uv.", uri)),
+                    opened(source, identity, uri),
+                    request("textDocument/completion", 2, at(source, uri)),
                 )
                 items = self.completion_items(responses[2])
                 self.assertIn(included, items)
@@ -168,8 +169,8 @@ class UnifiedTests(CompilerTests):
             opened("uv.", "grafictex", uri),
             request("textDocument/completion", 2, at("uv.", uri)),
             notification("textDocument/didClose", {"textDocument": {"uri": uri}}),
-            opened("uv.", "graficgl", uri),
-            request("textDocument/completion", 3, at("uv.", uri)),
+            opened("surface.uv.", "graficgl", uri),
+            request("textDocument/completion", 3, at("surface.uv.", uri)),
         )
         self.assertIn("noise", self.completion_items(responses[2]))
         self.assertIn("sample", self.completion_items(responses[3]))

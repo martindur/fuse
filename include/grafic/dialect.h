@@ -10,7 +10,8 @@ typedef struct {
     const char *file_extension; /* Source suffix, including the leading dot. */
     const LanguageEnvironment *environment;
     ValueType required_result_type;
-    bool preview_requires_result_type; /* Vertex previews must remain positions. */
+    bool preview_requires_result_type; /* Disable general numeric previews. */
+    ValueType preview_result_type; /* Optional alternate result, e.g. a vertex position. */
 } GraficDialect;
 
 #endif

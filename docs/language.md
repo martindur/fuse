@@ -28,6 +28,25 @@ They have type `float`. Identifiers start with an ASCII letter or `_` and
 continue with ASCII letters, digits, or `_`. Whitespace can separate stages,
 so a chain can span multiple lines. Infix operators are not part of the syntax.
 
+## Field access
+
+A dot followed by a name without parentheses reads a typed field. A dot call
+still passes the preceding value as its first argument:
+
+```text
+let coordinates = surface.uv;
+coordinates
+  .center()
+  .circle(0.25)
+  .fill()
+  .colorize(rgb(1.0, 0.4, 0.1))
+```
+
+Capabilities declare available fields. Unknown fields are errors; field access
+works on aliases and call results. The shader interfaces are fixed typed values,
+with `vertex(position, uv, normal)` providing an optional third argument. This
+introduces no arbitrary record literals or user-defined record types.
+
 ## Comments
 
 `//` starts a comment that continues to the next line break or end of file.
@@ -65,7 +84,8 @@ The current language has no reassignment or user-defined functions.
 ## Types and capability catalogs
 
 The shared type vocabulary is `float`, `vec2`, `vec3`, `vec4`, `texture`, and
-`mesh`. Function signatures determine argument and result types. Overloads
+`mesh`, plus the shader interface types `vertex`, `surface`, and `screen`.
+Function signatures determine argument and result types. Overloads
 are resolved by exact parameter count and types; there are no implicit
 conversions. Capabilities supply constructors as ordinary functions when needed.
 

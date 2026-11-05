@@ -18,6 +18,16 @@ static Expr *expr_allocate(ExprKind kind, SourceSpan span) {
   return expression;
 }
 
+Expr *expr_create_field(SourceSpan span, Expr *input, SourceSpan name) {
+  if (input == NULL) return NULL;
+  Expr *expression = expr_allocate(EXPR_FIELD, span);
+  if (expression != NULL) {
+    expression->as.field.input = input;
+    expression->as.field.name = name;
+  }
+  return expression;
+}
+
 Expr *expr_create_identifier(SourceSpan span) {
   return expr_allocate(EXPR_IDENTIFIER, span);
 }
@@ -119,6 +129,10 @@ void expr_destroy(Expr *expression) {
       }
 
       free(expression->as.call.arguments.items);
+      break;
+
+    case EXPR_FIELD:
+      expr_destroy(expression->as.field.input);
       break;
 
     case EXPR_PIPELINE:

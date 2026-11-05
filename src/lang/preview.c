@@ -100,7 +100,7 @@ static void find_argument_points(
     for (size_t index = 0; index < arguments->count; index += 1) {
         const Expr *argument = arguments->items[index];
 
-        if (argument->kind == EXPR_PIPELINE) {
+        if (argument->kind == EXPR_PIPELINE || argument->kind == EXPR_FIELD) {
             find_nested_points(
                 argument,
                 visible_bindings,
@@ -128,6 +128,11 @@ static void find_nested_points(
     PreviewPoint *point
 )
 {
+    if (expression->kind == EXPR_FIELD) {
+        find_nested_points(expression->as.field.input, visible_bindings, line_start, line_end, point);
+        consider_point(point, expression, visible_bindings, expression->as.field.name.offset, line_start, line_end);
+        return;
+    }
     if (expression->kind != EXPR_PIPELINE) {
         consider_point(
             point,
@@ -224,6 +229,13 @@ static Expr *clone_expression(
 
         return clone;
 
+    case EXPR_FIELD: {
+        Expr *input = clone_expression(source->as.field.input, error);
+        if (input == NULL) return NULL;
+        clone = expr_create_field(source->span, input, source->as.field.name);
+        if (clone == NULL) expr_destroy(input);
+        break;
+    }
     case EXPR_PIPELINE: {
         Expr *input = clone_expression(
             source->as.pipeline.input,
@@ -369,6 +381,10 @@ bool preview_program_at_line(
 static void find_show_points(const Expr *expression, const char *source,
     size_t visible_bindings, PreviewPoint *point)
 {
+    if (expression->kind == EXPR_FIELD) {
+        find_show_points(expression->as.field.input, source, visible_bindings, point);
+        return;
+    }
     if (expression->kind == EXPR_PIPELINE) {
         find_show_points(expression->as.pipeline.input, source, visible_bindings, point);
     }

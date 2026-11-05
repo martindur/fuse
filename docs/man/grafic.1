@@ -34,9 +34,10 @@ Compile .gfrag source to a GLSL 330 core fragment shader by default. Complete pr
 vec4. A rendering host supplies graficUv and displaced local-space graficPosition
 inputs, u_time and u_resolution
 uniforms, and any used texture inputs tex0 through tex3.
-With --stage vertex, compile .gvert source returning a local-space vec3 position.
-Inputs are position, uv, and time. Displaced position passes to fragments as
-position, interpolated across triangles. Use position.y() for height colors
+With --stage vertex, compile .gvert source returning vertex(position, uv)
+or vertex(position, uv, normal) with an authored local-space normal.
+Inputs are original mesh position, uv, and time. Displaced position passes to fragments as
+surface.position, interpolated across triangles. Use surface.position.y() for height colors
 and first.mix(second, amount) to interpolate RGB colors. The host binds XYZ at attribute 0, UV at
 attribute 1, and supplies u_model, u_view, u_projection, and u_time uniforms.
 .TP
@@ -71,6 +72,10 @@ Mesh previews use a fitted angled orthographic camera. Vertex sources use a
 default subdivided XZ grid. Use --mesh FILE.gmesh, --vert FILE.gvert, and
 --frag FILE.gfrag to compose geometry and shaders. Each source reloads independently.
 Press W to toggle wireframe or U to toggle UV colors. Mesh show() markers require a mesh value and preserve normal OBJ export.
+Fragment programs expose surface.position, surface.uv, and surface.normal;
+the old bare fragment globals are removed. Authored normals are interpolated
+and normalized; otherwise surface.normal is the triangle normal. screen.position
+is in framebuffer pixels with bottom-left origin; screen.uv divides by resolution.
 .SH OPTIONS
 .TP
 .BI --stage " fragment|vertex"
@@ -82,7 +87,7 @@ globals, and documentation.
 .TP
 .BI --preview-line " N"
 Compile the intermediate result on a one-based source line. Fragment and texture
-previews accept numeric or vector values; vertex previews require vec3 positions; geometry previews require a mesh.
+previews accept numeric or vector values; vertex previews accept vertex values or vec3 positions; geometry previews require a mesh.
 .TP
 .BI --width " N"
 Set the texture width in pixels (tex), or initial window width (view).

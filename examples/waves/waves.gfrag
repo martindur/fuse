@@ -1,5 +1,5 @@
 // Blend low water into turquoise, then fade the highest areas toward white.
-let height = position
+let height = surface.position
   .y()
   .add(0.15)
   .multiply(3.333333)
@@ -17,7 +17,7 @@ let crest = height
 let light = vec3(-0.8, 0.6, 0.4)
   .normalize();
 
-let diffuse = normal
+let diffuse = surface.normal
   .dot(light)
   .clamp(0.0, 1.0);
 
@@ -29,4 +29,16 @@ let color = water
   .mix(rgb(0.9, 0.98, 1.0), crest)
   .multiply(brightness);
 
-vec4(color, 1.0)
+// An artistic screen-space fade; this is independent of the water's UVs.
+let fade = screen.uv
+  .y()
+  .add(-0.2)
+  .multiply(1.25)
+  .clamp(0.0, 1.0);
+
+let background = rgb(0.06, 0.09, 0.14);
+
+let faded = color
+  .mix(background, fade);
+
+vec4(faded, 1.0)

@@ -10,7 +10,10 @@ typedef enum {
     VALUE_TYPE_VEC3,
     VALUE_TYPE_VEC4,
     VALUE_TYPE_TEXTURE,
-    VALUE_TYPE_MESH
+    VALUE_TYPE_MESH,
+    VALUE_TYPE_VERTEX,
+    VALUE_TYPE_SURFACE,
+    VALUE_TYPE_SCREEN
 } ValueType;
 
 static inline bool value_type_is_previewable(ValueType type)
@@ -38,6 +41,9 @@ static inline const char *value_type_name(ValueType type)
         return "texture";
     case VALUE_TYPE_MESH:
         return "mesh";
+    case VALUE_TYPE_VERTEX: return "vertex";
+    case VALUE_TYPE_SURFACE: return "surface";
+    case VALUE_TYPE_SCREEN: return "screen";
     }
 
     return "unknown";

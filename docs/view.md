@@ -84,10 +84,13 @@ grafic view examples/waves/waves.gmesh \
 
 Use `--frag FILE.gfrag` to supply a surface color program. The default vertex
 shader preserves positions; the default fragment shader displays UV colors.
-Fragments receive interpolated displaced local-space `position`, while `uv`
-continues to use the original mesh UVs. The paired `waves.gfrag` example blends
-blue, turquoise, and pale crests using `position.y()`, with directional lighting
-from displaced triangle normals. The vertex, fragment, and mesh sources live
+Fragments receive interpolated displaced local-space `surface.position`,
+`surface.uv`, and `surface.normal`. Vertex programs return
+`vertex(position, uv)` with optional authored normals as the third argument.
+`screen.position` and `screen.uv` describe the framebuffer independently. The paired `waves.gfrag` example blends
+blue, turquoise, and pale crests using `surface.position.y()`, with directional lighting
+from authored, interpolated wave normals, plus a screen-space fade toward
+a chosen color. The vertex, fragment, and mesh sources live
 together in `examples/waves/`; edit them to explore motion, color, and geometry.
 A `.gfrag` source still opens fullscreen unless `--mesh` or `--vert` requests a
 3D surface. Each role can be supplied once; a primary file already fills its
@@ -97,7 +100,8 @@ Mesh, vertex, fragment, and texture sources reload independently. A bad shader
 edit retains its previous program, and a bad mesh edit retains its previous
 geometry. Fixing another input still updates that input. The last `.show()` in
 each source selects its intermediate output; `--preview-line` applies only to
-the primary source. Vertex inspection requires a `vec3` position.
+the primary source. Vertex inspection accepts a vertex value or a `vec3` position; position-only
+inspection preserves complete-program attributes when available.
 
 ## Intermediate outputs with `.show()`
 
@@ -118,7 +122,7 @@ still parse. A marker in a texture changes the image supplied to the shader;
 the viewer stays on your selected output. Switch to the texture to inspect that
 same intermediate image directly.
 
-Shader and texture markers accept scalar and vector values. Scalars display as opaque grayscale;
+Fragment and texture markers accept scalar and vector values. Scalars display as opaque grayscale;
 `vec2` fills red/green with blue zero and alpha one; `vec3` gets alpha one;
 `vec4` preserves all channels. Without a marker, the full program must return
 `vec4`. Mesh markers must return `mesh`:

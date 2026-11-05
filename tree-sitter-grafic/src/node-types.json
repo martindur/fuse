@@ -60,6 +60,10 @@
       "required": true,
       "types": [
         {
+          "type": "field_access",
+          "named": true
+        },
+        {
           "type": "pipeline",
           "named": true
         },
@@ -71,6 +75,32 @@
     }
   },
   {
+    "type": "field_access",
+    "named": true,
+    "fields": {
+      "field": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "input": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "expression",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "pipeline",
     "named": true,
     "fields": {
@@ -79,13 +109,13 @@
         "required": true,
         "types": [
           {
-            "type": "primary",
+            "type": "expression",
             "named": true
           }
         ]
       },
       "stage": {
-        "multiple": true,
+        "multiple": false,
         "required": true,
         "types": [
           {

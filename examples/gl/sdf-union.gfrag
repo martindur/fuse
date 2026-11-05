@@ -1,4 +1,4 @@
-let p = uv.center().aspect();
+let p = surface.uv.center().aspect();
 
 p
 .circle(0.2)

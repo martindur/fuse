@@ -14,8 +14,8 @@ static const char VERTEX_SHADER[] =
     "layout(location = 0) in vec3 a_position;\n"
     "layout(location = 1) in vec2 a_uv;\n"
     "uniform mat4 u_model; uniform mat4 u_view; uniform mat4 u_projection;\n"
-    "out vec2 graficUv; out vec3 graficPosition;\n"
-    "void main() { graficUv = a_uv; graficPosition = a_position; gl_Position = u_projection * u_view * u_model * vec4(a_position, 1.0); }\n";
+    "out vec2 graficUv; out vec3 graficPosition; out vec3 graficAuthoredNormal; flat out int graficHasNormal;\n"
+    "void main() { graficAuthoredNormal = vec3(0.0); graficHasNormal = 0; graficUv = a_uv; graficPosition = a_position; gl_Position = u_projection * u_view * u_model * vec4(a_position, 1.0); }\n";
 
 static const char FRAGMENT_SHADER[] =
     "#version 330 core\n"

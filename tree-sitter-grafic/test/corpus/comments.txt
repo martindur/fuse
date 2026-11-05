@@ -21,8 +21,9 @@ p.finish(0.5, // amount
     (identifier)
     (expression
       (pipeline
-        (primary
-          (identifier))
+        (expression
+          (primary
+            (identifier)))
         (comment)
         (comment)
         (call
@@ -32,8 +33,9 @@ p.finish(0.5, // amount
   (comment)
   (expression
     (pipeline
-      (primary
-        (identifier))
+      (expression
+        (primary
+          (identifier)))
       (call
         (identifier)
         (expression
@@ -58,8 +60,9 @@ uv//
 (source_file
   (expression
     (pipeline
-      (primary
-        (identifier))
+      (expression
+        (primary
+          (identifier)))
       (comment)
       (comment)
       (call

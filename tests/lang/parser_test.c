@@ -1,4 +1,5 @@
 #include "grafic/parser.h"
+#include "grafic/lower.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -393,15 +394,15 @@ static bool test_failures(void) {
     },
     {
       .source = "uv.",
-      .message = "expected function call after '.'",
+      .message = "expected field or function call after '.'",
       .offset = 3,
       .length = 0,
     },
     {
-      .source = "uv.center",
-      .message = "expected function call after '.'",
-      .offset = 9,
-      .length = 0,
+      .source = "uv..center",
+      .message = "expected field or function call after '.'",
+      .offset = 3,
+      .length = 1,
     },
     {
       .source = "scale(2,5,)",
@@ -555,9 +556,32 @@ static bool test_program_failures(void) {
   return passed;
 }
 
+static bool test_field_access(void) {
+  const char *source = "surface.position.x()";
+  Expr *syntax = NULL;
+  Expr *lowered = NULL;
+  ParseError parse_error;
+  LowerError lower_error;
+  bool valid = parse_source(source, strlen(source), &syntax, &parse_error)
+    && lower_expression(syntax, &lowered, &lower_error)
+    && lowered->kind == EXPR_CALL && lowered->as.call.arguments.count == 1;
+  if (valid) {
+    const Expr *field = lowered->as.call.arguments.items[0];
+    valid = field->kind == EXPR_FIELD
+      && span_equals(source, field->as.field.name, "position")
+      && field->as.field.input->kind == EXPR_IDENTIFIER
+      && span_equals(source, field->as.field.input->span, "surface");
+  }
+  expr_destroy(syntax);
+  expr_destroy(lowered);
+  printf("%s field access and chained call lowering\n", valid ? "PASS" : "FAIL");
+  return valid;
+}
+
 int main(void) {
   size_t passed = 0;
-  size_t test_count = 7;
+  size_t test_count = 8;
+  if (test_field_access()) passed += 1;
 
   if (test_identifier()) {
     passed += 1;

@@ -98,6 +98,9 @@ bool image_store_value(
 
     case VALUE_TYPE_INVALID:
     case VALUE_TYPE_TEXTURE:
+    case VALUE_TYPE_VERTEX:
+    case VALUE_TYPE_SURFACE:
+    case VALUE_TYPE_SCREEN:
     case VALUE_TYPE_MESH:
         return false;
     }

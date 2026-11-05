@@ -191,6 +191,13 @@ static Expr *lower_node(
     case EXPR_CALL:
         return lower_call(lowerer, syntax);
 
+    case EXPR_FIELD: {
+        Expr *input = lower_node(lowerer, syntax->as.field.input);
+        if (input == NULL) return NULL;
+        lowered = expr_create_field(syntax->span, input, syntax->as.field.name);
+        if (lowered == NULL) expr_destroy(input);
+        break;
+    }
     case EXPR_PIPELINE:
         return lower_pipeline(lowerer, syntax);
     }

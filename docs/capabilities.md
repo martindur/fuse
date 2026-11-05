@@ -15,11 +15,13 @@ grafic gl --stage vertex < examples/waves/waves.gvert > waves.vert
 
 A complete fragment program returns `vec4`. The shader capability provides coordinates,
 texture sampling, animation, shape masks, and color composition. Globals are
-`uv`, displaced mesh-local `position`, triangle `normal`, `resolution`, `time`,
-and texture inputs `tex0` through `tex3`.
+`surface` (position, UV, and normal), `screen` (pixel position and normalized UV),
+`resolution`, `time`, and texture inputs `tex0` through `tex3`.
 
-Use `--stage vertex` for a `.gvert` program returning a mesh-local `vec3`
-position, with `position`, `uv`, and `time` inputs. The output is a complete
+Use `--stage vertex` for a `.gvert` program returning
+`vertex(position, uv)` or `vertex(position, uv, normal)`, with original mesh
+`position`, `uv`, and `time` inputs. Authored normals are interpolated and
+normalized for smooth shading; omission keeps triangle normals. The output is a complete
 GLSL 330 core shader for the selected stage. Rendering requires a
 host that supplies the documented [shader interface](shader-interface.md).
 
@@ -61,7 +63,7 @@ It can be imported into an OBJ-capable application.
 
 Each compiler supports `--preview-line N` to select the last expression point
 on a one-based source line. Fragment and texture previews accept numeric/vector
-results and convert them to RGBA; vertex previews require a `vec3` position,
+results and convert them to RGBA; vertex previews accept a vertex value or `vec3` position,
 and geometry previews require a mesh.
 
 `grafic view` opens shaders, textures, and meshes with live reload. In a shader session,
@@ -73,5 +75,5 @@ wireframe and UV-color modes. See the [viewer guide](view.md).
 Run `grafic lsp` for diagnostics, completion, and hover across all source
 types. A recognized document language ID (`graficgl`, `graficvert`, `grafictex`, or `graficmesh`)
 selects its capability; otherwise the server uses `.gfrag`, `.gtex`, or `.gmesh`.
-For example, `uv.` offers texture noise in texture files and texture sampling
+For example, `uv.` offers texture noise in texture files and `surface.uv.` offers texture sampling
 in shader files; `disk().` offers mesh operations in geometry files.

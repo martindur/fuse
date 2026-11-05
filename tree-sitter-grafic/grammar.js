@@ -21,15 +21,20 @@ module.exports = grammar({
 
     expression: $ => choice(
       $.pipeline,
+      $.field_access,
       $.primary,
     ),
 
     pipeline: $ => prec.left(1, seq(
-      field('input', $.primary),
-      repeat1(seq(
-        '.',
-        field('stage', $.call),
-      )),
+      field('input', $.expression),
+      '.',
+      field('stage', $.call),
+    )),
+
+    field_access: $ => prec.left(1, seq(
+      field('input', $.expression),
+      '.',
+      field('field', $.identifier),
     )),
 
     primary: $ => choice(

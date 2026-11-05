@@ -1,11 +1,11 @@
-uv
+surface.uv
 .center()
 .aspect()
 .circle(0.15)
 .fill()
 .colorize(rgb(0.1, 0.4, 1.0))
 .blend_add(
-    uv
+    surface.uv
     .center()
     .aspect()
     .circle(0.3)

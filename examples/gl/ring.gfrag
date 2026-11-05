@@ -1,4 +1,4 @@
-uv
+surface.uv
 .center()
 .aspect()
 .circle(time.oscillate(0.15, 0.4))

@@ -16,10 +16,10 @@ const char *view_texture_name(size_t slot)
 
 static const char VERTEX_SHADER[] =
     "#version 330 core\n"
-    "out vec2 graficUv; out vec3 graficPosition;\n"
+    "out vec2 graficUv; out vec3 graficPosition; out vec3 graficAuthoredNormal; flat out int graficHasNormal;\n"
     "void main() {\n"
     "  vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);\n"
-    "  graficUv = p;\n"
+    "  graficUv = p; graficAuthoredNormal = vec3(0.0); graficHasNormal = 0;\n"
     "  graficPosition = vec3(p * 2.0 - 1.0, 0.0);\n"
     "  gl_Position = vec4(graficPosition, 1.0);\n"
     "}\n";

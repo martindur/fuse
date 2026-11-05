@@ -368,6 +368,7 @@ static bool evaluate_expression(
             out_value
         );
 
+    case EXPR_FIELD:
     case EXPR_PIPELINE:
         evaluator_fail(
             evaluator,

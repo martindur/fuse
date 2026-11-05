@@ -1,42 +1,76 @@
 // Three traveling waves: a broad swell, a crossing wave, and smaller ripples.
 // Each phase projects XZ onto a direction, sets frequency, then advances time.
+let swell_direction = vec3(0.94, 0.0, 0.342)
+  .normalize();
+let swell_frequency = 6.0;
+let swell_amplitude = 0.085;
+
 let swell_phase = position
-  .x()
-  .multiply(0.94)
-  .add(position.z().multiply(0.342))
-  .multiply(6.0)
+  .dot(swell_direction)
+  .multiply(swell_frequency)
   .add(time.multiply(-1.2));
 
+let cross_direction = vec3(-0.6, 0.0, 0.8)
+  .normalize();
+let cross_frequency = 7.0;
+let cross_amplitude = 0.045;
+
 let cross_phase = position
-  .x()
-  .multiply(-0.6)
-  .add(position.z().multiply(0.8))
-  .multiply(7.0)
+  .dot(cross_direction)
+  .multiply(cross_frequency)
   .add(time.multiply(-1.6));
 
+let ripple_direction = vec3(0.8, 0.0, -0.6)
+  .normalize();
+let ripple_frequency = 13.0;
+let ripple_amplitude = 0.02;
+
 let ripple_phase = position
-  .x()
-  .multiply(0.8)
-  .add(position.z().multiply(-0.6))
-  .multiply(13.0)
+  .dot(ripple_direction)
+  .multiply(ripple_frequency)
   .add(time.multiply(-2.6));
 
 // Amplitudes sum to 0.15, matching the height range in waves.gfrag.
 let swell = swell_phase
   .sin()
-  .multiply(0.085);
+  .multiply(swell_amplitude);
 
 let cross = cross_phase
   .sin()
-  .multiply(0.045);
+  .multiply(cross_amplitude);
 
 let ripple = ripple_phase
   .sin()
-  .multiply(0.02);
+  .multiply(ripple_amplitude);
 
 let height = swell
   .add(cross)
   .add(ripple);
 
-position
-  .add(vec3(0.0, height, 0.0))
+// The gradient uses the derivative of each sine, evaluated at the same phase.
+let swell_slope = swell_direction
+  .multiply(swell_phase.cos())
+  .multiply(swell_amplitude)
+  .multiply(swell_frequency);
+
+let cross_slope = cross_direction
+  .multiply(cross_phase.cos())
+  .multiply(cross_amplitude)
+  .multiply(cross_frequency);
+
+let ripple_slope = ripple_direction
+  .multiply(ripple_phase.cos())
+  .multiply(ripple_amplitude)
+  .multiply(ripple_frequency);
+
+let gradient = swell_slope
+  .add(cross_slope)
+  .add(ripple_slope);
+
+let wave_normal = vec3(gradient.x().multiply(-1.0), 1.0, gradient.z().multiply(-1.0))
+  .normalize();
+
+let displaced = position
+  .add(vec3(0.0, height, 0.0));
+
+vertex(displaced, uv, wave_normal)

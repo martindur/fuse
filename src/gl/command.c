@@ -146,8 +146,7 @@ int grafic_gl_main(int argument_count, char **arguments)
 
     if (!glsl_emit(
             stdout, stage,
-            prepared.program,
-            &prepared.semantic_info,
+            &prepared,
             source
         )) {
         perror("grafic gl: failed to write GLSL");

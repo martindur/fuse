@@ -30,9 +30,9 @@ int main(void)
     char replacement[256];
     snprintf(path, sizeof(path), "%s/shader.gfrag", directory);
     snprintf(replacement, sizeof(replacement), "%s/replacement.gfrag", directory);
-    const char *valid = "vec4(uv, 0.0, 1.0)";
-    const char *changed = "vec4(uv, 1.0, 1.0)";
-    const char *invalid = "uv.missing()";
+    const char *valid = "vec4(surface.uv, 0.0, 1.0)";
+    const char *changed = "vec4(surface.uv, 1.0, 1.0)";
+    const char *invalid = "surface.uv.missing()";
     ViewSource source = {0};
     char error[256];
     CompileError compile_error;

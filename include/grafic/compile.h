@@ -7,6 +7,9 @@
 typedef struct {
     Program *program;
     SemanticInfo semantic_info;
+    /* Complete-program attributes retained for position-only vertex inspection. */
+    Program *context_program;
+    SemanticInfo context_semantic_info;
 } PreparedProgram;
 
 typedef struct {
@@ -19,7 +22,8 @@ typedef struct {
  * Parse, optionally select a one-based preview line (zero means the full program),
  * lower, type check, and validate the result against the dialect.
  * Numeric dialects allow numeric/vector previews; other dialects require their
- * complete-program result type for previews too.
+ * complete-program result type for previews too, unless an alternate is declared.
+ * Alternate previews may retain a valid complete program as attribute context.
  *
  * Initialize out to zero before first use. Success replaces its previous result;
  * failure preserves it. Source storage is borrowed and must outlive the result.

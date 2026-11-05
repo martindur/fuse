@@ -14,16 +14,20 @@ p .colorize(rgb(1.0, 0.5, 0.0))
     name: (identifier)
     value: (expression
       (pipeline
-        input: (primary
-          (identifier))
-        stage: (call
-          function: (identifier))
+        input: (expression
+          (pipeline
+            input: (expression
+              (primary
+                (identifier)))
+            stage: (call
+              function: (identifier))))
         stage: (call
           function: (identifier)))))
   (expression
     (pipeline
-      input: (primary
-        (identifier))
+      input: (expression
+        (primary
+          (identifier)))
       stage: (call
         function: (identifier)
         (expression
@@ -51,19 +55,22 @@ uv .radial_wave(time, 60.0, 4.0) .colorize(rgb(1.0, 1.0, 1.0))
 (source_file
   (expression
     (pipeline
-      input: (primary
-        (identifier))
-      stage: (call
-        function: (identifier)
-        (expression
-          (primary
-            (identifier)))
-        (expression
-          (primary
-            (number)))
-        (expression
-          (primary
-            (number))))
+      input: (expression
+        (pipeline
+          input: (expression
+            (primary
+              (identifier)))
+          stage: (call
+            function: (identifier)
+            (expression
+              (primary
+                (identifier)))
+            (expression
+              (primary
+                (number)))
+            (expression
+              (primary
+                (number))))))
       stage: (call
         function: (identifier)
         (expression
@@ -73,6 +80,59 @@ uv .radial_wave(time, 60.0, 4.0) .colorize(rgb(1.0, 1.0, 1.0))
               (expression
                 (primary
                   (number)))
+              (expression
+                (primary
+                  (number)))
+              (expression
+                (primary
+                  (number))))))))))
+
+==================
+Structured shader inputs
+==================
+let coordinates = surface.uv;
+coordinates.show().x().colorize(rgb(screen.uv.y(), 0.5, 0.0))
+
+---
+
+(source_file
+  (binding
+    (identifier)
+    (expression
+      (field_access
+        (expression
+          (primary
+            (identifier)))
+        (identifier))))
+  (expression
+    (pipeline
+      (expression
+        (pipeline
+          (expression
+            (pipeline
+              (expression
+                (primary
+                  (identifier)))
+              (call
+                (identifier))))
+          (call
+            (identifier))))
+      (call
+        (identifier)
+        (expression
+          (primary
+            (call
+              (identifier)
+              (expression
+                (pipeline
+                  (expression
+                    (field_access
+                      (expression
+                        (primary
+                          (identifier)))
+                      (identifier)))
+                  (call
+                    (identifier))))
               (expression
                 (primary
                   (number)))

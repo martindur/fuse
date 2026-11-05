@@ -1,9 +1,9 @@
-let mask = uv
+let mask = surface.uv
     .scroll(vec2(0.02, -0.018), time)
     .mirror(tex0)
     .sample(tex0);
 
-let rings = uv
+let rings = surface.uv
     .zoom(time.cycle(0.18, 1.0, 0.12))
     .mirror(tex1)
     .sample(tex1);

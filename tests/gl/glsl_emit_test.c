@@ -17,6 +17,10 @@ static const char EXPECTED_SHADER[] =
     "\n"
     "in vec2 graficUv;\n"
     "in vec3 graficPosition;\n"
+    "in vec3 graficAuthoredNormal;\n"
+    "flat in int graficHasNormal;\n"
+    "struct GraficSurface { vec3 position; vec2 uv; vec3 normal; };\n"
+    "struct GraficScreen { vec2 position; vec2 uv; };\n"
     "out vec4 fragColor;\n"
     "\n"
     "uniform float u_time;\n"
@@ -46,6 +50,7 @@ static const char EXPECTED_SHADER[] =
     "    return first * second;\n"
     "}\n"
     "\n"
+    "vec3 grafic_normalize(vec3 value) { float magnitude = length(value); return magnitude > 0.0 ? value / magnitude : vec3(0.0); }\n"
     "vec3 grafic_surface_normal(vec3 point) {\n"
     "    vec3 direction = cross(dFdx(point), dFdy(point));\n"
     "    float magnitude = length(direction);\n"
@@ -148,10 +153,10 @@ static const char EXPECTED_SHADER[] =
     "}\n"
     "\n"
     "void main() {\n"
-    "    vec2 uv = graficUv;\n"
-    "    vec3 position = graficPosition;\n"
-    "    vec3 normal = grafic_surface_normal(position);\n"
-    "    vec2 p = aspect(center(uv));\n"
+    "    vec3 graficFaceNormal = grafic_surface_normal(graficPosition);\n"
+    "    GraficSurface surface = GraficSurface(graficPosition, graficUv, graficHasNormal != 0 ? grafic_normalize(graficAuthoredNormal) : graficFaceNormal);\n"
+    "    GraficScreen screen = GraficScreen(gl_FragCoord.xy, gl_FragCoord.xy / u_resolution);\n"
+    "    vec2 p = aspect(center(surface.uv));\n"
     "    fragColor = colorize(fill(sdf_union("
     "circle(p, 0.22), "
     "box(rotate(p, time), "
@@ -172,12 +177,8 @@ static bool emit_to_string(
         return false;
     }
 
-    bool emitted = glsl_emit(
-        stream, SHADER_STAGE_FRAGMENT,
-        program,
-        semantic_info,
-        source
-    );
+    PreparedProgram prepared = {.program = (Program *)program, .semantic_info = *semantic_info};
+    bool emitted = glsl_emit(stream, SHADER_STAGE_FRAGMENT, &prepared, source);
     bool closed = fclose(stream) != EOF;
 
     return emitted && closed;
@@ -186,7 +187,7 @@ static bool emit_to_string(
 static bool test_complete_shader(void)
 {
     const char *source =
-        "let p = uv.center().aspect();\n"
+        "let p = surface.uv.center().aspect();\n"
         "\n"
         "p\n"
         ".circle(0.22)\n"
@@ -304,30 +305,30 @@ static bool test_complete_shader(void)
 static bool test_texture_shader(void)
 {
     const char *source =
-        "let first = uv"
+        "let first = surface.uv"
         " .scroll(vec2(0.04, 0.01), time)"
         " .repeat()"
         " .sample(tex0);\n"
-        "let second = uv"
+        "let second = surface.uv"
         " .scroll(vec2(-0.02, 0.03), time)"
         " .repeat()"
         " .sample(tex1);\n"
-        "let warped = uv"
+        "let warped = surface.uv"
         " .zoom(time.cycle(0.15, 1.0, 0.1))"
         " .distort(first, 0.08)"
         " .mirror(tex2)"
         " .sample(tex2);\n"
-        "let pulse = uv"
+        "let pulse = surface.uv"
         " .radial_wave(time, 30.0, 4.0)"
         " .colorize(rgb(1.0, 1.0, 1.0));\n"
         "warped.multiply(second).multiply(pulse)";
     static const char *const EXPECTED_FRAGMENTS[] = {
         "uniform sampler2D tex0;\n",
         "uniform sampler2D tex1;\n",
-        "vec4 first = texture(tex0, repeat(scroll(uv, vec2(0.04, 0.01), time)));\n",
-        "vec4 second = texture(tex1, repeat(scroll(uv, vec2(-0.02, 0.03), time)));\n",
-        "vec4 warped = texture(tex2, mirror(distort(zoom(uv, cycle(time, 0.15, 1.0, 0.1)), first, 0.08), tex2));\n",
-        "vec4 pulse = colorize(radial_wave(uv, time, 30.0, 4.0), rgb(1.0, 1.0, 1.0));\n",
+        "vec4 first = texture(tex0, repeat(scroll(surface.uv, vec2(0.04, 0.01), time)));\n",
+        "vec4 second = texture(tex1, repeat(scroll(surface.uv, vec2(-0.02, 0.03), time)));\n",
+        "vec4 warped = texture(tex2, mirror(distort(zoom(surface.uv, cycle(time, 0.15, 1.0, 0.1)), first, 0.08), tex2));\n",
+        "vec4 pulse = colorize(radial_wave(surface.uv, time, 30.0, 4.0), rgb(1.0, 1.0, 1.0));\n",
         "fragColor = multiply(multiply(warped, second), pulse);\n",
     };
 
@@ -435,7 +436,7 @@ static bool test_texture_shader(void)
 static bool test_channel_helpers(void)
 {
     const char *source =
-        "let sampled = uv.sample(tex0);\n"
+        "let sampled = surface.uv.sample(tex0);\n"
         "let amount = sampled.b().multiply(-1.0).add(1.0).multiply(0.5).clamp(0.0, 1.0);\n"
         "vec4(sampled.r(), sampled.g(), sampled.b(), amount)";
     Program *syntax = NULL;
@@ -493,7 +494,7 @@ static bool test_channel_helpers(void)
 
 static bool test_preview_result_conversion(void)
 {
-    const char *source = "uv.center()";
+    const char *source = "surface.uv.center()";
     Program *syntax = NULL;
     Program *lowered = NULL;
     ParseError parse_error;
@@ -524,7 +525,7 @@ static bool test_preview_result_conversion(void)
         )
         && strstr(
             actual,
-            "fragColor = vec4(center(uv), 0.0, 1.0);"
+            "fragColor = vec4(center(surface.uv), 0.0, 1.0);"
         ) != NULL;
 
     if (!passed) {

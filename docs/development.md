@@ -202,7 +202,8 @@ OpenGL dependencies. See the [viewer guide](view.md).
 The `gl` capability owns `ShaderStage` and stage-specific dialects. Vertex
 and fragment shaders share expression emission and scalar math definitions;
 each has its own globals, result contract, and entry point. Vertex previews
-set `preview_requires_result_type` to preserve the `vec3` position contract.
+require a vertex result, with `vec3` allowed for inspection. `PreparedProgram`
+retains optional complete-program context for position-only previews.
 Mesh evaluation produces a tagged disk or grid specification; generators
 produce the same XYZ/UV/index buffers used by OBJ export and the viewer.
 
@@ -219,3 +220,10 @@ let brightness = diffuse
 
 Keep this layout in future formatter work. Short nested arguments can stay
 inline; the outer chain should remain easy to inspect one operation at a time.
+
+Field access is an AST expression distinct from chained calls. Capability-owned
+`FieldSignature` entries drive type checking, help, completion, and hover. The
+shader capability defines the vertex, surface, and screen interfaces; the shared
+language does not construct arbitrary records. Authored normals use a separate
+interpolated varying and a flat presence flag. Vertex-preview context is prepared
+without selecting markers and is owned by `PreparedProgram`.

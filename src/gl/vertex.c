@@ -1,6 +1,11 @@
 #include "glsl_stdlib.h"
 
 static const BuiltinSignature BUILTINS[] = {
+    {"vertex", VALUE_TYPE_VERTEX, 2, {VALUE_TYPE_VEC3, VALUE_TYPE_VEC2}},
+    {"vertex", VALUE_TYPE_VERTEX, 3, {VALUE_TYPE_VEC3, VALUE_TYPE_VEC2, VALUE_TYPE_VEC3}},
+    {"show", VALUE_TYPE_VERTEX, 1, {VALUE_TYPE_VERTEX}},
+    {"normalize", VALUE_TYPE_VEC3, 1, {VALUE_TYPE_VEC3}},
+    {"dot", VALUE_TYPE_FLOAT, 2, {VALUE_TYPE_VEC3, VALUE_TYPE_VEC3}},
     {"show", VALUE_TYPE_VEC3, 1, {VALUE_TYPE_VEC3}},
     {"vec2", VALUE_TYPE_VEC2, 2, {VALUE_TYPE_FLOAT, VALUE_TYPE_FLOAT}},
     {"vec3", VALUE_TYPE_VEC3, 3, {VALUE_TYPE_FLOAT, VALUE_TYPE_FLOAT, VALUE_TYPE_FLOAT}},
@@ -18,14 +23,22 @@ static const BuiltinSignature BUILTINS[] = {
     {"oscillate", VALUE_TYPE_FLOAT, 3, {VALUE_TYPE_FLOAT, VALUE_TYPE_FLOAT, VALUE_TYPE_FLOAT}},
     {"cycle", VALUE_TYPE_FLOAT, 4, {VALUE_TYPE_FLOAT, VALUE_TYPE_FLOAT, VALUE_TYPE_FLOAT, VALUE_TYPE_FLOAT}},
 };
+static const FieldSignature FIELDS[] = {
+    {VALUE_TYPE_VERTEX, "position", VALUE_TYPE_VEC3, "Mesh-local output position."},
+    {VALUE_TYPE_VERTEX, "uv", VALUE_TYPE_VEC2, "Output UV coordinates."},
+    {VALUE_TYPE_VERTEX, "normal", VALUE_TYPE_VEC3, "Authored local-space normal, or zero when omitted."},
+};
 static const GlobalSignature GLOBALS[] = {
     {"position", VALUE_TYPE_VEC3}, {"uv", VALUE_TYPE_VEC2}, {"time", VALUE_TYPE_FLOAT},
 };
 static const SymbolDocumentation DOCUMENTATION[] = {
+    {"vertex", "Creates a vertex result from local position, UV, and an optional authored local normal. Omit the normal for triangle-normal shading."},
+    {"normalize", "Returns a unit vector with the direction of a nonzero vec3."},
+    {"dot", "Returns the dot product of two vec3 vectors."},
     {"position", "Original mesh position in local coordinates; Y is up for grids."},
-    {"uv", "Original mesh UV coordinates, passed unchanged to the fragment stage."},
+    {"uv", "Original mesh UV coordinates. Pass them to vertex() or supply transformed UVs."},
     {"time", "Elapsed animation time in seconds."},
-    {"show", "Previews this intermediate vec3 position; the last marker wins. Export returns the value unchanged."},
+    {"show", "Previews this vertex value or intermediate vec3 position; the last marker wins. Export returns the value unchanged."},
     {"vec2", "Constructs a two-component vector."},
     {"vec3", "Constructs a three-component position or vector."},
     {"x", "Returns the X component of a vector."},
@@ -39,9 +52,10 @@ static const SymbolDocumentation DOCUMENTATION[] = {
     {"cycle", "Repeats a linear ramp between low and high at the given speed."},
 };
 static const char *const RESERVED[] = {
-    "a_position", "a_uv", "graficUv", "graficPosition", "u_model", "u_view", "u_projection", "u_time", "gl_Position",
+    "GraficVertex", "graficResult", "graficContext", "graficAuthoredNormal", "graficHasNormal", "a_position", "a_uv", "graficUv", "graficPosition", "u_model", "u_view", "u_projection", "u_time", "gl_Position",
 };
 static const LanguageEnvironment ENVIRONMENT = {
+    .fields = FIELDS, .field_count = sizeof(FIELDS) / sizeof(FIELDS[0]),
     .builtins = BUILTINS, .builtin_count = sizeof(BUILTINS) / sizeof(BUILTINS[0]),
     .globals = GLOBALS, .global_count = sizeof(GLOBALS) / sizeof(GLOBALS[0]),
     .documentation = DOCUMENTATION, .documentation_count = sizeof(DOCUMENTATION) / sizeof(DOCUMENTATION[0]),
@@ -51,12 +65,15 @@ const GraficDialect *gl_vertex_dialect(void)
 {
     static const GraficDialect DIALECT = {
         .language_id = "graficvert", .file_extension = ".gvert", .environment = &ENVIRONMENT,
-        .required_result_type = VALUE_TYPE_VEC3, .preview_requires_result_type = true,
+        .required_result_type = VALUE_TYPE_VERTEX, .preview_requires_result_type = true,
+        .preview_result_type = VALUE_TYPE_VEC3,
     };
     return &DIALECT;
 }
 bool glsl_vertex_stdlib_emit(FILE *output)
 {
-    return fputs("vec3 add(vec3 a, vec3 b) { return a + b; }\n"
+    return fputs("GraficVertex vertex(vec3 p, vec2 uv) { return GraficVertex(p, uv, vec3(0.0), false); }\n"
+        "GraficVertex vertex(vec3 p, vec2 uv, vec3 n) { return GraficVertex(p, uv, n, true); }\n"
+        "vec3 add(vec3 a, vec3 b) { return a + b; }\n"
         "vec3 multiply(vec3 a, float b) { return a * b; }\n", output) != EOF;
 }

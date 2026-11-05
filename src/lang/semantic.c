@@ -302,6 +302,19 @@ static bool infer_expression(
             out_type
         );
 
+    case EXPR_FIELD: {
+        ValueType owner;
+        if (!infer_expression(analyzer, expression->as.field.input, visible_bindings, &owner)) return false;
+        for (size_t index = 0; index < analyzer->environment->field_count; index += 1) {
+            const FieldSignature *field = &analyzer->environment->fields[index];
+            if (field->owner == owner && span_equals_text(analyzer->source, expression->as.field.name, field->name)) {
+                *out_type = field->type;
+                return true;
+            }
+        }
+        analyzer_fail(analyzer, expression->as.field.name, "unknown field for this type");
+        return false;
+    }
     case EXPR_PIPELINE:
         analyzer_fail(
             analyzer,

@@ -93,6 +93,13 @@ static bool dump_expression(
 
       return fputc(')', output) != EOF;
 
+    case EXPR_FIELD:
+      return fputs("(field \"", output) != EOF
+        && write_span(output, source, expression->as.field.name)
+        && fputs("\"\n", output) != EOF
+        && dump_expression(output, expression->as.field.input, source, depth + 1)
+        && fputc(')', output) != EOF;
+
     case EXPR_PIPELINE:
       if (fputs("(pipeline\n", output) == EOF
           || !dump_expression(

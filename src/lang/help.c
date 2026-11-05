@@ -123,4 +123,13 @@ void language_print_builtins(
             }
         }
     }
+    if (environment->field_count > 0) {
+        fputs("\nFields:\n", output);
+        for (size_t index = 0; index < environment->field_count; index += 1) {
+            const FieldSignature *field = &environment->fields[index];
+            fprintf(output, "  %s.%s: %s\n    %s\n", value_type_name(field->owner),
+                field->name, value_type_name(field->type), field->documentation);
+        }
+    }
+
 }

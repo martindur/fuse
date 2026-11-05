@@ -75,7 +75,7 @@ See the [viewer guide](docs/view.md) for examples.
 Programs chain transformations. For example, this shader draws an orange circle:
 
 ```text
-uv
+surface.uv
   .center()
   .aspect()
   .circle(0.25)

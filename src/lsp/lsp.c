@@ -814,6 +814,17 @@ static bool write_completion_items(
 )
 {
     bool first = true;
+    for (size_t index = 0; has_receiver && index < environment->field_count; index += 1) {
+        const FieldSignature *field = &environment->fields[index];
+        if (field->owner != receiver_type) continue;
+        if (!first && fputc(',', output) == EOF) return false;
+        first = false;
+        fputs("{\"label\":", output);
+        write_json_string(output, field->name);
+        fprintf(output, ",\"kind\":5,\"detail\":\"%s\",\"documentation\":", value_type_name(field->type));
+        write_json_string(output, field->documentation);
+        fputc('}', output);
+    }
 
     for (size_t index = 0;
          index < environment->builtin_count;
@@ -1209,14 +1220,26 @@ static bool send_hover(
     size_t markdown_length = 0;
     FILE *markdown_output = open_memstream(&markdown, &markdown_length);
     bool found = false;
-    bool built = markdown_output != NULL
-        && write_hover_markdown(
-            markdown_output,
-            environment,
-            name,
-            document->dialect->language_id,
-            &found
-        );
+    const FieldSignature *field = NULL;
+    ValueType receiver_type;
+    if (infer_completion_receiver_type(document, position, &receiver_type)) {
+        for (size_t index = 0; index < environment->field_count; index += 1) {
+            const FieldSignature *candidate = &environment->fields[index];
+            if (candidate->owner == receiver_type && strcmp(candidate->name, name) == 0) {
+                field = candidate;
+                break;
+            }
+        }
+    }
+    bool built = false;
+    if (markdown_output != NULL && field != NULL) {
+        found = true;
+        built = fprintf(markdown_output, "```%s\n%s.%s: %s\n```\n\n%s",
+            document->dialect->language_id, value_type_name(field->owner), field->name,
+            value_type_name(field->type), field->documentation) >= 0;
+    } else if (markdown_output != NULL) {
+        built = write_hover_markdown(markdown_output, environment, name, document->dialect->language_id, &found);
+    }
 
     if (markdown_output != NULL && fclose(markdown_output) == EOF) {
         built = false;
@@ -1654,7 +1677,7 @@ static void server_destroy(GraficLspServer *server)
 
 static bool valid_type(ValueType type)
 {
-    return type >= VALUE_TYPE_FLOAT && type <= VALUE_TYPE_MESH;
+    return type >= VALUE_TYPE_FLOAT && type <= VALUE_TYPE_SCREEN;
 }
 
 static bool valid_dialect(const GraficDialect *dialect)
@@ -1669,7 +1692,8 @@ static bool valid_dialect(const GraficDialect *dialect)
 
     const LanguageEnvironment *environment = dialect->environment;
 
-    if ((environment->builtin_count > 0 && environment->builtins == NULL)
+    if ((environment->field_count > 0 && environment->fields == NULL)
+        || (environment->builtin_count > 0 && environment->builtins == NULL)
         || (environment->global_count > 0 && environment->globals == NULL)
         || (environment->documentation_count > 0 && environment->documentation == NULL)
         || (environment->reserved_count > 0 && environment->reserved_names == NULL)) {
@@ -1704,6 +1728,12 @@ static bool valid_dialect(const GraficDialect *dialect)
             || environment->documentation[i].documentation == NULL) {
             return false;
         }
+    }
+
+    for (size_t i = 0; i < environment->field_count; i += 1) {
+        const FieldSignature *field = &environment->fields[i];
+        if (field->name == NULL || field->name[0] == '\0' || field->documentation == NULL
+            || !valid_type(field->owner) || !valid_type(field->type)) return false;
     }
 
     for (size_t i = 0; i < environment->reserved_count; i += 1) {

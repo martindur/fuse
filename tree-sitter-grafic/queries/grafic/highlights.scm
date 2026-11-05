@@ -15,3 +15,5 @@
 ((call function: (identifier) @function.builtin.grafic)
   (#eq? @function.builtin.grafic "show")
   (#set! priority 110))
+
+(field_access field: (identifier) @variable.member)

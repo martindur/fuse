@@ -98,7 +98,7 @@ bool view_shader_compile(const ViewSource *source, ShaderStage stage, size_t pre
     }
     size_t length = 0;
     FILE *output = open_memstream(out_glsl, &length);
-    bool emitted = output != NULL && glsl_emit(output, stage, prepared.program, &prepared.semantic_info, source->text);
+    bool emitted = output != NULL && glsl_emit(output, stage, &prepared, source->text);
     if (output != NULL && fclose(output) != 0) {
         emitted = false;
     }

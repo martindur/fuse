@@ -25,6 +25,15 @@ typedef struct {
 } SymbolDocumentation;
 
 typedef struct {
+    ValueType owner;
+    const char *name;
+    ValueType type;
+    const char *documentation;
+} FieldSignature;
+
+typedef struct {
+    const FieldSignature *fields;
+    size_t field_count;
     const BuiltinSignature *builtins;
     size_t builtin_count;
     const GlobalSignature *globals;
