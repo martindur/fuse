@@ -1,40 +1,109 @@
-// Blend low water into turquoise, then fade the highest areas toward white.
+// One tileable slope map, sampled at two scales and drifting in different directions.
+let ripple_a = surface.uv
+  .multiply(3.0)
+  .scroll(vec2(0.035, 0.012), time)
+  .repeat()
+  .sample(tex0);
+
+let ripple_b = surface.uv
+  .multiply(5.0)
+  .scroll(vec2(-0.018, 0.028), time)
+  .repeat()
+  .sample(tex0);
+
+// Red and green decode from [0, 1] into signed local X/Z slopes.
+let slope_a = vec3(ripple_a.r().multiply(2.0).add(-1.0), 0.0, ripple_a.g().multiply(2.0).add(-1.0))
+  .multiply(0.18);
+
+let slope_b = vec3(ripple_b.r().multiply(2.0).add(-1.0), 0.0, ripple_b.g().multiply(2.0).add(-1.0))
+  .multiply(0.1);
+
+// For a Y-up height field, N = normalize(-height_x, 1, -height_z).
+// Multiplying the added slopes by -N.y preserves that relationship on tilted waves.
+let ripples = slope_a
+  .add(slope_b)
+  .multiply(surface.normal.y().multiply(-1.0));
+
+let shading_normal = surface.normal
+  .add(ripples)
+  .normalize();
+
+// Deep water, turquoise swells, and a little pale color at the highest crests.
 let height = surface.position
   .y()
   .add(0.15)
   .multiply(3.333333)
   .clamp(0.0, 1.0);
 
-let water = rgb(0.01, 0.05, 0.2)
-  .mix(rgb(0.05, 0.65, 0.7), height);
+let water = rgb(0.01, 0.07, 0.14)
+  .mix(rgb(0.025, 0.32, 0.38), height);
 
 let crest = height
   .add(-0.75)
   .multiply(4.0)
-  .clamp(0.0, 1.0);
+  .clamp(0.0, 1.0)
+  .multiply(0.2);
 
-// Ambient light keeps slopes visible when they face away from the light.
-let light = vec3(-0.8, 0.6, 0.4)
+// The same sun direction drives diffuse light and reflected highlights.
+let light = vec3(-0.55, 0.7, -0.45)
   .normalize();
 
-let diffuse = surface.normal
+let brightness = shading_normal
   .dot(light)
-  .clamp(0.0, 1.0);
+  .clamp(0.0, 1.0)
+  .multiply(0.65)
+  .add(0.35);
 
-let brightness = diffuse
-  .multiply(0.8)
-  .add(0.2);
-
-let color = water
-  .mix(rgb(0.9, 0.98, 1.0), crest)
+let lit_water = water
+  .mix(rgb(0.75, 0.88, 0.9), crest)
   .multiply(brightness);
 
-// An artistic screen-space fade; this is independent of the water's UVs.
+// reflect() takes an incoming direction, so reverse the surface-to-view vector.
+let reflected = view.direction
+  .multiply(-1.0)
+  .reflect(shading_normal);
+
+// A shader-only sky: pale horizon below a deeper blue overhead.
+let sky_height = reflected
+  .y()
+  .clamp(0.0, 1.0)
+  .pow(0.65);
+
+let sky = rgb(0.65, 0.78, 0.88)
+  .mix(rgb(0.08, 0.2, 0.4), sky_height);
+
+// Schlick's approximation: roughly 2% reflection head-on, stronger at grazing angles.
+let fresnel = shading_normal
+  .dot(view.direction)
+  .clamp(0.0, 1.0)
+  .multiply(-1.0)
+  .add(1.0)
+  .pow(5.0)
+  .multiply(0.98)
+  .add(0.02);
+
+let glint = reflected
+  .dot(light)
+  .clamp(0.0, 1.0)
+  .pow(96.0)
+  .multiply(12.0);
+
+let sunlight = rgb(1.0, 0.85, 0.6)
+  .multiply(glint);
+
+let environment = sky
+  .add(sunlight);
+
+let color = lit_water
+  .mix(environment, fresnel);
+
+// Keep the artistic screen fade subtle enough to retain the reflections.
 let fade = screen.uv
   .y()
   .add(-0.2)
   .multiply(1.25)
-  .clamp(0.0, 1.0);
+  .clamp(0.0, 1.0)
+  .multiply(0.18);
 
 let background = rgb(0.06, 0.09, 0.14);
 

@@ -1677,7 +1677,7 @@ static void server_destroy(GraficLspServer *server)
 
 static bool valid_type(ValueType type)
 {
-    return type >= VALUE_TYPE_FLOAT && type <= VALUE_TYPE_SCREEN;
+    return type >= VALUE_TYPE_FLOAT && type <= VALUE_TYPE_VIEW;
 }
 
 static bool valid_dialect(const GraficDialect *dialect)

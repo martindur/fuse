@@ -259,6 +259,8 @@ static void draw_output(const ViewRenderer *renderer, int width, int height, flo
         glUseProgram(renderer->program);
         glUniform1f(renderer->time_uniform, time);
         glUniform2f(renderer->resolution_uniform, (float)width, (float)height);
+        glUniform1i(glGetUniformLocation(renderer->program, "u_view_is_orthographic"), GL_TRUE);
+        glUniform3f(glGetUniformLocation(renderer->program, "u_view_direction"), 0.0f, 0.0f, 1.0f);
     }
     for (size_t slot = 0; slot < VIEW_TEXTURE_COUNT; slot += 1) {
         glActiveTexture((GLenum)(GL_TEXTURE0 + slot));

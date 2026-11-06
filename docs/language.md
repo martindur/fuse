@@ -84,7 +84,7 @@ The current language has no reassignment or user-defined functions.
 ## Types and capability catalogs
 
 The shared type vocabulary is `float`, `vec2`, `vec3`, `vec4`, `texture`, and
-`mesh`, plus the shader interface types `vertex`, `surface`, and `screen`.
+`mesh`, plus the shader interface types `vertex`, `surface`, `screen`, and `view`.
 Function signatures determine argument and result types. Overloads
 are resolved by exact parameter count and types; there are no implicit
 conversions. Capabilities supply constructors as ordinary functions when needed.

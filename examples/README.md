@@ -54,26 +54,51 @@ rendering host, compile textures to PNG with `grafic tex` and shaders with `graf
 
 - `waves.gmesh` sets the grid size and subdivisions.
 - `waves.gvert` combines a broad swell, a crossing wave, and smaller ripples.
-- `waves.gfrag` blends deep blue, turquoise, and pale crests, with ambient and directional lighting.
+- `waves.gfrag` combines water color, reflected sky, Fresnel reflection, and sun glints.
+- `ripples.gtex` supplies a tileable ripple-slope map, bound to `tex0`.
 
 ```sh
 build/grafic view examples/waves/waves.gmesh \
   --vert examples/waves/waves.gvert \
-  --frag examples/waves/waves.gfrag
+  --frag examples/waves/waves.gfrag \
+  --tex0 examples/waves/ripples.gtex
 ```
 
 Edit any source to reload it independently. Press `W` to inspect triangles or
-`U` to compare UV colors. Increase mesh subdivisions for finer faceting.
+`U` to compare UV colors. Press `2` to inspect the ripple texture and `1` to
+return to the surface. Increase mesh subdivisions for finer silhouettes; ripple
+shading does not add vertices.
 
 The vertex shader adds three sine waves with different directions, frequencies,
 speeds, and amplitudes. Their amplitudes total 0.15; the fragment shader maps
 heights from -0.15 to 0.15 into the water palette. Adjust both ranges together
 when changing the overall wave height. The vertex shader derives an authored normal from the same wave phases,
 amplitudes, and frequencies as the displacement. The fragment shader uses
-`surface.position`, `surface.uv`, and normalized `surface.normal` for shading.
-The light direction is mesh-local and points toward the light; ambient light
-keeps other slopes visible. `screen.uv.y()` adds an artistic fade toward the
-chosen background color, independent of surface UVs. This is not distance fog.
+`surface.position`, `surface.normal`, and `view.direction` for shading. The
+reflection direction samples a sky gradient calculated in the shader. Fresnel
+increases reflection at grazing angles, while alignment with the sun creates
+moving glints. The light direction and view direction share mesh-local space.
+
+Tune the water palette, sky colors, light direction, Fresnel curve, and glint
+power directly in `waves.gfrag`. Higher glint power narrows the highlight;
+its following multiplier controls brightness. `screen.uv.y()` retains a subtle
+artistic fade toward a chosen color. The viewer background is unchanged.
 
 Each chained operation has its own line, including bindings, so `.show()` can
 be inserted between steps while exploring the example.
+
+`ripples.gtex` takes centered differences of periodic noise to generate X/Z
+slopes. Red and green store signed data around 0.5; blue is unused and alpha
+is opaque. The fragment shader samples the same map at two scales, scrolling
+in different directions. It decodes both samples, adds their slopes to the
+large-wave slope, and normalizes one shading normal for diffuse light, Fresnel,
+and reflections. This is a Y-up height-field construction, not a general
+purpose tangent-space normal map.
+
+Tune the two slope multipliers in `waves.gfrag` to change ripple strength.
+A neutral map with red and green at 0.5 leaves the large-wave normal intact
+apart from texture quantization. Texture noise defaults to seed 42 in the
+viewer; pass `--seed` to choose another pattern. Save the `.gtex` source to
+regenerate and reload it. `.show()` can inspect intermediate noise or slope
+values, and `.show()` on the fragment's shading normal displays that normal
+using the usual numeric preview colors.

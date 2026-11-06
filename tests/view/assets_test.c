@@ -1,5 +1,8 @@
 #define _POSIX_C_SOURCE 200809L
 #include "view/assets.h"
+#include "tex/evaluate.h"
+#include "tex/builtins.h"
+#include <math.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,6 +23,44 @@ static bool write_source(const char *path, const char *text, size_t length)
     fprintf(stderr, "FAIL viewer source lifecycle at line %d\n", __LINE__); \
     passed = false; goto cleanup; } } while (0)
 
+static bool test_ripple_slopes(void)
+{
+    ViewSource source = {0};
+    PreparedProgram prepared = {0};
+    CompileError error;
+    char read_error[256];
+    bool valid = view_source_poll(&source, "examples/waves/ripples.gtex", read_error, sizeof(read_error)) == VIEW_SOURCE_CHANGED
+        && prepare_program(source.text, source.length, grafictex_dialect(), 0, &prepared, &error);
+    float minimum[2] = {1, 1}, maximum[2] = {0, 0};
+    for (size_t index = 0; valid && index < 32; index += 1) {
+        EvalContext context = {.uv = {(float)index / 31.0f + 0.017f, (float)index / 17.0f - 0.23f},
+            .resolution = {512, 512}, .seed = 42};
+        RuntimeValue original, shifted;
+        EvalError eval_error;
+        valid = grafictex_evaluate_program(prepared.program, source.text, &context, &original, &eval_error);
+        for (size_t axis = 0; valid && axis < 2; axis += 1) {
+            context.uv[axis] += 1;
+            valid = grafictex_evaluate_program(prepared.program, source.text, &context, &shifted, &eval_error);
+            context.uv[axis] -= 1;
+            for (size_t channel = 0; valid && channel < 4; channel += 1) {
+                valid = fabsf(original.components[channel] - shifted.components[channel]) < 0.0001f;
+            }
+        }
+        for (size_t channel = 0; valid && channel < 2; channel += 1) {
+            float value = original.components[channel];
+            valid = isfinite(value) && value >= 0 && value <= 1;
+            minimum[channel] = fminf(minimum[channel], value);
+            maximum[channel] = fmaxf(maximum[channel], value);
+        }
+        valid = valid && original.components[2] == 0.5f && original.components[3] == 1;
+    }
+    valid = valid && maximum[0] - minimum[0] > 0.1f && maximum[1] - minimum[1] > 0.1f;
+    prepared_program_destroy(&prepared);
+    view_source_destroy(&source);
+    printf("%s tileable ripple slopes and channel encoding\n", valid ? "PASS" : "FAIL");
+    return valid;
+}
+
 int main(void)
 {
     char directory[] = "/tmp/grafic-view-assets-XXXXXX";
@@ -39,7 +80,7 @@ int main(void)
     char *glsl = NULL;
     Image image = {0};
     GraficMesh mesh = {0};
-    bool passed = true;
+    bool passed = test_ripple_slopes();
     CHECK(write_source(path, valid, strlen(valid)));
     CHECK(view_source_poll(&source, path, error, sizeof(error)) == VIEW_SOURCE_CHANGED);
     CHECK(view_shader_compile(&source, SHADER_STAGE_FRAGMENT, 0, &glsl, &compile_error));

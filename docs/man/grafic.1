@@ -76,6 +76,11 @@ Fragment programs expose surface.position, surface.uv, and surface.normal;
 the old bare fragment globals are removed. Authored normals are interpolated
 and normalized; otherwise surface.normal is the triangle normal. screen.position
 is in framebuffer pixels with bottom-left origin; screen.uv divides by resolution.
+view.direction is a normalized mesh-local direction from the surface toward the
+camera. It is constant for orthographic views and position-dependent for
+perspective hosts. reflect(), scalar pow(), and RGB add() support reflective
+materials. The viewer supplies its existing orthographic camera; fullscreen
+previews use a direction of (0, 0, 1).
 .SH OPTIONS
 .TP
 .BI --stage " fragment|vertex"

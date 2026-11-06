@@ -15,10 +15,14 @@ static const char SHADER_HEADER[] =
     "flat in int graficHasNormal;\n"
     "struct GraficSurface { vec3 position; vec2 uv; vec3 normal; };\n"
     "struct GraficScreen { vec2 position; vec2 uv; };\n"
+    "struct GraficView { vec3 direction; };\n"
     "out vec4 fragColor;\n"
     "\n"
     "uniform float u_time;\n"
     "uniform vec2 u_resolution;\n"
+    "uniform vec3 u_view_position;\n"
+    "uniform vec3 u_view_direction;\n"
+    "uniform bool u_view_is_orthographic;\n"
     "uniform sampler2D tex0;\n"
     "uniform sampler2D tex1;\n"
     "uniform sampler2D tex2;\n"
@@ -45,7 +49,8 @@ static const char SHADER_MAIN_PREFIX[] =
     "void main() {\n"
     "    vec3 graficFaceNormal = grafic_surface_normal(graficPosition);\n"
     "    GraficSurface surface = GraficSurface(graficPosition, graficUv, graficHasNormal != 0 ? grafic_normalize(graficAuthoredNormal) : graficFaceNormal);\n"
-    "    GraficScreen screen = GraficScreen(gl_FragCoord.xy, gl_FragCoord.xy / u_resolution);\n";
+    "    GraficScreen screen = GraficScreen(gl_FragCoord.xy, gl_FragCoord.xy / u_resolution);\n"
+    "    GraficView view = GraficView(grafic_normalize(u_view_is_orthographic ? u_view_direction : u_view_position - graficPosition));\n";
 
 static const char SHADER_SUFFIX[] =
     ";\n"
@@ -228,6 +233,7 @@ static const char *value_type_glsl_name(ValueType type)
     case VALUE_TYPE_VERTEX: return "GraficVertex";
     case VALUE_TYPE_SURFACE: return "GraficSurface";
     case VALUE_TYPE_SCREEN: return "GraficScreen";
+    case VALUE_TYPE_VIEW: return "GraficView";
     case VALUE_TYPE_MESH:
         return NULL;
     case VALUE_TYPE_INVALID:
@@ -307,6 +313,7 @@ static bool emit_result(
     case VALUE_TYPE_MESH:
     case VALUE_TYPE_VERTEX:
     case VALUE_TYPE_SURFACE:
+    case VALUE_TYPE_VIEW:
     case VALUE_TYPE_SCREEN:
         return false;
     }

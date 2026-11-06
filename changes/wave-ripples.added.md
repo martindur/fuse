@@ -1,0 +1,1 @@
+Add one tileable ripple-slope texture under examples/waves and sample it at two animated scales to break up water reflections and highlights without changing geometry. Decode and combine slopes with the authored wave normal for consistent lighting. Add fragment vec2 scalar multiply(), matching texture coordinate scaling in the texture compiler.

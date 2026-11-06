@@ -40,7 +40,7 @@ static bool prepare(
     *error = (CompileError){0};
     if (source == NULL || out == NULL || dialect == NULL || dialect->environment == NULL
         || dialect->required_result_type < VALUE_TYPE_FLOAT
-        || dialect->required_result_type > VALUE_TYPE_SCREEN) {
+        || dialect->required_result_type > VALUE_TYPE_VIEW) {
         set_error(error, "compile", (SourceSpan){0}, "invalid compilation input");
         return false;
     }

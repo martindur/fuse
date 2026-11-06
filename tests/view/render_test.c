@@ -458,9 +458,49 @@ int main(int argc, char **argv)
     CHECK(pixel_equals(0, 0, 223, 0, 32));
     CHECK(pixel_equals(0, 3, 32, 0, 223));
 
+    /* Orthographic views are constant; perspective views depend on fragment position. */
+    const char *view_color = "vec4(view.direction.multiply(0.5).add(vec3(0.5, 0.5, 0.5)), 1.0)";
+    CHECK(set_source(&renderer, view_color, &error));
+    view_renderer_draw(&renderer, 64, 64, 0.0f);
+    CHECK(pixel_equals(0, 0, 128, 128, 255));
+    CHECK(pixel_equals(63, 63, 128, 128, 255));
+    glUniform1i(glGetUniformLocation(renderer.program, "u_view_is_orthographic"), GL_FALSE);
+    glUniform3f(glGetUniformLocation(renderer.program, "u_view_position"), 0, 0, 1);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    CHECK(pixel_equals(0, 0, 201, 201, 202));
+    CHECK(pixel_equals(63, 63, 54, 54, 202));
+    CHECK(set_mesh_sources(&renderer, NULL, view_color, &error));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    CHECK(pixel_equals(48, 64, 201, 201, 201));
+    CHECK(pixel_equals(80, 64, 201, 201, 201));
+    CHECK(set_mesh_sources(&renderer, NULL,
+        "vec4(view.direction.multiply(-1.0).reflect(surface.normal).multiply(0.5).add(vec3(0.5, 0.5, 0.5)), 1.0)", &error));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    CHECK(pixel_equals(64, 64, 54, 201, 54));
+    CHECK(set_source(&renderer,
+        "vec4(rgb(0.25, 0.5, 0.75).add(rgb(0.25, 0.0, 0.0)).multiply(0.5.pow(2.0)), 1.0)", &error));
+    view_renderer_draw(&renderer, 4, 4, 0.0f);
+    CHECK(pixel_equals(0, 0, 32, 32, 48));
+
+    CHECK(load_texture(&renderer, 0, "examples/waves/ripples.gtex", &error));
     ViewSource wave_file = {0}, water_file = {0};
     CHECK(view_source_poll(&wave_file, "examples/waves/waves.gvert", read_error, sizeof(read_error)) == VIEW_SOURCE_CHANGED);
     CHECK(view_source_poll(&water_file, "examples/waves/waves.gfrag", read_error, sizeof(read_error)) == VIEW_SOURCE_CHANGED);
+    /* With static geometry, only scrolling ripple samples can change these frames. */
+    CHECK(set_mesh_sources(&renderer, "vertex(position, uv, vec3(0.0, 1.0, 0.0))", water_file.text, &error));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    glReadPixels(0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, before_wave);
+    view_renderer_draw_mesh(&renderer, 128, 128, 1.0f, false, false);
+    glReadPixels(0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, after_wave);
+    CHECK(memcmp(before_wave, after_wave, sizeof(before_wave)) != 0);
+    CHECK(set_texture(&renderer, 0, "vec4(0.5, 0.5, 0.5, 1.0)", 1, 1, &error));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    glReadPixels(0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, before_wave);
+    CHECK(memcmp(before_wave, after_wave, sizeof(before_wave)) != 0);
+    view_renderer_draw_mesh(&renderer, 128, 128, 1.0f, false, false);
+    glReadPixels(0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, after_wave);
+    CHECK(memcmp(before_wave, after_wave, sizeof(before_wave)) == 0);
+    CHECK(load_texture(&renderer, 0, "examples/waves/ripples.gtex", &error));
     bool water_loaded = set_mesh_sources(&renderer, wave_file.text, water_file.text, &error);
     view_source_destroy(&wave_file);
     view_source_destroy(&water_file);
@@ -470,6 +510,10 @@ int main(int argc, char **argv)
     view_renderer_draw_mesh(&renderer, 128, 128, 1.0f, false, false);
     glReadPixels(0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, after_wave);
     CHECK(memcmp(before_wave, after_wave, sizeof(before_wave)) != 0);
+    if (argc > 6) {
+        view_renderer_draw_mesh(&renderer, 512, 512, 1.0f, false, false);
+        CHECK(snapshot(argv[6]));
+    }
 
     /* A farther triangle drawn last must not obscure the nearer triangle. */
     float layered_positions[] = {-1,-1,-0.5f, 1,-1,-0.5f, 0,1,-0.5f,

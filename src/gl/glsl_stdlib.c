@@ -1,6 +1,10 @@
 #include "glsl_stdlib.h"
 
 static const BuiltinSignature BUILTINS[] = {
+    {"multiply", VALUE_TYPE_VEC2, 2, {VALUE_TYPE_VEC2, VALUE_TYPE_FLOAT}},
+    {"reflect", VALUE_TYPE_VEC3, 2, {VALUE_TYPE_VEC3, VALUE_TYPE_VEC3}},
+    {"pow", VALUE_TYPE_FLOAT, 2, {VALUE_TYPE_FLOAT, VALUE_TYPE_FLOAT}},
+    {"add", VALUE_TYPE_VEC3, 2, {VALUE_TYPE_VEC3, VALUE_TYPE_VEC3}},
     {"normalize", VALUE_TYPE_VEC3, 1, {VALUE_TYPE_VEC3}},
     {"dot", VALUE_TYPE_FLOAT, 2, {VALUE_TYPE_VEC3, VALUE_TYPE_VEC3}},
     {"multiply", VALUE_TYPE_VEC3, 2, {VALUE_TYPE_VEC3, VALUE_TYPE_FLOAT}},
@@ -252,6 +256,7 @@ static const BuiltinSignature BUILTINS[] = {
 };
 
 static const FieldSignature FIELDS[] = {
+    {VALUE_TYPE_VIEW, "direction", VALUE_TYPE_VEC3, "Normalized direction from this surface point toward the camera, in mesh-local space. Constant for orthographic views; varies with position for perspective views."},
     {VALUE_TYPE_SURFACE, "position", VALUE_TYPE_VEC3, "Displaced mesh-local position, interpolated across the triangle before camera transforms."},
     {VALUE_TYPE_SURFACE, "uv", VALUE_TYPE_VEC2, "Interpolated UV supplied by the vertex program."},
     {VALUE_TYPE_SURFACE, "normal", VALUE_TYPE_VEC3, "Normalized interpolated authored local normal, or winding-oriented triangle normal when none was supplied."},
@@ -259,6 +264,7 @@ static const FieldSignature FIELDS[] = {
     {VALUE_TYPE_SCREEN, "uv", VALUE_TYPE_VEC2, "Framebuffer pixel-center coordinates divided by resolution, independent of mesh UVs."},
 };
 static const GlobalSignature GLOBALS[] = {
+    {"view", VALUE_TYPE_VIEW},
     {"surface", VALUE_TYPE_SURFACE}, {"screen", VALUE_TYPE_SCREEN},
     {"resolution", VALUE_TYPE_VEC2},
     {"time", VALUE_TYPE_FLOAT},
@@ -269,6 +275,9 @@ static const GlobalSignature GLOBALS[] = {
 };
 
 static const SymbolDocumentation DOCUMENTATION[] = {
+    {"view", "Camera-provided fragment inputs. view.direction points from the surface toward the viewer, in surface-local coordinates."},
+    {"reflect", "Reflects an incoming vec3 direction around a unit normal. For a reflection toward the environment, use view.direction.multiply(-1.0).reflect(surface.normal)."},
+    {"pow", "Raises a nonnegative scalar base to an exponent; useful for Fresnel curves and highlights. Zero requires a positive exponent."},
     {"surface", "Interpolated surface.position, surface.uv, and surface.normal supplied by the preceding vertex stage."},
     {"screen", "Framebuffer screen.position in pixels and screen.uv normalized by resolution, with bottom-left origin."},
     {"normalize", "Returns a unit vector with the same direction as a nonzero vec3."},
@@ -388,7 +397,7 @@ static const SymbolDocumentation DOCUMENTATION[] = {
     },
     {
         "add",
-        "Adds two scalar values.",
+        "Adds two scalars or two RGB vectors.",
     },
     {
         "blend_add",
@@ -396,7 +405,7 @@ static const SymbolDocumentation DOCUMENTATION[] = {
     },
     {
         "multiply",
-        "Multiplies two scalar values or two colors component by component, or scales an RGB vector by a scalar.",
+        "Multiplies two scalar values or two colors component by component, or scales a vec2 or vec3 by a scalar.",
     },
     {
         "resolution",
@@ -430,6 +439,7 @@ static const char *const RESERVED_NAMES[] = {
     "graficPosition",
     "grafic_surface_normal", "grafic_normalize", "GraficSurface", "GraficScreen",
     "graficAuthoredNormal", "graficHasNormal", "graficFaceNormal",
+    "GraficView", "u_view_direction", "u_view_position", "u_view_is_orthographic",
 };
 
 static const LanguageEnvironment ENVIRONMENT = {
@@ -459,6 +469,8 @@ static const char GLSL_STDLIB[] =
     "    return magnitude > 0.0 ? direction * (gl_FrontFacing ? 1.0 : -1.0) / magnitude : vec3(0.0);\n"
     "}\n"
     "\n"
+    "vec3 add(vec3 first, vec3 second) { return first + second; }\n"
+    "vec2 multiply(vec2 point, float amount) { return point * amount; }\n"
     "vec3 multiply(vec3 color, float amount) { return color * amount; }\n"
     "\n"
     "vec2 center(vec2 uv) {\n"

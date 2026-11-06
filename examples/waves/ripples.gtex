@@ -1,0 +1,35 @@
+// A periodic height field sampled on either side of each point gives X/Z slopes.
+let point = uv
+  .multiply(8.0);
+
+let period = vec2(8.0, 8.0);
+
+let right = point
+  .add(vec2(0.02, 0.0))
+  .noise(period);
+
+let left = point
+  .add(vec2(-0.02, 0.0))
+  .noise(period);
+
+let forward = point
+  .add(vec2(0.0, 0.02))
+  .noise(period);
+
+let backward = point
+  .add(vec2(0.0, -0.02))
+  .noise(period);
+
+// Encode a scaled signed derivative around 0.5 for storage in red and green.
+// 6.25 = 0.25 / (2 * 0.02); blue is unused, alpha is opaque.
+let slope_x = right
+  .add(left.multiply(-1.0))
+  .multiply(6.25)
+  .add(0.5);
+
+let slope_z = forward
+  .add(backward.multiply(-1.0))
+  .multiply(6.25)
+  .add(0.5);
+
+vec4(slope_x, slope_z, 0.5, 1.0)

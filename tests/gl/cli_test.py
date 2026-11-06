@@ -100,6 +100,29 @@ class ShaderTests(CompilerTests):
         for source in ("position", "vertex(position)", "vertex(uv, position)", "vertex(position, uv, 1.0)"):
             self.assertNotEqual(self.run_command("--stage", "vertex", source=source).returncode, 0)
 
+    def test_view_direction_and_reflection_catalog(self):
+        uri = "file:///water.gfrag"
+        _, responses = self.lsp_session(
+            opened("view.", self.language_id, uri),
+            request("textDocument/completion", 2, at("view.", uri)),
+        )
+        self.assertEqual({item["label"] for item in responses[2]["result"]["items"]}, {"direction"})
+        _, responses = self.lsp_session(
+            opened("view.direction.", self.language_id, uri),
+            request("textDocument/completion", 2, at("view.direction.", uri)),
+            request("textDocument/hover", 3, at("view.dir", uri)),
+        )
+        self.assertTrue({"reflect", "dot", "normalize"} <= {item["label"] for item in responses[2]["result"]["items"]})
+        self.assertIn("toward the camera", responses[3]["result"]["contents"]["value"])
+        result = self.run_command(source="let camera = view; vec4(camera.direction, 1.0)")
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        self.assertIn(b"u_view_position - graficPosition", result.stdout)
+        for source in ("view.position", "view.direction()", "surface.normal.pow(2.0)",
+                       "1.0.reflect(surface.normal)", "view.direction.reflect(1.0)",
+                       "let u_view_direction = 1.0; vec4(surface.uv, 0.0, 1.0)"):
+            self.assertNotEqual(self.run_command(source=source).returncode, 0, source)
+        self.assertNotEqual(self.run_command("--stage", "vertex", source="view.direction").returncode, 0)
+
     def test_vertex_catalog_and_lsp_are_stage_specific(self):
         for args in (("--stage", "vertex", "--builtins"), ("--builtins", "--stage", "vertex")):
             result = self.run_command(*args)

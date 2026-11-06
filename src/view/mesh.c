@@ -162,6 +162,9 @@ static void set_camera(GLuint program, const ViewMeshRenderer *mesh, int width, 
     glUniformMatrix4fv(glGetUniformLocation(program, "u_model"), 1, GL_FALSE, identity);
     glUniformMatrix4fv(glGetUniformLocation(program, "u_view"), 1, GL_FALSE, view);
     glUniformMatrix4fv(glGetUniformLocation(program, "u_projection"), 1, GL_FALSE, projection);
+    glUniform1i(glGetUniformLocation(program, "u_view_is_orthographic"), GL_TRUE);
+    /* Camera +Z is toward the viewer; this row is expressed in mesh-local space. */
+    glUniform3f(glGetUniformLocation(program, "u_view_direction"), view[2], view[6], view[10]);
 }
 
 void view_renderer_draw_mesh(const ViewRenderer *renderer, int width, int height, float time,

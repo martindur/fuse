@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static const char EXPECTED_SHADER[] =
+static const char EXPECTED_HEADER[] =
     "#version 330 core\n"
     "\n"
     "in vec2 graficUv;\n"
@@ -21,10 +21,14 @@ static const char EXPECTED_SHADER[] =
     "flat in int graficHasNormal;\n"
     "struct GraficSurface { vec3 position; vec2 uv; vec3 normal; };\n"
     "struct GraficScreen { vec2 position; vec2 uv; };\n"
+    "struct GraficView { vec3 direction; };\n"
     "out vec4 fragColor;\n"
     "\n"
     "uniform float u_time;\n"
     "uniform vec2 u_resolution;\n"
+    "uniform vec3 u_view_position;\n"
+    "uniform vec3 u_view_direction;\n"
+    "uniform bool u_view_is_orthographic;\n"
     "uniform sampler2D tex0;\n"
     "uniform sampler2D tex1;\n"
     "uniform sampler2D tex2;\n"
@@ -32,7 +36,9 @@ static const char EXPECTED_SHADER[] =
     "\n"
     "#define time u_time\n"
     "#define resolution u_resolution\n"
-    "\n"
+    "\n";
+
+static const char EXPECTED_SHADER[] =
     "float oscillate(float value, float low, float high) {\n"
     "    float phase = 0.5 + 0.5 * sin(value);\n"
     "    return mix(low, high, phase);\n"
@@ -57,6 +63,8 @@ static const char EXPECTED_SHADER[] =
     "    return magnitude > 0.0 ? direction * (gl_FrontFacing ? 1.0 : -1.0) / magnitude : vec3(0.0);\n"
     "}\n"
     "\n"
+    "vec3 add(vec3 first, vec3 second) { return first + second; }\n"
+    "vec2 multiply(vec2 point, float amount) { return point * amount; }\n"
     "vec3 multiply(vec3 color, float amount) { return color * amount; }\n"
     "\n"
     "vec2 center(vec2 uv) {\n"
@@ -156,6 +164,7 @@ static const char EXPECTED_SHADER[] =
     "    vec3 graficFaceNormal = grafic_surface_normal(graficPosition);\n"
     "    GraficSurface surface = GraficSurface(graficPosition, graficUv, graficHasNormal != 0 ? grafic_normalize(graficAuthoredNormal) : graficFaceNormal);\n"
     "    GraficScreen screen = GraficScreen(gl_FragCoord.xy, gl_FragCoord.xy / u_resolution);\n"
+    "    GraficView view = GraficView(grafic_normalize(u_view_is_orthographic ? u_view_direction : u_view_position - graficPosition));\n"
     "    vec2 p = aspect(center(surface.uv));\n"
     "    fragColor = colorize(fill(sdf_union("
     "circle(p, 0.22), "
@@ -270,24 +279,15 @@ static bool test_complete_shader(void)
         &actual_length
     );
 
-    size_t expected_length = sizeof(EXPECTED_SHADER) - 1;
-    bool matches = emitted
-        && actual_length == expected_length
-        && memcmp(
-            actual,
-            EXPECTED_SHADER,
-            expected_length
-        ) == 0;
+    size_t header_length = sizeof(EXPECTED_HEADER) - 1;
+    size_t body_length = sizeof(EXPECTED_SHADER) - 1;
+    bool matches = emitted && actual_length == header_length + body_length
+        && memcmp(actual, EXPECTED_HEADER, header_length) == 0
+        && memcmp(actual + header_length, EXPECTED_SHADER, body_length) == 0;
 
     if (!matches) {
-        fprintf(
-            stderr,
-            "FAIL complete GLSL snapshot\n"
-            "expected:\n%s"
-            "actual:\n%s",
-            EXPECTED_SHADER,
-            actual == NULL ? "(null)\n" : actual
-        );
+        fprintf(stderr, "FAIL complete GLSL snapshot\nexpected:\n%s%sactual:\n%s",
+            EXPECTED_HEADER, EXPECTED_SHADER, actual == NULL ? "(null)\n" : actual);
     }
 
     free(actual);
