@@ -123,6 +123,20 @@ class ShaderTests(CompilerTests):
             self.assertNotEqual(self.run_command(source=source).returncode, 0, source)
         self.assertNotEqual(self.run_command("--stage", "vertex", source="view.direction").returncode, 0)
 
+    def test_vertex_cross_product_for_surface_tangents(self):
+        result = self.run_command("--stage", "vertex",
+            source="let n = vec3(0.0, 0.0, 1.0).cross(vec3(1.0, 0.0, 0.0)).normalize(); vertex(position, uv, n)")
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        uri = "file:///water.gvert"
+        _, responses = self.lsp_session(
+            opened("position.", "graficvert", uri),
+            request("textDocument/completion", 2, at("position.", uri)),
+        )
+        self.assertIn("cross", {item["label"] for item in responses[2]["result"]["items"]})
+        result = self.run_command("--stage", "vertex", source="vertex(position.cross(uv), uv)")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(b"argument type mismatch", result.stderr)
+
     def test_vertex_catalog_and_lsp_are_stage_specific(self):
         for args in (("--stage", "vertex", "--builtins"), ("--builtins", "--stage", "vertex")):
             result = self.run_command(*args)

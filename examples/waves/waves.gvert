@@ -1,76 +1,142 @@
-// Three traveling waves: a broad swell, a crossing wave, and smaller ripples.
-// Each phase projects XZ onto a direction, sets frequency, then advances time.
+// Gerstner waves: a dominant swell, a supporting swell, and a weak crossing wave.
+// Frequency is radians per local unit; speed is radians per second.
+// Horizontal displacement compresses crests and spreads troughs.
+// Keep sum(steepness * amplitude * frequency) below 1 to avoid folds (here: 0.6724).
+
 let swell_direction = vec3(0.94, 0.0, 0.342)
   .normalize();
-let swell_frequency = 6.0;
-let swell_amplitude = 0.085;
+let swell_frequency = 5.0;
+let swell_amplitude = 0.105;
+let swell_steepness = 0.85;
 
 let swell_phase = position
   .dot(swell_direction)
   .multiply(swell_frequency)
-  .add(time.multiply(-1.2));
+  .add(time.multiply(-1.5));
 
-let cross_direction = vec3(-0.6, 0.0, 0.8)
+let secondary_direction = vec3(0.8, 0.0, 0.6)
   .normalize();
-let cross_frequency = 7.0;
-let cross_amplitude = 0.045;
+let secondary_frequency = 8.5;
+let secondary_amplitude = 0.03;
+let secondary_steepness = 0.65;
 
-let cross_phase = position
-  .dot(cross_direction)
-  .multiply(cross_frequency)
-  .add(time.multiply(-1.6));
+let secondary_phase = position
+  .dot(secondary_direction)
+  .multiply(secondary_frequency)
+  .add(time.multiply(-1.95));
 
-let ripple_direction = vec3(0.8, 0.0, -0.6)
+let crossing_direction = vec3(-0.5, 0.0, 0.866)
   .normalize();
-let ripple_frequency = 13.0;
-let ripple_amplitude = 0.02;
+let crossing_frequency = 11.5;
+let crossing_amplitude = 0.015;
+let crossing_steepness = 0.35;
 
-let ripple_phase = position
-  .dot(ripple_direction)
-  .multiply(ripple_frequency)
-  .add(time.multiply(-2.6));
+let crossing_phase = position
+  .dot(crossing_direction)
+  .multiply(crossing_frequency)
+  .add(time.multiply(-2.25));
 
-// Amplitudes sum to 0.15, matching the height range in waves.gfrag.
-let swell = swell_phase
+// Vertical amplitudes still total 0.15, matching the material's height palette.
+
+let swell_height = swell_phase
   .sin()
   .multiply(swell_amplitude);
 
-let cross = cross_phase
+let secondary_height = secondary_phase
   .sin()
-  .multiply(cross_amplitude);
+  .multiply(secondary_amplitude);
 
-let ripple = ripple_phase
+let crossing_height = crossing_phase
   .sin()
-  .multiply(ripple_amplitude);
+  .multiply(crossing_amplitude);
 
-let height = swell
-  .add(cross)
-  .add(ripple);
+let height = swell_height
+  .add(secondary_height)
+  .add(crossing_height);
 
-// The gradient uses the derivative of each sine, evaluated at the same phase.
+// Vertices move toward each crest along its direction of travel.
+
+let swell_offset = swell_direction
+  .multiply(swell_phase.cos())
+  .multiply(swell_amplitude)
+  .multiply(swell_steepness);
+
+let secondary_offset = secondary_direction
+  .multiply(secondary_phase.cos())
+  .multiply(secondary_amplitude)
+  .multiply(secondary_steepness);
+
+let crossing_offset = crossing_direction
+  .multiply(crossing_phase.cos())
+  .multiply(crossing_amplitude)
+  .multiply(crossing_steepness);
+
+let horizontal = swell_offset
+  .add(secondary_offset)
+  .add(crossing_offset);
+
+let displaced = position
+  .add(horizontal)
+  .add(vec3(0.0, height, 0.0));
+
+// Vertical derivatives with respect to the original X/Z coordinates.
+
 let swell_slope = swell_direction
   .multiply(swell_phase.cos())
   .multiply(swell_amplitude)
   .multiply(swell_frequency);
 
-let cross_slope = cross_direction
-  .multiply(cross_phase.cos())
-  .multiply(cross_amplitude)
-  .multiply(cross_frequency);
+let secondary_slope = secondary_direction
+  .multiply(secondary_phase.cos())
+  .multiply(secondary_amplitude)
+  .multiply(secondary_frequency);
 
-let ripple_slope = ripple_direction
-  .multiply(ripple_phase.cos())
-  .multiply(ripple_amplitude)
-  .multiply(ripple_frequency);
+let crossing_slope = crossing_direction
+  .multiply(crossing_phase.cos())
+  .multiply(crossing_amplitude)
+  .multiply(crossing_frequency);
 
-let gradient = swell_slope
-  .add(cross_slope)
-  .add(ripple_slope);
+let vertical_gradient = swell_slope
+  .add(secondary_slope)
+  .add(crossing_slope);
 
-let wave_normal = vec3(gradient.x().multiply(-1.0), 1.0, gradient.z().multiply(-1.0))
+// Horizontal derivatives include the derivative of the cosine displacement.
+
+let swell_horizontal_slope = swell_direction
+  .multiply(swell_phase.sin())
+  .multiply(swell_amplitude)
+  .multiply(swell_frequency)
+  .multiply(swell_steepness)
+  .multiply(-1.0);
+
+let secondary_horizontal_slope = secondary_direction
+  .multiply(secondary_phase.sin())
+  .multiply(secondary_amplitude)
+  .multiply(secondary_frequency)
+  .multiply(secondary_steepness)
+  .multiply(-1.0);
+
+let crossing_horizontal_slope = crossing_direction
+  .multiply(crossing_phase.sin())
+  .multiply(crossing_amplitude)
+  .multiply(crossing_frequency)
+  .multiply(crossing_steepness)
+  .multiply(-1.0);
+
+// Each tangent includes both horizontal compression and vertical slope.
+let tangent_x = vec3(1.0, vertical_gradient.x(), 0.0)
+  .add(swell_horizontal_slope.multiply(swell_direction.x()))
+  .add(secondary_horizontal_slope.multiply(secondary_direction.x()))
+  .add(crossing_horizontal_slope.multiply(crossing_direction.x()));
+
+let tangent_z = vec3(0.0, vertical_gradient.z(), 1.0)
+  .add(swell_horizontal_slope.multiply(swell_direction.z()))
+  .add(secondary_horizontal_slope.multiply(secondary_direction.z()))
+  .add(crossing_horizontal_slope.multiply(crossing_direction.z()));
+
+// Z cross X gives +Y on a flat grid and the outward normal on the displaced surface.
+let wave_normal = tangent_z
+  .cross(tangent_x)
   .normalize();
-
-let displaced = position
-  .add(vec3(0.0, height, 0.0));
 
 vertex(displaced, uv, wave_normal)

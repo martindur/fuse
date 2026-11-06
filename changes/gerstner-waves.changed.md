@@ -1,0 +1,1 @@
+Replace the wave example's competing vertical sine waves with a dominant Gerstner swell, a smaller supporting swell, and a weak crossing wave. Horizontal displacement sharpens crests and broadens troughs; authored normals use both analytic tangents of the full deformation. Add vertex vec3 cross() for constructing surface normals, keeping the existing ripple material and lighting.

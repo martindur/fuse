@@ -47,6 +47,120 @@ cleanup:
     return loaded;
 }
 
+/* Compare the exported shader's authored normals to finite differences of its positions. */
+static bool check_wave_normals(const ViewSource *source, ViewRenderError *error)
+{
+    enum { SIDE = 7, POINTS = SIDE * SIDE * 5 };
+    const float epsilon = 0.001f;
+    float inputs[POINTS][3], outputs[POINTS][6];
+    for (int z = 0; z < SIDE; z += 1) {
+        for (int x = 0; x < SIDE; x += 1) {
+            for (int neighbor = 0; neighbor < 5; neighbor += 1) {
+                int index = (z * SIDE + x) * 5 + neighbor;
+                inputs[index][0] = (float)x / 3 - 1 + (neighbor == 1 ? epsilon : neighbor == 2 ? -epsilon : 0);
+                inputs[index][1] = 0;
+                inputs[index][2] = (float)z / 3 - 1 + (neighbor == 3 ? epsilon : neighbor == 4 ? -epsilon : 0);
+            }
+        }
+    }
+    GLint old_program, old_array, old_buffer, old_feedback;
+    glGetIntegerv(GL_CURRENT_PROGRAM, &old_program);
+    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &old_array);
+    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &old_buffer);
+    glGetIntegerv(GL_TRANSFORM_FEEDBACK_BUFFER_BINDING, &old_feedback);
+    GLboolean old_discard = glIsEnabled(GL_RASTERIZER_DISCARD);
+    GLuint shader = 0, program = 0, array = 0, buffers[2] = {0};
+    char *glsl = NULL;
+    CompileError compile_error;
+    bool valid = false;
+    if (!view_shader_compile(source, SHADER_STAGE_VERTEX, 0, &glsl, &compile_error)) {
+        snprintf(error->message, sizeof(error->message), "%s", compile_error.message);
+        goto cleanup;
+    }
+    shader = glCreateShader(GL_VERTEX_SHADER);
+    const char *shader_source = glsl;
+    glShaderSource(shader, 1, &shader_source, NULL);
+    glCompileShader(shader);
+    GLint success;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(shader, sizeof(error->message), NULL, error->message);
+        goto cleanup;
+    }
+    program = glCreateProgram();
+    glAttachShader(program, shader);
+    const char *varyings[] = {"graficPosition", "graficAuthoredNormal"};
+    glTransformFeedbackVaryings(program, 2, varyings, GL_INTERLEAVED_ATTRIBS);
+    glLinkProgram(program);
+    glGetProgramiv(program, GL_LINK_STATUS, &success);
+    if (!success) {
+        glGetProgramInfoLog(program, sizeof(error->message), NULL, error->message);
+        goto cleanup;
+    }
+    glUseProgram(program);
+    glGenVertexArrays(1, &array);
+    glBindVertexArray(array);
+    glGenBuffers(2, buffers);
+    glBindBuffer(GL_ARRAY_BUFFER, buffers[0]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(inputs), inputs, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+    glEnableVertexAttribArray(0);
+    glBindBuffer(GL_TRANSFORM_FEEDBACK_BUFFER, buffers[1]);
+    glBufferData(GL_TRANSFORM_FEEDBACK_BUFFER, sizeof(outputs), NULL, GL_STREAM_READ);
+    glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, buffers[1]);
+    const float identity[] = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
+    const char *matrices[] = {"u_model", "u_view", "u_projection"};
+    for (size_t index = 0; index < 3; index += 1) {
+        glUniformMatrix4fv(glGetUniformLocation(program, matrices[index]), 1, GL_FALSE, identity);
+    }
+    const float times[] = {0, 0.9f, 2.3f};
+    float maximum_horizontal = 0;
+    valid = true;
+    for (size_t time = 0; valid && time < 3; time += 1) {
+        glUniform1f(glGetUniformLocation(program, "u_time"), times[time]);
+        glEnable(GL_RASTERIZER_DISCARD);
+        glBeginTransformFeedback(GL_POINTS);
+        glDrawArrays(GL_POINTS, 0, POINTS);
+        glEndTransformFeedback();
+        if (!old_discard) glDisable(GL_RASTERIZER_DISCARD);
+        glGetBufferSubData(GL_TRANSFORM_FEEDBACK_BUFFER, 0, sizeof(outputs), outputs);
+        for (int point = 0; valid && point < POINTS; point += 5) {
+            float dx[3], dz[3];
+            for (int axis = 0; axis < 3; axis += 1) {
+                dx[axis] = outputs[point + 1][axis] - outputs[point + 2][axis];
+                dz[axis] = outputs[point + 3][axis] - outputs[point + 4][axis];
+            }
+            float numerical[] = {dz[1]*dx[2] - dz[2]*dx[1], dz[2]*dx[0] - dz[0]*dx[2], dz[0]*dx[1] - dz[1]*dx[0]};
+            float magnitude = sqrtf(numerical[0]*numerical[0] + numerical[1]*numerical[1] + numerical[2]*numerical[2]);
+            float dot = 0, squared = 0;
+            for (int axis = 0; axis < 3; axis += 1) {
+                float normal = outputs[point][axis + 3];
+                dot += normal * numerical[axis] / magnitude;
+                squared += normal * normal;
+            }
+            valid = isfinite(dot) && dot > 0.9999f && fabsf(squared - 1) < 0.001f && outputs[point][4] > 0;
+            float moved_x = outputs[point][0] - inputs[point][0];
+            float moved_z = outputs[point][2] - inputs[point][2];
+            maximum_horizontal = fmaxf(maximum_horizontal, hypotf(moved_x, moved_z));
+        }
+    }
+    valid = valid && maximum_horizontal > 0.01f && glGetError() == GL_NO_ERROR;
+    if (!valid) snprintf(error->message, sizeof(error->message), "wave normals disagree with numerical tangents, fold, or omit horizontal displacement");
+cleanup:
+    if (!old_discard) glDisable(GL_RASTERIZER_DISCARD);
+    glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, 0);
+    glBindBuffer(GL_TRANSFORM_FEEDBACK_BUFFER, (GLuint)old_feedback);
+    glBindVertexArray((GLuint)old_array);
+    glBindBuffer(GL_ARRAY_BUFFER, (GLuint)old_buffer);
+    glUseProgram((GLuint)old_program);
+    glDeleteBuffers(2, buffers);
+    glDeleteVertexArrays(1, &array);
+    glDeleteProgram(program);
+    glDeleteShader(shader);
+    free(glsl);
+    return valid;
+}
+
 static bool pixel_equals(int x, int y, int r, int g, int b)
 {
     unsigned char pixel[4];
@@ -486,6 +600,7 @@ int main(int argc, char **argv)
     ViewSource wave_file = {0}, water_file = {0};
     CHECK(view_source_poll(&wave_file, "examples/waves/waves.gvert", read_error, sizeof(read_error)) == VIEW_SOURCE_CHANGED);
     CHECK(view_source_poll(&water_file, "examples/waves/waves.gfrag", read_error, sizeof(read_error)) == VIEW_SOURCE_CHANGED);
+    CHECK(check_wave_normals(&wave_file, &error));
     /* With static geometry, only scrolling ripple samples can change these frames. */
     CHECK(set_mesh_sources(&renderer, "vertex(position, uv, vec3(0.0, 1.0, 0.0))", water_file.text, &error));
     view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);

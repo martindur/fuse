@@ -108,9 +108,12 @@ fragment stage normalizes the result. These normals are not automatically
 flipped toward the camera. Light directions must use the same mesh-local space.
 `dot`, `normalize`, and RGB scalar `multiply` support explicit diffuse lighting.
 
-The wave example calculates height and its gradient from the same sine phases.
-Its authored normal is proportional to `(-gradient.x, 1, -gradient.z)`. This
-smooths lighting while geometry and silhouettes still depend on subdivisions.
+The wave example uses Gerstner displacement, including horizontal motion toward
+the crests. It derives both surface tangents from that complete displacement and
+normalizes `tangent_z.cross(tangent_x)` for its authored normal. The vertex-stage
+`cross(vec3, vec3)` is a right-handed cross product. A height-only gradient would
+miss the horizontal derivatives. Smooth lighting still sits on geometry whose
+silhouette depends on subdivisions.
 
 The fragment shader uses `surface.position.y()` for height colors and
 `screen.uv.y()` to fade toward a chosen background color. This is an artistic

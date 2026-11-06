@@ -53,7 +53,7 @@ rendering host, compile textures to PNG with `grafic tex` and shaders with `graf
 `waves/` contains one complete animated surface:
 
 - `waves.gmesh` sets the grid size and subdivisions.
-- `waves.gvert` combines a broad swell, a crossing wave, and smaller ripples.
+- `waves.gvert` combines a dominant Gerstner swell, a smaller supporting swell, and a weak crossing wave.
 - `waves.gfrag` combines water color, reflected sky, Fresnel reflection, and sun glints.
 - `ripples.gtex` supplies a tileable ripple-slope map, bound to `tex0`.
 
@@ -69,11 +69,21 @@ Edit any source to reload it independently. Press `W` to inspect triangles or
 return to the surface. Increase mesh subdivisions for finer silhouettes; ripple
 shading does not add vertices.
 
-The vertex shader adds three sine waves with different directions, frequencies,
-speeds, and amplitudes. Their amplitudes total 0.15; the fragment shader maps
-heights from -0.15 to 0.15 into the water palette. Adjust both ranges together
-when changing the overall wave height. The vertex shader derives an authored normal from the same wave phases,
-amplitudes, and frequencies as the displacement. The fragment shader uses
+The vertex shader uses Gerstner displacement: vertices move horizontally toward
+each crest as well as vertically. Most amplitude belongs to the main swell;
+a smaller wave travels in a similar direction, and a weak crossing wave adds
+variation. Their vertical amplitudes still total 0.15, matching the material's
+height palette. Adjust both ranges together when changing overall wave height.
+
+Each component's steepness controls horizontal motion: zero gives the original
+vertical sine motion; larger values compress crests and broaden troughs. Keep
+`sum(steepness * amplitude * frequency)` below 1 to avoid folding the horizontal
+surface; the example uses about 0.6724. Frequency is in radians per local unit,
+and the time coefficient is angular speed in radians per second.
+
+Normals come from both analytic tangents of the full displacement, including
+horizontal motion. `tangent_z.cross(tangent_x)` gives an upward-facing normal.
+The fragment shader continues to use
 `surface.position`, `surface.normal`, and `view.direction` for shading. The
 reflection direction samples a sky gradient calculated in the shader. Fresnel
 increases reflection at grazing angles, while alignment with the sun creates

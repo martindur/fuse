@@ -1,6 +1,7 @@
 #include "glsl_stdlib.h"
 
 static const BuiltinSignature BUILTINS[] = {
+    {"cross", VALUE_TYPE_VEC3, 2, {VALUE_TYPE_VEC3, VALUE_TYPE_VEC3}},
     {"vertex", VALUE_TYPE_VERTEX, 2, {VALUE_TYPE_VEC3, VALUE_TYPE_VEC2}},
     {"vertex", VALUE_TYPE_VERTEX, 3, {VALUE_TYPE_VEC3, VALUE_TYPE_VEC2, VALUE_TYPE_VEC3}},
     {"show", VALUE_TYPE_VERTEX, 1, {VALUE_TYPE_VERTEX}},
@@ -32,6 +33,7 @@ static const GlobalSignature GLOBALS[] = {
     {"position", VALUE_TYPE_VEC3}, {"uv", VALUE_TYPE_VEC2}, {"time", VALUE_TYPE_FLOAT},
 };
 static const SymbolDocumentation DOCUMENTATION[] = {
+    {"cross", "Returns the right-handed cross product of two vec3 vectors; cross(Z, X) points toward +Y for a flat XZ grid."},
     {"vertex", "Creates a vertex result from local position, UV, and an optional authored local normal. Omit the normal for triangle-normal shading."},
     {"normalize", "Returns a unit vector with the direction of a nonzero vec3."},
     {"dot", "Returns the dot product of two vec3 vectors."},
