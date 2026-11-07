@@ -857,11 +857,42 @@ int main(int argc, char **argv)
     renderer.blend_mode = VIEW_BLEND_ALPHA;
     view_renderer_draw(&renderer, 128, 128, 0.8f);
     CHECK(pixel_equals(0, 0, 31, 31, 31));
-    for (int frame = 8; frame < argc; frame += 1) {
+    for (int frame = 8; frame < argc && frame < 10; frame += 1) {
         view_renderer_draw(&renderer, 512, 512, 0.8f * (float)(frame - 7));
         CHECK(snapshot(argv[frame]));
     }
     renderer.blend_mode = VIEW_BLEND_OPAQUE;
+
+    /* The grass element exports real geometry and animates as a composed surface. */
+    ViewSource grass_geometry = {0}, grass_vertex = {0}, grass_material = {0};
+    GraficMesh grass_mesh = {0};
+    CompileError grass_error;
+    bool grass_loaded = view_source_poll(&grass_geometry, "examples/grass/grass.gmesh", read_error, sizeof(read_error)) == VIEW_SOURCE_CHANGED
+        && view_source_poll(&grass_vertex, "examples/grass/grass.gvert", read_error, sizeof(read_error)) == VIEW_SOURCE_CHANGED
+        && view_source_poll(&grass_material, "examples/grass/grass.gfrag", read_error, sizeof(read_error)) == VIEW_SOURCE_CHANGED
+        && view_mesh_render(&grass_geometry, 0, &grass_mesh, &grass_error)
+        && view_renderer_set_mesh(&renderer, &grass_mesh, &error)
+        && set_mesh_sources(&renderer, grass_vertex.text, grass_material.text, &error);
+    view_source_destroy(&grass_geometry);
+    view_source_destroy(&grass_vertex);
+    view_source_destroy(&grass_material);
+    graficmesh_mesh_destroy(&grass_mesh);
+    CHECK(grass_loaded);
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    glReadPixels(0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, before_wave);
+    view_renderer_draw_mesh(&renderer, 128, 128, 1.0f, false, false);
+    glReadPixels(0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, after_wave);
+    CHECK(memcmp(before_wave, after_wave, sizeof(before_wave)) != 0);
+    size_t green_pixels = 0;
+    for (size_t pixel = 0; pixel < 128 * 128; pixel += 1) {
+        if (after_wave[pixel * 4 + 1] > after_wave[pixel * 4] + 5
+            && after_wave[pixel * 4 + 1] > after_wave[pixel * 4 + 2] + 5) green_pixels += 1;
+    }
+    CHECK(green_pixels > 30);
+    for (int frame = 10; frame < argc; frame += 1) {
+        view_renderer_draw_mesh(&renderer, 512, 512, 0.8f * (float)(frame - 10), false, false);
+        CHECK(snapshot(argv[frame]));
+    }
 
     /* A farther triangle drawn last must not obscure the nearer triangle. */
     float layered_positions[] = {-1,-1,-0.5f, 1,-1,-0.5f, 0,1,-0.5f,

@@ -27,18 +27,26 @@ typedef struct {
 
 typedef struct {
     float width;
+    float height;
+    size_t segments;
+    float taper;
+} GraficMeshStripSpec;
+
+typedef struct {
+    float width;
     float depth;
     size_t subdivisions_x;
     size_t subdivisions_z;
 } GraficMeshGridSpec;
 
-typedef enum { GRAFIC_MESH_DISK, GRAFIC_MESH_GRID } GraficMeshKind;
+typedef enum { GRAFIC_MESH_DISK, GRAFIC_MESH_GRID, GRAFIC_MESH_STRIP } GraficMeshKind;
 
 typedef struct {
     GraficMeshKind kind;
     union {
         GraficMeshDiskSpec disk;
         GraficMeshGridSpec grid;
+        GraficMeshStripSpec strip;
     };
 } GraficMeshSpec;
 
@@ -50,6 +58,17 @@ typedef struct {
     size_t index_count;
 } GraficMesh;
 
+typedef struct {
+    size_t count;
+    uint32_t seed;
+    float minimum_scale;
+    float maximum_scale;
+} GraficMeshScatterSpec;
+
+/* Area-weighted surface samples place upright copies, preserving local UVs. */
+bool graficmesh_mesh_scatter(const GraficMesh *source, const GraficMesh *surface,
+    const GraficMeshScatterSpec *spec, GraficMesh *out_mesh, const char **out_error);
+
 void graficmesh_mesh_destroy(GraficMesh *mesh);
 
 bool graficmesh_mesh_from_disk(
@@ -60,6 +79,12 @@ bool graficmesh_mesh_from_disk(
 
 bool graficmesh_mesh_from_grid(
     const GraficMeshGridSpec *spec,
+    GraficMesh *out_mesh,
+    const char **out_error
+);
+
+bool graficmesh_mesh_from_strip(
+    const GraficMeshStripSpec *spec,
     GraficMesh *out_mesh,
     const char **out_error
 );

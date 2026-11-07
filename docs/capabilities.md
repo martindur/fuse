@@ -64,8 +64,57 @@ A complete program returns `mesh`. `disk()` creates a filled disk.
 while V wraps around the circumference. `grid()` creates a centered XZ surface
 with Y up. Use `.size(width, depth)` and `.subdivisions(x, z)` to configure it;
 the defaults are size 2 by 2 and 64 cells per axis. Subdivisions must be integers
-from 1 through 4096. Grid operations apply only to grids, and disk operations
-only to disks. Geometry has no predefined globals.
+from 1 through 4096. `subdivisions` applies to grids; `radius`, `rings`, and
+`uv_radial` apply to disks. Geometry has no predefined globals.
+
+`strip()` creates an upright XY strip centered across X, rooted at Y=0, and
+facing +Z. Defaults are width 1, height 1, four lengthwise segments, and no taper.
+Use `.size(width, height)`, `.segments(n)` (1–4096), and `.taper(amount)` (0–1).
+Taper is linear: zero keeps constant width; one produces a shared tip vertex
+without degenerate triangles. UVs run across the width and from root to tip,
+with U=0.5 at a pointed tip. Strip size, segments, and taper are independently
+configurable; disk-only operations do not apply to strips.
+
+```text
+strip()
+  .size(0.12, 0.65)
+  .segments(8)
+  .taper(1.0)
+```
+
+Mesh recipes compose immutable values: bindings can reuse a source or target
+without one chain changing another. Configure primitive dimensions before
+transforming it. `.rotate(x, y, z)` applies Euler angles in radians, in X/Y/Z
+order about the origin; UVs are unchanged.
+
+`.scatter(surface, count)` places copies of a source mesh on another mesh.
+Triangles are sampled by their surface area and copy origins land at uniformly
+sampled barycentric positions. Copies stay upright with random rotation around
+Y; they do not align to the surface normal. Source coordinates are relative to
+the origin, so root a source at Y=0 to place its base on the target. Local UVs
+are copied unchanged. The target is used for placement and is not included in
+the output.
+
+Configure a scatter recipe with `.seed(n)` (integer 0–16777215, default 0) and
+`.scale_variation(minimum, maximum)` (positive uniform scale, default 1–1).
+Configure these before rotating the completed patch. Count ranges from 1 to
+1000000, subject to output index and allocation limits. A fixed source, target,
+count, seed, and scale range reproduce the same baked OBJ.
+
+```text
+let ground = grid()
+  .size(2.0, 2.0)
+  .subdivisions(1, 1)
+  .rotate(-0.15, 0.0, 0.2);
+
+strip()
+  .size(0.06, 0.5)
+  .segments(8)
+  .taper(1.0)
+  .scatter(ground, 240)
+  .seed(42)
+  .scale_variation(0.75, 1.25)
+```
 
 The output is Wavefront OBJ text with positions, UVs, and triangle faces.
 It can be imported into an OBJ-capable application.

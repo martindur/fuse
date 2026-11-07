@@ -49,6 +49,17 @@ The default width and height are 256 pixels; the default noise seed is zero.
 Evaluate .gmesh source to a Wavefront OBJ mesh. Complete programs return mesh. Use grid().size(width, depth).subdivisions(x, z)
 for an XZ grid with Y up, or disk() for an XY disk. Grid defaults are 2 by 2
 units and 64 subdivisions per axis; counts range from 1 through 4096.
+Use strip().size(width, height).segments(n).taper(amount) for an upright XY strip
+rooted at Y=0, facing +Z. Strip defaults are width 1, height 1, four lengthwise
+segments, and no taper. Strip segments range from 1 through 4096; taper ranges
+from 0 (constant width) to 1 (pointed tip). UV.y runs from root to tip.
+Mesh rotate(x, y, z) applies X/Y/Z angles in radians about the origin.
+scatter(surface, count) places upright copies with random Y rotation, sampling
+surface triangles by area and preserving source UVs. The target is not included
+in the result. seed(n) sets an integer scatter seed from 0 through 16777215
+(default 0); scale_variation(min, max) sets positive uniform scale bounds
+(default 1, 1). Configure scatter variation before rotating the full patch.
+Mesh bindings are immutable; modifying one chain does not affect aliases.
 .TP
 .B lsp
 Run the shared language server over JSON-RPC on standard input and output.

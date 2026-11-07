@@ -42,6 +42,45 @@ Use source-alpha / one-minus-source-alpha color blending. The RGB output is not
 premultiplied by coverage. The preview is unlit; bloom and lighting the surrounding
 scene belong to the rendering host.
 
+## Grass
+
+`grass/` scatters tapered strips over a sloped placement surface, with seeded
+size, heading, and color variation and root-anchored wind deformation.
+
+```sh
+build/grafic view examples/grass/grass.gmesh \
+  --vert examples/grass/grass.gvert --frag examples/grass/grass.gfrag
+```
+
+`grass.gmesh` defines a tilted grid and scatters 240 upright copies over its
+triangles. The placement surface is a recipe input; the exported mesh contains
+the grass. Each copy's origin lands on the surface, with random Y rotation and
+uniform scale from 0.75 to 1.25. Change `.seed(42)` for a repeatable arrangement,
+`scatter` count for density, and `scale_variation` for size diversity. Rotation
+angles are radians, applied X, then Y, then Z about the mesh origin.
+
+The source strip's `uv.y` runs from root to tip and is preserved by scattering.
+`grass.gvert` squares that coordinate to concentrate bending toward the tip while
+roots remain fixed at their scattered positions. Slow sway and traveling gusts
+drive motion across the patch. A field derived from original positions supplies
+color variation through `surface.mask`, so the colors move with the grass.
+The material shades both faces, with darker bases, lighter tips, and two tones
+suggesting a fold. Triangle normals follow the deformation. Press `W` to inspect
+the bending sections.
+
+Export the original geometry and shaders as ordinary assets:
+
+```sh
+build/grafic mesh < examples/grass/grass.gmesh > build/grass.obj
+build/grafic gl --stage vertex < examples/grass/grass.gvert > build/grass.vert
+build/grafic gl < examples/grass/grass.gfrag > build/grass.frag
+```
+
+The OBJ contains the scattered strips before wind deformation; the host applies
+the vertex shader at runtime
+using the documented [shader interface](../docs/shader-interface.md). No texture
+or simulation state is required for this element.
+
 ## Waves
 
 `waves/` contains one complete animated surface:

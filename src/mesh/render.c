@@ -16,13 +16,13 @@ bool graficmesh_render(
     *out_mesh = (GraficMesh){0};
     *out_error = (GraficMeshRenderError){0};
 
-    GraficMeshSpec spec;
+    MeshPlan plan;
     GraficMeshEvalError eval_error;
 
     if (!graficmesh_evaluate_program(
             program,
             source,
-            &spec,
+            &plan,
             &eval_error
         )) {
         out_error->span = eval_error.span;
@@ -31,15 +31,12 @@ bool graficmesh_render(
     }
 
     const char *mesh_error = NULL;
-
-    bool generated = spec.kind == GRAFIC_MESH_GRID
-        ? graficmesh_mesh_from_grid(&spec.grid, out_mesh, &mesh_error)
-        : graficmesh_mesh_from_disk(&spec.disk, out_mesh, &mesh_error);
+    SourceSpan error_span = program->result->span;
+    bool generated = mesh_plan_render(&plan, out_mesh, &error_span, &mesh_error);
+    mesh_plan_destroy(&plan);
     if (!generated) {
-        out_error->span = program->result->span;
+        out_error->span = error_span;
         out_error->message = mesh_error;
-        return false;
     }
-
-    return true;
+    return generated;
 }

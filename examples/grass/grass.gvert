@@ -1,0 +1,53 @@
+// Root-to-tip UVs keep the roots fixed while wind bends the upper sections.
+let along = uv
+  .y();
+
+let flexibility = along
+  .multiply(along);
+
+let gust = position
+  .dot(vec3(1.7, 0.0, 1.1))
+  .add(time.multiply(-1.6))
+  .sin()
+  .multiply(0.5)
+  .add(0.5);
+
+let sway = time
+  .multiply(0.95)
+  .sin()
+  .multiply(0.055);
+
+let wind = gust
+  .multiply(0.12)
+  .add(sway)
+  .add(0.08);
+
+let bend_x = flexibility
+  .multiply(wind);
+
+let bend_z = time
+  .multiply(1.7)
+  .add(along.multiply(2.0))
+  .sin()
+  .multiply(0.03)
+  .multiply(flexibility);
+
+// A small downward adjustment prevents the bending tip from stretching upward.
+let bend_y = wind
+  .multiply(wind)
+  .multiply(-0.5)
+  .multiply(flexibility);
+
+let displaced = position
+  .add(vec3(bend_x, bend_y, bend_z));
+
+// A low-frequency field sticks subtle color variation to the original geometry.
+let variation = position
+  .dot(vec3(3.1, 0.0, 2.7))
+  .sin()
+  .multiply(0.5)
+  .add(0.5);
+
+// Triangle normals follow the complete deformation, including the side-to-side sway.
+vertex(displaced, uv)
+  .mask(variation)

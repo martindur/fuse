@@ -39,7 +39,7 @@ GL_SOURCES := src/gl/command.c src/gl/glsl_emit.c src/gl/glsl_stdlib.c src/gl/ve
 TEX_SOURCES := src/tex/command.c src/tex/builtins.c src/tex/evaluate.c \
 	src/tex/image.c src/tex/png_write.c src/tex/render.c
 MESH_SOURCES := src/mesh/command.c src/mesh/builtins.c src/mesh/evaluate.c \
-	src/mesh/mesh.c src/mesh/render.c
+	src/mesh/mesh.c src/mesh/render.c src/mesh/recipe.c src/mesh/scatter.c
 VIEW_SOURCES := src/view/command.c src/view/assets.c src/view/render.c src/view/mesh.c
 VIEW_OBJECTS := $(VIEW_SOURCES:%.c=$(OBJECT_DIR)/%.o)
 LANG_OBJECTS := $(LANG_SOURCES:%.c=$(OBJECT_DIR)/%.o)

@@ -1,0 +1,13 @@
+// Copies land on the target surface while remaining upright.
+let ground = grid()
+  .size(2.0, 2.0)
+  .subdivisions(1, 1)
+  .rotate(-0.15, 0.0, 0.2);
+
+strip()
+  .size(0.06, 0.5)
+  .segments(8)
+  .taper(1.0)
+  .scatter(ground, 240)
+  .seed(42)
+  .scale_variation(0.75, 1.25)

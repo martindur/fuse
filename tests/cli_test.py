@@ -131,7 +131,7 @@ class UnifiedTests(CompilerTests):
         self.assertNotIn("noise", gl)
         self.assertIn("noise", tex)
         self.assertNotIn("sample", tex)
-        self.assertEqual(geometry, {"size", "subdivisions", "radius", "segments", "rings", "uv_radial", "show"})
+        self.assertEqual(geometry, {"size", "subdivisions", "radius", "segments", "rings", "uv_radial", "show", "taper", "rotate", "scatter", "seed", "scale_variation"})
         for response, signature in [(5, "sample(vec2, texture)"), (6, "noise(vec2)"), (7, "radius(mesh, float)")]:
             self.assertIn(signature, responses[response]["result"]["contents"]["value"])
         diagnostics = [p["params"] for p in packets if p.get("method") == "textDocument/publishDiagnostics"]

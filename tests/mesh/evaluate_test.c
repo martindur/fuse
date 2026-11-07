@@ -9,6 +9,7 @@
 #include "grafic/semantic.h"
 
 #include <stdbool.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -131,8 +132,48 @@ static bool test_result_type(void)
     return valid;
 }
 
+static bool test_scatter_area_sampling(void)
+{
+    float source_positions[] = {-0.01f,0,0, 0.01f,0,0, 0,0.1f,0};
+    float source_uvs[] = {0,0, 1,0, 0.5f,1};
+    uint32_t source_indices[] = {0,1,2};
+    GraficMesh source = {.positions = source_positions, .uvs = source_uvs,
+        .indices = source_indices, .vertex_count = 3, .index_count = 3};
+    float surface_positions[] = {0,0,0, 1,0,0, 0,0,1, 10,0,0, 13,0,0, 10,0,3};
+    uint32_t surface_indices[] = {0,1,2, 3,4,5, 0,0,0};
+    GraficMesh surface = {.positions = surface_positions, .indices = surface_indices,
+        .vertex_count = 6, .index_count = 9};
+    GraficMeshScatterSpec settings = {10000, 42, 1, 1};
+    GraficMesh scattered = {0};
+    const char *error;
+    bool valid = graficmesh_mesh_scatter(&source, &surface, &settings, &scattered, &error);
+    size_t small = 0;
+    double mean_x = 0, mean_z = 0;
+    for (size_t copy = 0; valid && copy < settings.count; copy += 1) {
+        const float *a = &scattered.positions[copy * 9], *b = a + 3;
+        double x = (a[0] + b[0]) * 0.5, z = (a[2] + b[2]) * 0.5;
+        valid = a[1] == 0 && b[1] == 0;
+        if (x < 2) {
+            small += 1; mean_x += x; mean_z += z;
+            valid = valid && x >= -0.00001 && z >= -0.00001 && x + z <= 1.00001;
+        } else {
+            valid = valid && x >= 9.99999 && z >= -0.00001 && x - 10 + z <= 3.00001;
+        }
+    }
+    valid = valid && small > 850 && small < 1150
+        && fabs(mean_x / (double)small - 1.0/3) < 0.03
+        && fabs(mean_z / (double)small - 1.0/3) < 0.03;
+    graficmesh_mesh_destroy(&scattered);
+    surface.indices = &surface_indices[6]; surface.index_count = 3;
+    valid = valid && !graficmesh_mesh_scatter(&source, &surface, &settings, &scattered, &error)
+        && error != NULL && scattered.positions == NULL;
+    printf("%s scatter area weighting, barycentric placement, and zero-area rejection\n", valid ? "PASS" : "FAIL");
+    return valid;
+}
+
 int main(void)
 {
+    bool scatter = test_scatter_area_sampling();
     bool mesh = test_disk_mesh();
     bool type = test_result_type();
 
@@ -144,8 +185,8 @@ int main(void)
         fprintf(stderr, "FAIL graficmesh semantic type\n");
     }
 
-    if (mesh && type) {
-        printf("2/2 graficmesh tests passed\n");
+    if (mesh && type && scatter) {
+        printf("3/3 graficmesh tests passed\n");
         return EXIT_SUCCESS;
     }
 

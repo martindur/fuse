@@ -327,3 +327,51 @@ bool graficmesh_mesh_from_grid(const GraficMeshGridSpec *spec, GraficMesh *out_m
     *out_mesh = mesh;
     return true;
 }
+
+bool graficmesh_mesh_from_strip(const GraficMeshStripSpec *spec, GraficMesh *out_mesh,
+    const char **out_error)
+{
+    if (out_error != NULL) *out_error = NULL;
+    if (out_mesh == NULL || spec == NULL || !isfinite(spec->width) || !isfinite(spec->height)
+        || spec->width <= 0 || spec->height <= 0 || spec->segments < 1 || spec->segments > 4096
+        || !isfinite(spec->taper) || spec->taper < 0 || spec->taper > 1) {
+        if (out_error != NULL) *out_error = "invalid strip specification";
+        return false;
+    }
+    bool pointed = spec->taper == 1.0f;
+    size_t vertices = (spec->segments + 1) * 2 - (pointed ? 1 : 0);
+    size_t indices = spec->segments * 6 - (pointed ? 3 : 0);
+    GraficMesh mesh = {.vertex_count = vertices, .index_count = indices};
+    mesh.positions = malloc(vertices * 3 * sizeof(float));
+    mesh.uvs = malloc(vertices * 2 * sizeof(float));
+    mesh.indices = malloc(indices * sizeof(uint32_t));
+    if (mesh.positions == NULL || mesh.uvs == NULL || mesh.indices == NULL) {
+        graficmesh_mesh_destroy(&mesh);
+        if (out_error != NULL) *out_error = ERROR_OUT_OF_MEMORY;
+        return false;
+    }
+    for (size_t row = 0; row <= spec->segments; row += 1) {
+        float v = (float)row / (float)spec->segments;
+        size_t sides = pointed && row == spec->segments ? 1 : 2;
+        for (size_t side = 0; side < sides; side += 1) {
+            size_t index = row * 2 + side;
+            float u = sides == 1 ? 0.5f : (float)side;
+            mesh.positions[index * 3] = (u - 0.5f) * spec->width * (1 - spec->taper * v);
+            mesh.positions[index * 3 + 1] = spec->height * v;
+            mesh.positions[index * 3 + 2] = 0;
+            mesh.uvs[index * 2] = u;
+            mesh.uvs[index * 2 + 1] = v;
+        }
+    }
+    size_t next = 0;
+    for (size_t row = 0; row < spec->segments; row += 1) {
+        uint32_t a = (uint32_t)(row * 2), b = a + 1, c = a + 2;
+        /* Counterclockwise from +Z; a pointed final row needs only one triangle. */
+        mesh.indices[next++] = a; mesh.indices[next++] = b; mesh.indices[next++] = c;
+        if (!pointed || row + 1 < spec->segments) {
+            mesh.indices[next++] = b; mesh.indices[next++] = c + 1; mesh.indices[next++] = c;
+        }
+    }
+    *out_mesh = mesh;
+    return true;
+}

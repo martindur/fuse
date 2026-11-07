@@ -204,8 +204,13 @@ and fragment shaders share expression emission and scalar math definitions;
 each has its own globals, result contract, and entry point. Vertex previews
 require a vertex result, with `vec3` allowed for inspection. `PreparedProgram`
 retains optional complete-program context for position-only previews.
-Mesh evaluation produces a tagged disk or grid specification; generators
-produce the same XYZ/UV/index buffers used by OBJ export and the viewer.
+Mesh evaluation builds an owned plan of immutable primitive, rotation, and scatter
+recipes. Bindings share recipe nodes; modifiers create new nodes. Realization
+caches each reachable node once, copies geometry before rotation, and releases
+all intermediates after transferring the final mesh to the caller. Source spans
+stay on recipe nodes for generation diagnostics. Surface scattering lives in
+`src/mesh/scatter.c`, independently of parsing and shader execution. Generators produce the same XYZ/UV/index buffers
+used by OBJ export and the viewer.
 
 ## Grafic source layout
 

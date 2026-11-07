@@ -1,0 +1,40 @@
+let along = surface.uv
+  .y();
+
+let base_color = rgb(0.025, 0.15, 0.035)
+  .mix(rgb(0.07, 0.21, 0.025), surface.mask);
+
+let tip_color = rgb(0.38, 0.65, 0.12)
+  .mix(rgb(0.6, 0.76, 0.2), surface.mask);
+
+let leaf = base_color
+  .mix(tip_color, along.pow(0.7));
+
+// Two tones suggest a folded blade without introducing another geometry layer.
+let side = surface.uv
+  .x()
+  .add(-0.5)
+  .multiply(80.0)
+  .clamp(0.0, 1.0);
+
+let folded = leaf
+  .multiply(0.75)
+  .mix(leaf, side);
+
+let light = vec3(-0.4, 0.8, 0.6)
+  .normalize();
+
+let facing = surface.normal
+  .dot(light);
+
+// Both faces receive light; the mesh remains a single thin surface.
+let brightness = facing
+  .multiply(facing)
+  .pow(0.5)
+  .multiply(0.6)
+  .add(0.4);
+
+let color = folded
+  .multiply(brightness);
+
+vec4(color, 1.0)
