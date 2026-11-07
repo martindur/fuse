@@ -52,7 +52,7 @@ static bool check_wave_normals(const ViewSource *source, ViewRenderError *error)
 {
     enum { SIDE = 7, POINTS = SIDE * SIDE * 5 };
     const float epsilon = 0.001f;
-    float inputs[POINTS][3], outputs[POINTS][6];
+    float inputs[POINTS][3], outputs[POINTS][7];
     for (int z = 0; z < SIDE; z += 1) {
         for (int x = 0; x < SIDE; x += 1) {
             for (int neighbor = 0; neighbor < 5; neighbor += 1) {
@@ -89,8 +89,8 @@ static bool check_wave_normals(const ViewSource *source, ViewRenderError *error)
     }
     program = glCreateProgram();
     glAttachShader(program, shader);
-    const char *varyings[] = {"graficPosition", "graficAuthoredNormal"};
-    glTransformFeedbackVaryings(program, 2, varyings, GL_INTERLEAVED_ATTRIBS);
+    const char *varyings[] = {"graficPosition", "graficAuthoredNormal", "graficMask"};
+    glTransformFeedbackVaryings(program, 3, varyings, GL_INTERLEAVED_ATTRIBS);
     glLinkProgram(program);
     glGetProgramiv(program, GL_LINK_STATUS, &success);
     if (!success) {
@@ -113,10 +113,10 @@ static bool check_wave_normals(const ViewSource *source, ViewRenderError *error)
     for (size_t index = 0; index < 3; index += 1) {
         glUniformMatrix4fv(glGetUniformLocation(program, matrices[index]), 1, GL_FALSE, identity);
     }
-    const float times[] = {0, 0.9f, 2.3f};
-    float maximum_horizontal = 0;
+    const float times[] = {0, 0.9f, 2.3f, 6.0f, 12.0f};
+    float maximum_horizontal = 0, minimum_compression = 1, maximum_compression = -1;
     valid = true;
-    for (size_t time = 0; valid && time < 3; time += 1) {
+    for (size_t time = 0; valid && time < sizeof(times) / sizeof(times[0]); time += 1) {
         glUniform1f(glGetUniformLocation(program, "u_time"), times[time]);
         glEnable(GL_RASTERIZER_DISCARD);
         glBeginTransformFeedback(GL_POINTS);
@@ -139,13 +139,20 @@ static bool check_wave_normals(const ViewSource *source, ViewRenderError *error)
                 squared += normal * normal;
             }
             valid = isfinite(dot) && dot > 0.9999f && fabsf(squared - 1) < 0.001f && outputs[point][4] > 0;
+            float compression = outputs[point][6];
+            float numerical_compression = 1 - numerical[1] / (4 * epsilon * epsilon);
+            valid = valid && isfinite(compression) && compression < 1
+                && fabsf(compression - numerical_compression) < 0.003f;
+            minimum_compression = fminf(minimum_compression, compression);
+            maximum_compression = fmaxf(maximum_compression, compression);
             float moved_x = outputs[point][0] - inputs[point][0];
             float moved_z = outputs[point][2] - inputs[point][2];
             maximum_horizontal = fmaxf(maximum_horizontal, hypotf(moved_x, moved_z));
         }
     }
-    valid = valid && maximum_horizontal > 0.01f && glGetError() == GL_NO_ERROR;
-    if (!valid) snprintf(error->message, sizeof(error->message), "wave normals disagree with numerical tangents, fold, or omit horizontal displacement");
+    valid = valid && maximum_horizontal > 0.01f && minimum_compression < -0.1f
+        && maximum_compression > 0.4f && glGetError() == GL_NO_ERROR;
+    if (!valid) snprintf(error->message, sizeof(error->message), "wave normals or compression disagree with numerical tangents, fold, or omit horizontal displacement");
 cleanup:
     if (!old_discard) glDisable(GL_RASTERIZER_DISCARD);
     glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, 0);
@@ -561,6 +568,29 @@ int main(int argc, char **argv)
         "vec4(surface.uv, surface.normal.z(), 1.0)", &error));
     view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
     CHECK(pixel_equals(64, 64, 77, 179, 255));
+    /* Masks default to zero, interpolate with UVs, and preserve authored values. */
+    CHECK(set_mesh_sources(&renderer, NULL, "vec4(surface.mask, 0.0, 0.0, 1.0)", &error));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    CHECK(pixel_equals(64, 64, 0, 0, 0));
+    CHECK(set_source(&renderer, "vec4(surface.mask, 0.0, 0.0, 1.0)", &error));
+    view_renderer_draw(&renderer, 4, 4, 0.0f);
+    CHECK(pixel_equals(0, 0, 0, 0, 0));
+    CHECK(set_mesh_sources(&renderer, "vertex(position, uv).mask(uv.x())",
+        "vec4(surface.mask, surface.uv.x(), 0.0, 1.0)", &error));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    for (int x = 48; x <= 80; x += 16) {
+        unsigned char pixel[4];
+        glReadPixels(x, 64, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
+        CHECK(pixel[0] == pixel[1] && pixel[0] > 0 && pixel[0] < 255);
+    }
+    CHECK(set_mesh_sources(&renderer, "vertex(position, uv).mask(-0.25).mask(1.25)",
+        "vec4(surface.mask.multiply(0.5), 0.0, 0.0, 1.0)", &error));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    CHECK(pixel_equals(64, 64, 159, 0, 0));
+    CHECK(set_mesh_sources(&renderer, "let p = position.show(); vertex(p, uv).mask(0.75)",
+        "vec4(surface.mask, 0.0, 0.0, 1.0)", &error));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    CHECK(pixel_equals(64, 64, 191, 0, 0));
     CHECK(set_source(&renderer, "vec4(screen.position.x().multiply(0.01), screen.position.y().multiply(0.01), 0.0, 1.0)", &error));
     view_renderer_draw(&renderer, 64, 64, 0.0f);
     CHECK(pixel_equals(0, 0, 1, 1, 0));
@@ -618,7 +648,7 @@ int main(int argc, char **argv)
     CHECK(memcmp(before_wave, after_wave, sizeof(before_wave)) == 0);
     /* Foam is a diffuse material replacement, gated by crest eligibility. */
     CHECK(set_texture(&renderer, 1, "vec4(0.0, 0.0, 0.0, 1.0)", 1, 1, &error));
-    CHECK(set_mesh_sources(&renderer, "vertex(position.add(vec3(0.0, 0.15, 0.0)), uv, vec3(0.0, 1.0, 0.0))", water_file.text, &error));
+    CHECK(set_mesh_sources(&renderer, "vertex(position.add(vec3(0.0, 0.15, 0.0)), uv, vec3(0.0, 1.0, 0.0)).mask(1.0)", water_file.text, &error));
     unsigned char water_view[4], grazing_water[4], foam_view[4], grazing_foam[4];
     view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
     glReadPixels(64, 64, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, water_view);
@@ -653,12 +683,44 @@ int main(int argc, char **argv)
     CHECK(memcmp(foam_view, water_view, sizeof(foam_view)) == 0);
     CHECK(load_texture(&renderer, 1, "examples/waves/foam.gtex", &error));
     /* With geometry and ripple normals fixed, foam alone must animate. */
-    CHECK(set_mesh_sources(&renderer, "vertex(position.add(vec3(0.0, 0.15, 0.0)), uv, vec3(0.0, 1.0, 0.0))", water_file.text, &error));
+    CHECK(set_mesh_sources(&renderer, "vertex(position.add(vec3(0.0, 0.15, 0.0)), uv, vec3(0.0, 1.0, 0.0)).mask(1.0)", water_file.text, &error));
     view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
     glReadPixels(0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, before_wave);
     view_renderer_draw_mesh(&renderer, 128, 128, 4.0f, false, false);
     glReadPixels(0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, after_wave);
     CHECK(memcmp(before_wave, after_wave, sizeof(before_wave)) != 0);
+    /* A declining crest removes fragments while surviving interiors stay opaque.
+     * Keep geometry, UVs, textures, and time fixed to isolate erosion. */
+    const char *crest_start = strstr(water_file.text, "let foam_crest =");
+    const char *crest_end = crest_start ? strchr(crest_start, ';') : NULL;
+    const char *coverage_end = strstr(water_file.text, "// Finite differences");
+    CHECK(crest_start != NULL && crest_end != NULL && coverage_end != NULL && coverage_end > crest_end);
+    const float crests[] = {1.0f, 0.7f};
+    for (size_t stage = 0; stage < 2; stage += 1) {
+        size_t capacity = water_file.length + 128;
+        char *coverage_source = malloc(capacity);
+        CHECK(coverage_source != NULL);
+        snprintf(coverage_source, capacity,
+            "%.*slet foam_crest = %.2f;%.*svec4(foam_coverage, foam_coverage, foam_coverage, 1.0)",
+            (int)(crest_start - water_file.text), water_file.text, crests[stage],
+            (int)(coverage_end - crest_end - 1), crest_end + 1);
+        bool compiled = set_mesh_sources(&renderer,
+            "vertex(position, uv, vec3(0.0, 1.0, 0.0))", coverage_source, &error);
+        free(coverage_source);
+        CHECK(compiled);
+        view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+        glReadPixels(0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE,
+            stage == 0 ? before_wave : after_wave);
+    }
+    size_t eroded_fragments = 0, opaque_survivors = 0;
+    for (size_t pixel = 0; pixel < 128 * 128; pixel += 1) {
+        unsigned char strong = before_wave[pixel * 4];
+        unsigned char declining = after_wave[pixel * 4];
+        CHECK(declining <= strong);
+        if (strong > declining) eroded_fragments += 1;
+        if (declining == 255) opaque_survivors += 1;
+    }
+    CHECK(eroded_fragments > 10 && opaque_survivors > 0);
     CHECK(load_texture(&renderer, 0, "examples/waves/ripples.gtex", &error));
     bool water_loaded = set_mesh_sources(&renderer, wave_file.text, water_file.text, &error);
     view_source_destroy(&wave_file);

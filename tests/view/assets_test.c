@@ -32,7 +32,7 @@ static bool test_wave_texture(const char *path, bool slopes)
     bool valid = view_source_poll(&source, path, read_error, sizeof(read_error)) == VIEW_SOURCE_CHANGED
         && prepare_program(source.text, source.length, grafictex_dialect(), 0, &prepared, &error);
     float channel_difference = 0;
-    float minimum[2] = {1, 1}, maximum[2] = {0, 0};
+    float minimum[3] = {1, 1, 1}, maximum[3] = {0, 0, 0};
     for (size_t index = 0; valid && index < 64; index += 1) {
         EvalContext context = {.uv = {(float)index / 31.0f + 0.017f, (float)index / 17.0f - 0.23f},
             .resolution = {512, 512}, .seed = 42};
@@ -47,21 +47,20 @@ static bool test_wave_texture(const char *path, bool slopes)
                 valid = fabsf(original.components[channel] - shifted.components[channel]) < 0.0001f;
             }
         }
-        for (size_t channel = 0; valid && channel < 2; channel += 1) {
+        for (size_t channel = 0; valid && channel < 3; channel += 1) {
             float value = original.components[channel];
             valid = isfinite(value) && value >= 0 && value <= 1;
             minimum[channel] = fminf(minimum[channel], value);
             maximum[channel] = fmaxf(maximum[channel], value);
         }
         valid = valid && original.components[3] == 1;
-        if (slopes) valid = valid && original.components[2] == 0.5f;
-        else {
+        if (!slopes) {
             valid = valid && original.components[2] == 0;
             channel_difference += fabsf(original.components[0] - original.components[1]);
         }
     }
     valid = valid && maximum[0] - minimum[0] > 0.1f && maximum[1] - minimum[1] > 0.1f;
-    valid = valid && (slopes || channel_difference > 1.0f);
+    valid = valid && (slopes ? maximum[2] - minimum[2] > 0.1f : channel_difference > 1.0f);
     prepared_program_destroy(&prepared);
     view_source_destroy(&source);
     printf("%s tileable wave texture and channel encoding: %s\n", valid ? "PASS" : "FAIL", path);

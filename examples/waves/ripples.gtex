@@ -21,7 +21,7 @@ let backward = point
   .noise(period);
 
 // Encode a scaled signed derivative around 0.5 for storage in red and green.
-// 6.25 = 0.25 / (2 * 0.02); blue is unused, alpha is opaque.
+// 6.25 = 0.25 / (2 * 0.02); alpha is opaque.
 let slope_x = right
   .add(left.multiply(-1.0))
   .multiply(6.25)
@@ -32,4 +32,11 @@ let slope_z = forward
   .multiply(6.25)
   .add(0.5);
 
-vec4(slope_x, slope_z, 0.5, 1.0)
+// Blue stores broader patches of ripple activity, independent of slope direction.
+let activity = uv
+  .multiply(2.0)
+  .add(vec2(3.7, -1.2))
+  .noise(vec2(2.0, 2.0))
+  .smoothstep(0.25, 0.75);
+
+vec4(slope_x, slope_z, activity, 1.0)

@@ -1,0 +1,1 @@
+Add vertex.mask(float) and interpolated surface.mask, defaulting to zero, with completion, hover, export, and preview support. Reshape the wave example into interfering swells with an asymmetric crest harmonic, and drive foam from horizontal surface compression instead of height.

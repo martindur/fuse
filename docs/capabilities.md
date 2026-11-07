@@ -15,7 +15,7 @@ grafic gl --stage vertex < examples/waves/waves.gvert > waves.vert
 
 A complete fragment program returns `vec4`. The shader capability provides coordinates,
 texture sampling, animation, shape masks, and color composition. Globals are
-`surface` (position, UV, and normal), `screen` (pixel position and normalized UV),
+`surface` (position, UV, normal, and mask), `screen` (pixel position and normalized UV),
 `view` (normalized local-space direction toward the camera),
 `resolution`, `time`, and texture inputs `tex0` through `tex3`.
 
@@ -25,6 +25,9 @@ Use `--stage vertex` for a `.gvert` program returning
 normalized for smooth shading; omission keeps triangle normals. The output is a complete
 GLSL 330 core shader for the selected stage. Rendering requires a
 host that supplies the documented [shader interface](shader-interface.md).
+
+Chain `.mask(value)` onto a vertex result to pass an authored scalar material
+mask to the fragment shader as `surface.mask`. It defaults to zero.
 
 ## Textures: grafic tex
 

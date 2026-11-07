@@ -1,0 +1,1 @@
+Vary wave ripple strength with a tileable activity field packed into the ripple texture blue channel. Soften analytic sky reflections and broaden the weaker sun highlight to reduce the polished appearance of the water, preserving crest foam behavior.

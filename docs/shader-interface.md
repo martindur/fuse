@@ -26,7 +26,19 @@ vector. Authors are responsible for choosing normals that describe their surface
 A zero normal produces zero rather than an undefined normalized direction.
 UVs may be transformed before being passed to `vertex(...)`.
 
-Vertex values have `.position`, `.uv`, and `.normal` fields. An omitted authored
+Attach an authored scalar material mask with a chain:
+
+```text
+vertex(position, uv, direction)
+  .mask(0.75)
+```
+
+The mask defaults to zero and interpolates with the other surface attributes
+using perspective-correct interpolation. Values are not implicitly clamped;
+the fragment program decides how to interpret them. Calling `.mask(...)` again
+replaces the previous mask and preserves position, UV, and normal.
+
+Vertex values have `.position`, `.uv`, `.normal`, and `.mask` fields. An omitted authored
 normal reads as zero on a vertex value. The vertex result is a dedicated typed
 value; arbitrary record literals are not supported.
 
@@ -54,6 +66,7 @@ globals have been replaced.
 | `surface.position` | `vec3` | Displaced mesh-local position, interpolated across the triangle |
 | `surface.uv` | `vec2` | Interpolated UV supplied by the vertex result |
 | `surface.normal` | `vec3` | Normalized interpolated authored normal, or geometric triangle normal |
+| `surface.mask` | `float` | Interpolated authored material mask; zero when omitted |
 | `screen.position` | `vec2` | Framebuffer pixel-center coordinates, bottom-left origin |
 | `screen.uv` | `vec2` | `screen.position` divided by framebuffer resolution |
 | `view.direction` | `vec3` | Normalized surface-to-camera direction, in mesh-local space |
@@ -81,6 +94,7 @@ The fragment GLSL interface is:
 | `graficUv` | `in vec2` | Surface UV |
 | `graficAuthoredNormal` | `in vec3` | Authored local normal, or zero |
 | `graficHasNormal` | `flat in int` | 1 for an authored normal; 0 for triangle normals |
+| `graficMask` | `in float` | Authored scalar mask, or zero |
 | `fragColor` | `out vec4` | RGBA output |
 | `u_time` | `uniform float` | Elapsed seconds |
 | `u_resolution` | `uniform vec2` | Framebuffer size |
@@ -93,7 +107,7 @@ A compatible vertex shader declares matching outputs, including `flat out int`
 for `graficHasNormal`. Grafic-generated vertex shaders supply them automatically.
 Default mesh previews pass original positions and UVs without authored normals.
 Fullscreen previews supply an XY plane with visible X/Y from -1 to 1 and Z zero,
-unit-square UVs, and no authored normals.
+unit-square UVs, and no authored normals. Both default previews supply a zero mask.
 
 ## Lighting and wave normals
 
@@ -114,6 +128,12 @@ normalizes `tangent_z.cross(tangent_x)` for its authored normal. The vertex-stag
 `cross(vec3, vec3)` is a right-handed cross product. A height-only gradient would
 miss the horizontal derivatives. Smooth lighting still sits on geometry whose
 silhouette depends on subdivisions.
+
+The unnormalized cross product's Y component is the horizontal XZ area ratio
+(the Jacobian determinant). The wave example exports `1 - area_ratio` through
+`.mask(...)`: positive values indicate compression, negative values expansion.
+The fragment program uses `surface.mask` to place foam on compressed crests.
+This is a formation proxy, not a breaking-wave simulation or persistent history.
 
 The fragment shader uses `surface.position.y()` for height colors and
 `screen.uv.y()` to fade toward a chosen background color. This is an artistic
@@ -151,19 +171,22 @@ the texture compiler's vector scaling operation. These functions and `view` belo
 
 The wave material computes a sky gradient from the reflection's Y component,
 uses a Schlick Fresnel curve with 0.02 base reflectance, and adds sun glints from
-alignment with the light direction. All colors and parameters are authored in
+alignment with the light direction. A ripple-activity field controls an artistic
+roughness approximation: blend the directional sky toward an average sky color,
+and broaden the weaker sun lobe. All colors and parameters are authored in
 `waves.gfrag`. The sky is a shader calculation; it does not require an environment
 texture, sky geometry, or a change to the viewer background.
 
 ## Ripple data
 
 The water example binds `ripples.gtex` to `tex0` as data. Its red and green
-channels encode scaled X/Z height slopes around 0.5. Two scrolling, repeated
+channels encode scaled X/Z height slopes around 0.5; blue stores broader ripple
+activity. Two scrolling, repeated
 samples perturb the analytic wave normal. For a Y-up height field, multiplying
 the added slopes by `-surface.normal.y()` before adding to `surface.normal`
-preserves the relationship between the normal and the combined height gradient.
-The fragment then normalizes and uses the same shading normal throughout the
-lighting calculations. Mesh geometry and the stage interface are unchanged.
+keeps the added local slopes consistent with the Y-up normal construction.
+The activity field varies ripple strength and reflection roughness. The fragment
+then normalizes and uses the same water shading normal throughout its lighting. Mesh geometry and the stage interface are unchanged.
 
 ## Crest foam
 
@@ -171,15 +194,18 @@ The wave material binds `foam.gtex` to `tex1`. It stores a tileable linear
 patch field in red and a finer breakup field in green; blue is unused and alpha
 is opaque. Layered cellular distances form the bubbles. The fields scroll
 independently, bend with a small ripple-driven UV offset, and combine before a
-soft threshold.
-Height-based crest eligibility lowers the threshold to fill stronger crests,
-then gates the resulting coverage together with an upward-facing normal mask. Foam is a separate diffuse material mixed
-over reflected water before the screen-space fade, so high coverage suppresses
+soft threshold. Vertex-authored compression and an upward-facing normal mask control erosion
+through the threshold.
+Declining crests lose fragments as holes widen; crest strength does not multiply
+the final opacity. Finite differences of the moving green field give the foam
+its own bubble-scale normal for diffuse lighting. Foam is a separate diffuse
+material mixed over reflected water before the screen-space fade, so high coverage suppresses
 water reflections instead of adding white to the specular result. Both the
 pattern and the crest gate remain inspectable with `.show()`.
 
-The example bakes cellular patterns with `.gtex` and uses ordinary shader math. It has no foam history;
-persistent trails are deferred to future stateful effects and export contracts.
+The example bakes cellular patterns with `.gtex` and uses ordinary shader math.
+It has no foam history; persistent trails are deferred to future stateful effects
+and export contracts.
 
 ## Inspection
 
@@ -194,7 +220,7 @@ Fragment `.show()` and `--preview-line` results display as follows:
 
 Vertex inspection accepts a complete vertex value or a `vec3` position. A
 vertex value previews all its attributes. A position preview retains the final
-program's UV and normal attributes when that complete program is valid. If a
+program's UV, normal, and mask attributes when that complete program is valid. If a
 later semantic error prevents preparing that context, inspection still works
-using original mesh UVs and triangle normals. The whole source must parse.
+using original mesh UVs, triangle normals, and a zero mask. The whole source must parse.
 Normal compilation treats `.show()` as an identity and requires a vertex result.

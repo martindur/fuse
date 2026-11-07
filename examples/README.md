@@ -71,16 +71,18 @@ Edit any source to reload it independently. Press `W` to inspect triangles or
 shading does not add vertices.
 
 The vertex shader uses Gerstner displacement: vertices move horizontally toward
-each crest as well as vertically. Most amplitude belongs to the main swell;
-a smaller wave travels in a similar direction, and a weak crossing wave adds
-variation. Their vertical amplitudes still total 0.15, matching the material's
-height palette. Adjust both ranges together when changing overall wave height.
+each crest as well as vertically. Two nearby swells reinforce and cancel to
+form stronger sets and quieter stretches. A phase-shifted second harmonic makes
+the dominant crest asymmetric; a weak crossing wave adds variation. Their
+vertical amplitudes total 0.15, matching the material's height palette. Adjust
+both ranges together when changing overall wave height.
 
-Each component's steepness controls horizontal motion: zero gives the original
-vertical sine motion; larger values compress crests and broaden troughs. Keep
+Each component's steepness controls horizontal motion: zero gives vertical sine
+motion; larger values compress crests and broaden troughs. Keep
 `sum(steepness * amplitude * frequency)` below 1 to avoid folding the horizontal
-surface; the example uses about 0.6724. Frequency is in radians per local unit,
-and the time coefficient is angular speed in radians per second.
+surface; the example uses about 0.80292. Frequency is in radians per local unit,
+and the time coefficient is angular speed in radians per second. The harmonic
+stays at twice the main swell's frequency and speed; keep those linked when tuning.
 
 Normals come from both analytic tangents of the full displacement, including
 horizontal motion. `tangent_z.cross(tangent_x)` gives an upward-facing normal.
@@ -91,22 +93,26 @@ increases reflection at grazing angles, while alignment with the sun creates
 moving glints. The light direction and view direction share mesh-local space.
 
 Tune the water palette, sky colors, light direction, Fresnel curve, and glint
-power directly in `waves.gfrag`. Higher glint power narrows the highlight;
-its following multiplier controls brightness. `screen.uv.y()` retains a subtle
+power directly in `waves.gfrag`. `water_roughness` blends the directional sky
+toward an average sky color and lowers `sun_power` to broaden the highlight;
+the glint multiplier controls brightness. This is an artistic approximation of
+rough reflections using the analytic sky. `screen.uv.y()` retains a subtle
 artistic fade toward a chosen color. The viewer background is unchanged.
 
 Each chained operation has its own line, including bindings, so `.show()` can
 be inserted between steps while exploring the example.
 
 `ripples.gtex` takes centered differences of periodic noise to generate X/Z
-slopes. Red and green store signed data around 0.5; blue is unused and alpha
-is opaque. The fragment shader samples the same map at two scales, scrolling
-in different directions. It decodes both samples, adds their slopes to the
-large-wave slope, and normalizes one shading normal for diffuse light, Fresnel,
+slopes. Red and green store signed data around 0.5; blue stores broader patches
+of ripple activity and alpha is opaque. The fragment shader samples the same map at two scales, scrolling
+in different directions. Their blue channels vary ripple strength and reflection
+roughness, giving quiet and active patches. It decodes both samples, adds their
+weighted slopes to the large-wave slope, and normalizes one shading normal for diffuse light, Fresnel,
 and reflections. This is a Y-up height-field construction, not a general
 purpose tangent-space normal map.
 
-Tune the two slope multipliers in `waves.gfrag` to change ripple strength.
+Tune the two slope multipliers and `ripple_strength` in `waves.gfrag` to change
+ripple strength.
 A neutral map with red and green at 0.5 leaves the large-wave normal intact
 apart from texture quantization. Texture noise defaults to seed 42 in the
 viewer; pass `--seed` to choose another pattern. Save the `.gtex` source to
@@ -115,23 +121,30 @@ values, and `.show()` on the fragment's shading normal displays that normal
 using the usual numeric preview colors.
 
 The foam texture layers cellular distances at several sizes: red holds larger
-bubble holes inside irregular patches, and green holds finer bubble breakup. Both are tileable linear pattern fields; blue is unused and alpha is
-opaque. The material samples them with different scrolling UVs and combines them
+bubble holes inside irregular patches, and green holds finer bubble breakup.
+Both are tileable linear pattern fields; blue is unused and alpha is opaque.
+The material samples them with different scrolling UVs and combines them
 before thresholding, making patches join and break apart as their overlap changes.
 A small UV offset from the moving ripple map bends both fields. Stronger crests
 lower the threshold to fill in denser froth; an upward-normal mask restricts it
-to wave tops, leaving more reflective water exposed.
+to wave tops. As the crest falls, the threshold rises: holes widen and strands
+separate while surviving fragments stay opaque. Only their edges soften.
 
 `foam_start`, `foam_scale`, and `foam_strength` in `waves.gfrag` control placement,
 pattern size, and opacity. Raise `foam_threshold` to leave fewer foam patches;
-`foam_distortion` controls how much the ripple map bends them. The start threshold uses normalized wave height:
-it is an artistic crest proxy, not a breaking-wave simulation. Add `.show()` at
+`foam_distortion` controls how much the ripple map bends them. `foam_relief`
+controls subtle bubble-scale normals sampled from the same moving detail field.
+The start threshold uses horizontal compression supplied by the vertex shader's
+`.mask(crest_compression)`, exposed as `surface.mask`. Compression is one minus
+the XZ area ratio from the full wave tangents: positive means squeezed, negative
+means expanded. A tall, gentle swell can stay foam-free. This is a formation
+proxy, not a breaking-wave simulation. Add `.show()` at
 the end of the `foam_coverage` chain to inspect the animated coverage, or on
 `patches` and `strands` in `foam.gtex` to inspect each field separately.
 
 Foam has its own pale diffuse color. Mixing it over the reflected water reduces
 water reflections and sun glints according to coverage. It does not inherit the
-water's sharp specular lighting. The former pale height bands are removed.
+water's sharp specular lighting. Foam has its own bubble-scale diffuse normals.
 
 Export the foam fields as an ordinary packed PNG texture for another rendering host:
 

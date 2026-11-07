@@ -256,6 +256,7 @@ static const BuiltinSignature BUILTINS[] = {
 };
 
 static const FieldSignature FIELDS[] = {
+    {VALUE_TYPE_SURFACE, "mask", VALUE_TYPE_FLOAT, "Interpolated authored scalar material mask. Zero when omitted; not implicitly clamped."},
     {VALUE_TYPE_VIEW, "direction", VALUE_TYPE_VEC3, "Normalized direction from this surface point toward the camera, in mesh-local space. Constant for orthographic views; varies with position for perspective views."},
     {VALUE_TYPE_SURFACE, "position", VALUE_TYPE_VEC3, "Displaced mesh-local position, interpolated across the triangle before camera transforms."},
     {VALUE_TYPE_SURFACE, "uv", VALUE_TYPE_VEC2, "Interpolated UV supplied by the vertex program."},
@@ -278,7 +279,7 @@ static const SymbolDocumentation DOCUMENTATION[] = {
     {"view", "Camera-provided fragment inputs. view.direction points from the surface toward the viewer, in surface-local coordinates."},
     {"reflect", "Reflects an incoming vec3 direction around a unit normal. For a reflection toward the environment, use view.direction.multiply(-1.0).reflect(surface.normal)."},
     {"pow", "Raises a nonnegative scalar base to an exponent; useful for Fresnel curves and highlights. Zero requires a positive exponent."},
-    {"surface", "Interpolated surface.position, surface.uv, and surface.normal supplied by the preceding vertex stage."},
+    {"surface", "Interpolated surface.position, surface.uv, surface.normal, and surface.mask supplied by the preceding vertex stage."},
     {"screen", "Framebuffer screen.position in pixels and screen.uv normalized by resolution, with bottom-left origin."},
     {"normalize", "Returns a unit vector with the same direction as a nonzero vec3."},
     {"dot", "Returns the dot product of two vec3 vectors. For unit vectors, this is the cosine of their angle."},
@@ -438,7 +439,7 @@ static const char *const RESERVED_NAMES[] = {
     "graficUv",
     "graficPosition",
     "grafic_surface_normal", "grafic_normalize", "GraficSurface", "GraficScreen",
-    "graficAuthoredNormal", "graficHasNormal", "graficFaceNormal",
+    "graficAuthoredNormal", "graficHasNormal", "graficMask", "graficFaceNormal",
     "GraficView", "u_view_direction", "u_view_position", "u_view_is_orthographic",
 };
 

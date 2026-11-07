@@ -1,42 +1,50 @@
-// Gerstner waves: a dominant swell, a supporting swell, and a weak crossing wave.
+// Two nearby swells form stronger sets and quieter stretches through interference.
+// A phase-shifted second harmonic makes the dominant crest asymmetric.
 // Frequency is radians per local unit; speed is radians per second.
-// Horizontal displacement compresses crests and spreads troughs.
-// Keep sum(steepness * amplitude * frequency) below 1 to avoid folds (here: 0.6724).
+// sum(steepness * amplitude * frequency) = 0.80292 < 1, keeping the surface unfolded.
+// Vertical amplitudes total 0.15, matching the material's height palette.
 
 let swell_direction = vec3(0.94, 0.0, 0.342)
   .normalize();
 let swell_frequency = 5.0;
-let swell_amplitude = 0.105;
-let swell_steepness = 0.85;
+let swell_amplitude = 0.07;
+let swell_steepness = 0.9;
 
 let swell_phase = position
   .dot(swell_direction)
   .multiply(swell_frequency)
   .add(time.multiply(-1.5));
 
-let secondary_direction = vec3(0.8, 0.0, 0.6)
+let secondary_direction = vec3(0.97, 0.0, 0.243)
   .normalize();
-let secondary_frequency = 8.5;
-let secondary_amplitude = 0.03;
-let secondary_steepness = 0.65;
+let secondary_frequency = 6.6;
+let secondary_amplitude = 0.048;
+let secondary_steepness = 0.9;
 
 let secondary_phase = position
   .dot(secondary_direction)
   .multiply(secondary_frequency)
-  .add(time.multiply(-1.95));
+  .add(time.multiply(-1.9));
+
+let crest_direction = swell_direction;
+let crest_frequency = 10.0;
+let crest_amplitude = 0.016;
+let crest_steepness = 0.75;
+
+let crest_phase = swell_phase
+  .multiply(2.0)
+  .add(0.7);
 
 let crossing_direction = vec3(-0.5, 0.0, 0.866)
   .normalize();
 let crossing_frequency = 11.5;
-let crossing_amplitude = 0.015;
-let crossing_steepness = 0.35;
+let crossing_amplitude = 0.016;
+let crossing_steepness = 0.45;
 
 let crossing_phase = position
   .dot(crossing_direction)
   .multiply(crossing_frequency)
   .add(time.multiply(-2.25));
-
-// Vertical amplitudes still total 0.15, matching the material's height palette.
 
 let swell_height = swell_phase
   .sin()
@@ -46,15 +54,20 @@ let secondary_height = secondary_phase
   .sin()
   .multiply(secondary_amplitude);
 
+let crest_height = crest_phase
+  .sin()
+  .multiply(crest_amplitude);
+
 let crossing_height = crossing_phase
   .sin()
   .multiply(crossing_amplitude);
 
 let height = swell_height
   .add(secondary_height)
+  .add(crest_height)
   .add(crossing_height);
 
-// Vertices move toward each crest along its direction of travel.
+// Vertices move horizontally toward each crest.
 
 let swell_offset = swell_direction
   .multiply(swell_phase.cos())
@@ -66,6 +79,11 @@ let secondary_offset = secondary_direction
   .multiply(secondary_amplitude)
   .multiply(secondary_steepness);
 
+let crest_offset = crest_direction
+  .multiply(crest_phase.cos())
+  .multiply(crest_amplitude)
+  .multiply(crest_steepness);
+
 let crossing_offset = crossing_direction
   .multiply(crossing_phase.cos())
   .multiply(crossing_amplitude)
@@ -73,13 +91,14 @@ let crossing_offset = crossing_direction
 
 let horizontal = swell_offset
   .add(secondary_offset)
+  .add(crest_offset)
   .add(crossing_offset);
 
 let displaced = position
   .add(horizontal)
   .add(vec3(0.0, height, 0.0));
 
-// Vertical derivatives with respect to the original X/Z coordinates.
+// Derive both tangents from the complete displacement, including the harmonic.
 
 let swell_slope = swell_direction
   .multiply(swell_phase.cos())
@@ -91,6 +110,11 @@ let secondary_slope = secondary_direction
   .multiply(secondary_amplitude)
   .multiply(secondary_frequency);
 
+let crest_slope = crest_direction
+  .multiply(crest_phase.cos())
+  .multiply(crest_amplitude)
+  .multiply(crest_frequency);
+
 let crossing_slope = crossing_direction
   .multiply(crossing_phase.cos())
   .multiply(crossing_amplitude)
@@ -98,9 +122,8 @@ let crossing_slope = crossing_direction
 
 let vertical_gradient = swell_slope
   .add(secondary_slope)
+  .add(crest_slope)
   .add(crossing_slope);
-
-// Horizontal derivatives include the derivative of the cosine displacement.
 
 let swell_horizontal_slope = swell_direction
   .multiply(swell_phase.sin())
@@ -116,6 +139,13 @@ let secondary_horizontal_slope = secondary_direction
   .multiply(secondary_steepness)
   .multiply(-1.0);
 
+let crest_horizontal_slope = crest_direction
+  .multiply(crest_phase.sin())
+  .multiply(crest_amplitude)
+  .multiply(crest_frequency)
+  .multiply(crest_steepness)
+  .multiply(-1.0);
+
 let crossing_horizontal_slope = crossing_direction
   .multiply(crossing_phase.sin())
   .multiply(crossing_amplitude)
@@ -123,20 +153,30 @@ let crossing_horizontal_slope = crossing_direction
   .multiply(crossing_steepness)
   .multiply(-1.0);
 
-// Each tangent includes both horizontal compression and vertical slope.
 let tangent_x = vec3(1.0, vertical_gradient.x(), 0.0)
   .add(swell_horizontal_slope.multiply(swell_direction.x()))
   .add(secondary_horizontal_slope.multiply(secondary_direction.x()))
+  .add(crest_horizontal_slope.multiply(crest_direction.x()))
   .add(crossing_horizontal_slope.multiply(crossing_direction.x()));
 
 let tangent_z = vec3(0.0, vertical_gradient.z(), 1.0)
   .add(swell_horizontal_slope.multiply(swell_direction.z()))
   .add(secondary_horizontal_slope.multiply(secondary_direction.z()))
+  .add(crest_horizontal_slope.multiply(crest_direction.z()))
   .add(crossing_horizontal_slope.multiply(crossing_direction.z()));
 
-// Z cross X gives +Y on a flat grid and the outward normal on the displaced surface.
-let wave_normal = tangent_z
-  .cross(tangent_x)
+// Before normalization, Y is the XZ area ratio (the horizontal Jacobian).
+// Positive compression means the surface is squeezed; negative means expanded.
+let area_normal = tangent_z
+  .cross(tangent_x);
+
+let crest_compression = area_normal
+  .y()
+  .multiply(-1.0)
+  .add(1.0);
+
+let wave_normal = area_normal
   .normalize();
 
 vertex(displaced, uv, wave_normal)
+  .mask(crest_compression)

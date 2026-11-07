@@ -11,6 +11,20 @@ let ripple_b = surface.uv
   .repeat()
   .sample(tex0);
 
+// Blue describes broader patches of activity: quiet areas retain some fine detail.
+let ripple_activity = ripple_a
+  .b()
+  .multiply(0.7)
+  .add(ripple_b.b().multiply(0.3));
+
+let ripple_strength = ripple_activity
+  .multiply(0.65)
+  .add(0.35);
+
+let water_roughness = ripple_activity
+  .multiply(0.22)
+  .add(0.18);
+
 // Red and green decode from [0, 1] into signed local X/Z slopes.
 let slope_a = vec3(ripple_a.r().multiply(2.0).add(-1.0), 0.0, ripple_a.g().multiply(2.0).add(-1.0))
   .multiply(0.18);
@@ -22,6 +36,7 @@ let slope_b = vec3(ripple_b.r().multiply(2.0).add(-1.0), 0.0, ripple_b.g().multi
 // Multiplying the added slopes by -N.y preserves that relationship on tilted waves.
 let ripples = slope_a
   .add(slope_b)
+  .multiply(ripple_strength)
   .multiply(surface.normal.y().multiply(-1.0));
 
 let shading_normal = surface.normal
@@ -38,60 +53,105 @@ let height = surface.position
 let water = rgb(0.01, 0.07, 0.14)
   .mix(rgb(0.025, 0.32, 0.38), height);
 
-// Height is an artistic crest proxy, not a breaking-wave simulation.
-let foam_start = 0.65;
+// The vertex mask measures horizontal compression, not wave height.
+let foam_start = 0.38;
 let foam_scale = 2.0;
 let foam_strength = 1.0;
-let foam_threshold = 0.64;
+let foam_threshold = 0.55;
+let foam_relief = 0.008;
 
-let foam_crest = height
+let foam_crest = surface.mask
   .add(foam_start.multiply(-1.0))
-  .multiply(4.0)
+  .multiply(3.5)
   .clamp(0.0, 1.0);
 
 // Small moving offsets bend the patterns as they scroll.
 let foam_distortion = 0.025;
 
 // Sample the two pattern fields independently so their overlap changes shape.
-let foam_patches = surface.uv
+let foam_patch_uv = surface.uv
   .multiply(foam_scale)
   .scroll(vec2(-0.025, 0.03), time)
-  .distort(ripple_a, foam_distortion)
+  .distort(ripple_a, foam_distortion);
+
+let foam_detail_uv = surface.uv
+  .multiply(foam_scale)
+  .scroll(vec2(-0.04, 0.017), time)
+  .distort(ripple_b, foam_distortion.multiply(0.7));
+
+let foam_patches = foam_patch_uv
   .repeat()
   .sample(tex1)
   .r();
 
-let foam_strands = surface.uv
-  .multiply(foam_scale)
-  .scroll(vec2(-0.04, 0.017), time)
-  .distort(ripple_b, foam_distortion.multiply(0.7))
+let foam_strands = foam_detail_uv
   .repeat()
   .sample(tex1)
   .g();
 
-// Stronger crests lower the threshold: fragments join into denser froth.
-let foam_fill = foam_patches
-  .multiply(0.65)
-  .add(foam_strands.multiply(0.35))
-  .add(foam_crest.multiply(0.18))
-  .add(foam_threshold.multiply(-1.0))
-  .multiply(10.0)
-  .clamp(0.0, 1.0);
-
-// Restrict coverage to the flatter tops, leaving more reflective water exposed.
+// Upward-facing tops and patch noise localize foam within compressed crests.
 let foam_peak = surface.normal
   .y()
   .clamp(0.0, 1.0)
   .pow(4.0);
 
-// Smooth the threshold with t*t*(3-2*t).
+// As the crest falls, raise the threshold until holes eat through the patch.
+// With no crest, the threshold exceeds the pattern's maximum of one.
+let foam_erosion = foam_crest
+  .multiply(-0.55)
+  .add(0.55)
+  .add(foam_peak.multiply(-0.25).add(0.25));
+
+let foam_fill = foam_patches
+  .multiply(0.65)
+  .add(foam_strands.multiply(0.35))
+  .add(foam_erosion.multiply(-1.0))
+  .add(foam_threshold.multiply(-1.0))
+  .multiply(25.0)
+  .clamp(0.0, 1.0);
+
+// Smooth only the fragment edges; crest strength never fades the whole patch.
 let foam_coverage = foam_fill
   .multiply(foam_fill)
   .multiply(foam_fill.multiply(-2.0).add(3.0))
-  .multiply(foam_crest)
-  .multiply(foam_peak)
   .multiply(foam_strength)
   .clamp(0.0, 1.0);
+
+// Finite differences of the same scrolling bubble field give foam its own relief.
+let foam_right = vec2(foam_detail_uv.x().add(0.002), foam_detail_uv.y())
+  .repeat()
+  .sample(tex1)
+  .g();
+
+let foam_left = vec2(foam_detail_uv.x().add(-0.002), foam_detail_uv.y())
+  .repeat()
+  .sample(tex1)
+  .g();
+
+let foam_forward = vec2(foam_detail_uv.x(), foam_detail_uv.y().add(0.002))
+  .repeat()
+  .sample(tex1)
+  .g();
+
+let foam_backward = vec2(foam_detail_uv.x(), foam_detail_uv.y().add(-0.002))
+  .repeat()
+  .sample(tex1)
+  .g();
+
+let foam_slope_x = foam_right
+  .add(foam_left.multiply(-1.0))
+  .multiply(foam_relief.multiply(250.0));
+
+let foam_slope_z = foam_forward
+  .add(foam_backward.multiply(-1.0))
+  .multiply(foam_relief.multiply(250.0));
+
+let foam_slopes = vec3(foam_slope_x, 0.0, foam_slope_z)
+  .multiply(surface.normal.y().multiply(-1.0));
+
+let foam_normal = surface.normal
+  .add(foam_slopes)
+  .normalize();
 
 // The same sun direction drives diffuse light and reflected highlights.
 let light = vec3(-0.55, 0.7, -0.45)
@@ -117,8 +177,13 @@ let sky_height = reflected
   .clamp(0.0, 1.0)
   .pow(0.65);
 
-let sky = rgb(0.65, 0.78, 0.88)
+let directional_sky = rgb(0.65, 0.78, 0.88)
   .mix(rgb(0.08, 0.2, 0.4), sky_height);
+
+// Approximate a broader reflection lobe by blending toward an average sky color.
+// This softens angular contrast while retaining the horizon-to-overhead gradient.
+let sky = directional_sky
+  .mix(rgb(0.3, 0.43, 0.58), water_roughness.multiply(0.8));
 
 // Schlick's approximation: roughly 2% reflection head-on, stronger at grazing angles.
 let fresnel = shading_normal
@@ -130,11 +195,16 @@ let fresnel = shading_normal
   .multiply(0.98)
   .add(0.02);
 
+// Active ripples broaden the sun lobe; its lower intensity avoids hard bright bands.
+let sun_power = water_roughness
+  .multiply(-80.0)
+  .add(72.0);
+
 let glint = reflected
   .dot(light)
   .clamp(0.0, 1.0)
-  .pow(96.0)
-  .multiply(12.0);
+  .pow(sun_power)
+  .multiply(3.5);
 
 let sunlight = rgb(1.0, 0.85, 0.6)
   .multiply(glint);
@@ -145,8 +215,8 @@ let environment = sky
 let reflected_water = lit_water
   .mix(environment, fresnel);
 
-// Foam uses broad diffuse light, without the water's sky reflection or sun glints.
-let foam_light = surface.normal
+// Foam relief receives diffuse light independently of the reflective water.
+let foam_light = foam_normal
   .dot(light)
   .clamp(0.0, 1.0)
   .multiply(0.45)

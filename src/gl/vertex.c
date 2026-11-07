@@ -1,6 +1,7 @@
 #include "glsl_stdlib.h"
 
 static const BuiltinSignature BUILTINS[] = {
+    {"mask", VALUE_TYPE_VERTEX, 2, {VALUE_TYPE_VERTEX, VALUE_TYPE_FLOAT}},
     {"cross", VALUE_TYPE_VEC3, 2, {VALUE_TYPE_VEC3, VALUE_TYPE_VEC3}},
     {"vertex", VALUE_TYPE_VERTEX, 2, {VALUE_TYPE_VEC3, VALUE_TYPE_VEC2}},
     {"vertex", VALUE_TYPE_VERTEX, 3, {VALUE_TYPE_VEC3, VALUE_TYPE_VEC2, VALUE_TYPE_VEC3}},
@@ -25,6 +26,7 @@ static const BuiltinSignature BUILTINS[] = {
     {"cycle", VALUE_TYPE_FLOAT, 4, {VALUE_TYPE_FLOAT, VALUE_TYPE_FLOAT, VALUE_TYPE_FLOAT, VALUE_TYPE_FLOAT}},
 };
 static const FieldSignature FIELDS[] = {
+    {VALUE_TYPE_VERTEX, "mask", VALUE_TYPE_FLOAT, "Authored scalar material mask, or zero when omitted."},
     {VALUE_TYPE_VERTEX, "position", VALUE_TYPE_VEC3, "Mesh-local output position."},
     {VALUE_TYPE_VERTEX, "uv", VALUE_TYPE_VEC2, "Output UV coordinates."},
     {VALUE_TYPE_VERTEX, "normal", VALUE_TYPE_VEC3, "Authored local-space normal, or zero when omitted."},
@@ -33,6 +35,7 @@ static const GlobalSignature GLOBALS[] = {
     {"position", VALUE_TYPE_VEC3}, {"uv", VALUE_TYPE_VEC2}, {"time", VALUE_TYPE_FLOAT},
 };
 static const SymbolDocumentation DOCUMENTATION[] = {
+    {"mask", "Sets the vertex scalar material mask, interpolated as surface.mask. Defaults to zero; values are not implicitly clamped."},
     {"cross", "Returns the right-handed cross product of two vec3 vectors; cross(Z, X) points toward +Y for a flat XZ grid."},
     {"vertex", "Creates a vertex result from local position, UV, and an optional authored local normal. Omit the normal for triangle-normal shading."},
     {"normalize", "Returns a unit vector with the direction of a nonzero vec3."},
@@ -54,7 +57,7 @@ static const SymbolDocumentation DOCUMENTATION[] = {
     {"cycle", "Repeats a linear ramp between low and high at the given speed."},
 };
 static const char *const RESERVED[] = {
-    "GraficVertex", "graficResult", "graficContext", "graficAuthoredNormal", "graficHasNormal", "a_position", "a_uv", "graficUv", "graficPosition", "u_model", "u_view", "u_projection", "u_time", "gl_Position",
+    "GraficVertex", "graficResult", "graficContext", "graficAuthoredNormal", "graficHasNormal", "graficMask", "a_position", "a_uv", "graficUv", "graficPosition", "u_model", "u_view", "u_projection", "u_time", "gl_Position",
 };
 static const LanguageEnvironment ENVIRONMENT = {
     .fields = FIELDS, .field_count = sizeof(FIELDS) / sizeof(FIELDS[0]),
@@ -74,8 +77,9 @@ const GraficDialect *gl_vertex_dialect(void)
 }
 bool glsl_vertex_stdlib_emit(FILE *output)
 {
-    return fputs("GraficVertex vertex(vec3 p, vec2 uv) { return GraficVertex(p, uv, vec3(0.0), false); }\n"
-        "GraficVertex vertex(vec3 p, vec2 uv, vec3 n) { return GraficVertex(p, uv, n, true); }\n"
+    return fputs("GraficVertex vertex(vec3 p, vec2 uv) { return GraficVertex(p, uv, vec3(0.0), false, 0.0); }\n"
+        "GraficVertex vertex(vec3 p, vec2 uv, vec3 n) { return GraficVertex(p, uv, n, true, 0.0); }\n"
+        "GraficVertex mask(GraficVertex v, float m) { v.mask = m; return v; }\n"
         "vec3 add(vec3 a, vec3 b) { return a + b; }\n"
         "vec3 multiply(vec3 a, float b) { return a * b; }\n", output) != EOF;
 }

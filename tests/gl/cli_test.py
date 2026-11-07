@@ -33,6 +33,24 @@ class ShaderTests(CompilerTests):
         for args in (("--stage",), ("--stage", "geometry"), ("--stage", "vertex", "--stage", "fragment")):
             self.assertNotEqual(self.run_command(*args, source="position").returncode, 0)
 
+    def test_vertex_mask_contract_and_catalog(self):
+        result = self.run_command("--stage", "vertex", source="vertex(position, uv).mask(0.75)")
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        self.assertIn(b"graficMask = graficResult.mask;", result.stdout)
+        self.assertIn(b"mask(vertex(position, uv), 0.75)", result.stdout)
+        for source in ("vertex(position, uv).mask(uv)", "position.mask(0.5)"):
+            self.assertNotEqual(self.run_command("--stage", "vertex", source=source).returncode, 0)
+        for stage, source in (("vertex", "let graficMask = 0.0; vertex(position, uv)"),
+                              ("fragment", "let graficMask = 0.0; vec4(surface.uv, 0.0, 1.0)")):
+            result = self.run_command("--stage", stage, source=source)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(b"binding name is reserved", result.stderr)
+        _, responses = self.lsp_session(
+            opened("surface.mask", self.language_id),
+            request("textDocument/hover", 2, at("surface.ma")),
+        )
+        self.assertIn("Interpolated authored scalar", responses[2]["result"]["contents"]["value"])
+
     def test_fragment_normals_and_vector_lighting_catalog(self):
         result = self.run_command(source="vec4(surface.normal.multiply(0.5), 1.0)")
         self.assertEqual(result.returncode, 0, result.stderr.decode())
@@ -74,10 +92,10 @@ class ShaderTests(CompilerTests):
             self.assertIn(b"binding name is reserved", result.stderr)
 
     def test_structured_fields_aliases_and_screen_coordinates(self):
-        for receiver, expected in (("surface.", {"position", "uv", "normal"}),
+        for receiver, expected in (("surface.", {"position", "uv", "normal", "mask"}),
                                    ("screen.", {"position", "uv"}),
-                                   ("let data = surface; data.", {"position", "uv", "normal"}),
-                                   ("let output = vertex(position, uv); output.", {"position", "uv", "normal", "show"})):
+                                   ("let data = surface; data.", {"position", "uv", "normal", "mask"}),
+                                   ("let output = vertex(position, uv); output.", {"position", "uv", "normal", "mask", "show"})):
             identity = "graficvert" if "vertex(" in receiver else self.language_id
             _, responses = self.lsp_session(
                 opened(receiver, identity),

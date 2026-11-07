@@ -13,7 +13,8 @@ static const char SHADER_HEADER[] =
     "in vec3 graficPosition;\n"
     "in vec3 graficAuthoredNormal;\n"
     "flat in int graficHasNormal;\n"
-    "struct GraficSurface { vec3 position; vec2 uv; vec3 normal; };\n"
+    "in float graficMask;\n"
+    "struct GraficSurface { vec3 position; vec2 uv; vec3 normal; float mask; };\n"
     "struct GraficScreen { vec2 position; vec2 uv; };\n"
     "struct GraficView { vec3 direction; };\n"
     "out vec4 fragColor;\n"
@@ -40,7 +41,8 @@ static const char VERTEX_HEADER[] =
     "out vec3 graficPosition;\n"
     "out vec3 graficAuthoredNormal;\n"
     "flat out int graficHasNormal;\n"
-    "struct GraficVertex { vec3 position; vec2 uv; vec3 normal; bool has_normal; };\n"
+    "out float graficMask;\n"
+    "struct GraficVertex { vec3 position; vec2 uv; vec3 normal; bool has_normal; float mask; };\n"
     "uniform mat4 u_model; uniform mat4 u_view; uniform mat4 u_projection;\n"
     "uniform float u_time;\n#define time u_time\n";
 
@@ -48,7 +50,7 @@ static const char SHADER_MAIN_PREFIX[] =
     "\n"
     "void main() {\n"
     "    vec3 graficFaceNormal = grafic_surface_normal(graficPosition);\n"
-    "    GraficSurface surface = GraficSurface(graficPosition, graficUv, graficHasNormal != 0 ? grafic_normalize(graficAuthoredNormal) : graficFaceNormal);\n"
+    "    GraficSurface surface = GraficSurface(graficPosition, graficUv, graficHasNormal != 0 ? grafic_normalize(graficAuthoredNormal) : graficFaceNormal, graficMask);\n"
     "    GraficScreen screen = GraficScreen(gl_FragCoord.xy, gl_FragCoord.xy / u_resolution);\n"
     "    GraficView view = GraficView(grafic_normalize(u_view_is_orthographic ? u_view_direction : u_view_position - graficPosition));\n";
 
@@ -366,9 +368,10 @@ bool glsl_emit(
         if (position_preview && fputs(prepared->context_program != NULL ? "GraficVertex(" : "vertex(", output) == EOF) return false;
         if (!emit_expression(output, program->result, source)) return false;
         if (position_preview && fputs(prepared->context_program != NULL
-                ? ", graficContext.uv, graficContext.normal, graficContext.has_normal)" : ", uv)", output) == EOF) return false;
+                ? ", graficContext.uv, graficContext.normal, graficContext.has_normal, graficContext.mask)" : ", uv)", output) == EOF) return false;
         return fputs(";\n    graficUv = graficResult.uv;\n    graficPosition = graficResult.position;\n"
             "    graficAuthoredNormal = graficResult.normal;\n    graficHasNormal = graficResult.has_normal ? 1 : 0;\n"
+            "    graficMask = graficResult.mask;\n"
             "    gl_Position = u_projection * u_view * u_model * vec4(graficPosition, 1.0);\n}\n", output) != EOF;
     }
     return fputs("    fragColor = ", output) != EOF
