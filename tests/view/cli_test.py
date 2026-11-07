@@ -28,12 +28,19 @@ class ViewTests(unittest.TestCase):
                           ("--tex0",), ("--tex4", "a.gtex"), ("--tex0", "--tex1"),
                           ("--tex0", "a.gtex", "--tex0", "b.gtex"),
                           ("--texture-width", "0"), ("--texture-height", "2147483648"),
+                          ("--blend",), ("--blend", "additive"), ("--blend", "--help"),
                           ("--seed", "-1"), ("--seed", "18446744073709551616")]:
             with self.subTest(arguments=arguments):
                 result = self.run_view(*arguments)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(result.stdout, b"")
                 self.assertIn(b"Usage: grafic view", result.stderr)
+
+    def test_texture_rejects_alpha_blending_before_window_creation(self):
+        result = self.run_view("source.gtex", "--blend", "alpha")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(b"requires a shader or mesh preview", result.stderr)
+        self.assertNotIn(b"window", result.stderr)
 
     def test_standalone_texture_rejects_shader_inputs(self):
         for source in ("source.gtex", "source.gmesh"):

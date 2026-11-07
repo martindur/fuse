@@ -107,6 +107,12 @@ Set the unsigned noise seed (tex default: zero; view default: 42).
 Bind a procedural texture source to tex0 (view). Also accepts --tex1, --tex2,
 and --tex3. Paths are relative to the working directory.
 .TP
+.BI --blend " MODE"
+Set preview material blending: opaque (default) or alpha (straight alpha).
+Alpha mode blends unscaled RGB and separate coverage over the preview background.
+Texture inspection, wireframe, and UV colors remain opaque. Standalone .gtex
+previews do not accept alpha blending. Exported shaders are unchanged.
+.TP
 .BI --texture-width " N"
 Set generated texture width in pixels (view, default: 512).
 .TP

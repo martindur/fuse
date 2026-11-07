@@ -1,10 +1,9 @@
 # Source preview
 
 ```sh
-grafic view examples/gl/ring.gfrag
 grafic view examples/waves/waves.gvert
-grafic view examples/tex/clouds.gtex
-grafic view examples/mesh/radial.gmesh
+grafic view examples/waves/ripples.gtex
+grafic view examples/waves/waves.gmesh
 ```
 
 Open a `.gfrag` fragment shader, `.gvert` vertex shader, `.gtex` texture, or
@@ -29,9 +28,10 @@ the sources while rendering is suspended.
 Bind `.gtex` sources directly to the shader's texture slots:
 
 ```sh
-grafic view examples/compositions/masked-reveal/masked-reveal.gfrag \
-  --tex0 examples/compositions/masked-reveal/mask.gtex \
-  --tex1 examples/compositions/masked-reveal/rings.gtex
+grafic view examples/waves/waves.gmesh \
+  --vert examples/waves/waves.gvert --frag examples/waves/waves.gfrag \
+  --tex0 examples/waves/ripples.gtex \
+  --tex1 examples/waves/foam.gtex
 ```
 
 `--tex0` through `--tex3` generate and bind textures without intermediate PNG
@@ -56,6 +56,22 @@ the bottom left. Sampling uses linear filtering and clamps at the edges; use
 `repeat()` or `mirror(texN)` for wrapping. A shader using an unbound texture slot
 reports which `--texN` option is needed.
 
+## Alpha blending
+
+Shader and mesh previews default to `--blend opaque`. Use `--blend alpha` for
+straight-alpha output, such as the fire example:
+
+```sh
+grafic view examples/fire/fire.gfrag --tex0 examples/fire/flame.gtex --blend alpha
+```
+
+Return `vec4(color, coverage)` with unscaled RGB. The viewer blends it over its
+background using source alpha and one minus source alpha, clearing each frame.
+Texture inspection, UV colors, and wireframe stay opaque. Standalone texture
+previews do not accept `--blend alpha`. Blending is preview state; it does not
+change shader or PNG exports. Mesh previews blend in mesh draw order without
+sorting transparent triangles.
+
 ## Meshes
 
 Mesh sources generate geometry directly, without intermediate OBJ files. The
@@ -68,8 +84,7 @@ wireframe and inspect triangles; `U` toggles UV colors over a supplied fragment
 shader. Press `1` to return from a texture input to the surface, or `2`–`5` to
 inspect supplied textures. Reloading preserves the selected mode.
 
-Try `examples/mesh/disk.gmesh`, `examples/mesh/radial.gmesh`, and
-`examples/waves/waves.gmesh` to compare geometry and UV mappings.
+Open `examples/waves/waves.gmesh` to inspect the grid geometry and UV mapping.
 
 ## Vertex shaders and composed surfaces
 
@@ -152,9 +167,8 @@ own markers.
 ## Window and preview options
 
 ```sh
-grafic view --width 1280 --height 720 examples/gl/ring.gfrag
-grafic view --preview-line 4 examples/gl/ring.gfrag
-grafic view --preview-line 3 examples/tex/clouds.gtex
+grafic view --width 1280 --height 720 examples/waves/waves.gvert
+grafic view --preview-line 2 examples/waves/ripples.gtex
 ```
 
 `--width` and `--height` set the initial window size (default 960 × 640).

@@ -1,0 +1,19 @@
+// Tileable fields for broad tongues, sharp erosion grooves, and sweeping bends.
+let tongues = uv
+  .multiply(3.0)
+  .noise(vec2(3.0, 3.0));
+
+let breakup = uv
+  .multiply(8.0)
+  .add(vec2(3.7, -1.2))
+  .noise(vec2(8.0, 8.0))
+  .add(-0.5)
+  .abs()
+  .multiply(2.0);
+
+let bend = uv
+  .multiply(2.0)
+  .add(vec2(-2.4, 7.1))
+  .noise(vec2(2.0, 2.0));
+
+vec4(tongues, breakup, bend, 1.0)

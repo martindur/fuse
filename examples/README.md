@@ -1,52 +1,46 @@
 # Examples
 
-From the repository root, build the compilers with `make`, then try:
+Complete assets authored with Grafic. From the repository root, build with `make`.
+
+## Fire
+
+`fire/` contains a stylized flame on an XY plane: an anchored hot base, broad
+sweeping tongues, and eroding tips. The shader returns straight RGB color and separate
+alpha coverage. Preview it with alpha blending:
 
 ```sh
-build/grafic gl < examples/gl/ring.gfrag > build/ring.frag
-build/grafic tex --width 256 --height 256 --seed 42 \
-  < examples/tex/clouds.gtex > build/clouds.png
-build/grafic mesh < examples/mesh/radial.gmesh > build/radial.obj
+build/grafic view examples/fire/fire.gfrag \
+  --tex0 examples/fire/flame.gtex --blend alpha
 ```
 
-`gl/` contains standalone shader examples; `tex/` contains gradients, rings,
-stripes, and noise textures; `mesh/` contains planar and radial-UV disks.
-`waves/` groups the current animated surface, geometry, and material together.
-Preview sources directly with live reload:
+`flame.gtex` packs tileable noise into red (tongues), green (sharp erosion grooves), and
+blue (lateral bending); alpha is opaque. The shader scrolls the fields upward at
+different speeds. The faster outer fields shape an orange-red edge and yellow
+body, with sharp erosion toward the tips. The pale central core follows the same bent flame profile with weaker noise.
+A density inset keeps a yellow margin around it as the outer body peels away. Narrow transitions separate the color regions;
+the outer silhouette retains a little softness. Fine erosion is confined toward
+the tips, leaving the larger sweeps intact. Press `2` to inspect the texture or add `.show()` to `coverage`,
+`density`, or `heat` in the fragment shader to inspect the effect.
+
+Tune the two scroll speeds, the taper width, and the height-dependent erosion in
+`fire.gfrag`. The `heat` threshold sets the outer color boundary; the weaker
+noise and height terms in `core` shape the calmer central glow. `core_inset`
+keeps it inside the denser body. Bending is anchored at the base. All motion comes from shader time;
+no particles or feedback buffers are required.
+
+Export the same shader and texture for a rendering host:
 
 ```sh
-build/grafic view examples/gl/ring.gfrag
-build/grafic view examples/tex/clouds.gtex
-build/grafic view examples/mesh/radial.gmesh
+build/grafic gl < examples/fire/fire.gfrag > build/fire.frag
+build/grafic tex --width 512 --height 512 --seed 42 \
+  < examples/fire/flame.gtex > build/flame.png
 ```
 
-Mesh previews fit the geometry in an angled orthographic view; `W` toggles wireframe and `U`
-shows UV colors. See the [viewer guide](../docs/view.md) for controls and options.
-
-## Source compositions
-
-`compositions/` contains shaders with procedural texture inputs. Preview them
-directly, with live reload for every source:
-
-```sh
-build/grafic view examples/compositions/masked-reveal/masked-reveal.gfrag \
-  --tex0 examples/compositions/masked-reveal/mask.gtex \
-  --tex1 examples/compositions/masked-reveal/rings.gtex
-```
-
-Press `1` for the shader or `2`–`5` to inspect texture slots. Place `.show()` in
-any source to use an intermediate result as that file's viewer output.
-The viewer defaults match the texture generation settings below. For an external
-rendering host, compile textures to PNG with `grafic tex` and shaders with `grafic gl`.
-
-| Directory | Shader | Texture slots | Texture generation |
-| --- | --- | --- | --- |
-| `broken-scanlines/` | `broken-scanlines.gfrag` | `tex0` = `clouds.gtex`, `tex1` = `stripes.gtex` | 512 × 512, seed 42 |
-| `energy-shield/` | `energy-shield.gfrag` | `tex0` = `noise.gtex`, `tex1` = `rings.gtex` | 512 × 512, seed 42 |
-| `fluid-marble/` | `fluid-marble.gfrag` | `tex0` = `cloud-a.gtex`, `tex1` = `cloud-b.gtex` | 512 × 512, seed 42 |
-| `liquid-movement/` | `liquid-movement.gfrag` | `tex0` = `distortion.gtex`, `tex1` = `surface.gtex` | 512 × 512, seed 42 |
-| `masked-reveal/` | `masked-reveal.gfrag` | `tex0` = `mask.gtex`, `tex1` = `rings.gtex` | 512 × 512, seed 42 |
-| `rippling-ink/` | `rippling-ink.gfrag` | `tex0` = `clouds.gtex`, `tex1` = `rings.gtex` | 512 × 512, seed 42 |
+Import the texture as linear data, bind it to `tex0`, and render an XY plane with
+0–1 UVs using the documented [shader interface](../docs/shader-interface.md).
+Use source-alpha / one-minus-source-alpha color blending. The RGB output is not
+premultiplied by coverage. The preview is unlit; bloom and lighting the surrounding
+scene belong to the rendering host.
 
 ## Waves
 

@@ -240,6 +240,18 @@ bool view_renderer_set_shader(ViewRenderer *renderer, const char *glsl, ViewRend
     return true;
 }
 
+void view_renderer_apply_blend(ViewBlendMode mode)
+{
+    if (mode == VIEW_BLEND_ALPHA) {
+        glEnable(GL_BLEND);
+        glBlendEquation(GL_FUNC_ADD);
+        glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
+            GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    } else {
+        glDisable(GL_BLEND);
+    }
+}
+
 static void draw_output(const ViewRenderer *renderer, int width, int height, float time, int texture_slot)
 {
     if (width <= 0 || height <= 0) {
@@ -267,8 +279,15 @@ static void draw_output(const ViewRenderer *renderer, int width, int height, flo
         glBindTexture(GL_TEXTURE_2D, renderer->textures[slot]);
     }
     glActiveTexture(GL_TEXTURE0);
+    ViewBlendMode blend = texture ? VIEW_BLEND_OPAQUE : renderer->blend_mode;
+    if (blend == VIEW_BLEND_ALPHA) {
+        glClearColor(0.12f, 0.12f, 0.12f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+    }
+    view_renderer_apply_blend(blend);
     glBindVertexArray(renderer->vertex_array);
     glDrawArrays(GL_TRIANGLES, 0, 3);
+    glDisable(GL_BLEND);
 }
 
 void view_renderer_draw(const ViewRenderer *renderer, int width, int height, float time)

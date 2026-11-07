@@ -1,5 +1,0 @@
-disk()
-  .radius(1.0)
-  .segments(64)
-  .rings(4)
-  .uv_radial()

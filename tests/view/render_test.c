@@ -255,6 +255,32 @@ int main(int argc, char **argv)
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth);
     CHECK(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
 
+    /* Straight alpha blends color once, preserves destination alpha, and clears
+     * every frame so animation cannot leave accidental accumulation trails. */
+    renderer.blend_mode = VIEW_BLEND_ALPHA;
+    CHECK(set_source(&renderer, "vec4(1.0, 0.0, 0.0, 0.5)", &error));
+    view_renderer_draw(&renderer, 64, 64, 0.0f);
+    CHECK(pixel_equals(16, 16, 143, 15, 15));
+    view_renderer_draw(&renderer, 64, 64, 0.0f);
+    CHECK(pixel_equals(16, 16, 143, 15, 15));
+    CHECK(!glIsEnabled(GL_BLEND));
+    CHECK(set_source(&renderer, "vec4(1.0, 0.0, 0.0, 0.0)", &error));
+    view_renderer_draw(&renderer, 64, 64, 0.0f);
+    CHECK(pixel_equals(16, 16, 31, 31, 31));
+    CHECK(set_source(&renderer, "vec4(1.0, 0.0, 0.0, 1.0)", &error));
+    view_renderer_draw(&renderer, 64, 64, 0.0f);
+    CHECK(pixel_equals(16, 16, 255, 0, 0));
+    CHECK(set_texture(&renderer, 0, "vec4(1.0, 0.0, 0.0, 0.5)", 1, 1, &error));
+    view_renderer_draw_texture(&renderer, 64, 64, 0);
+    unsigned char inspected[4];
+    glReadPixels(16, 16, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, inspected);
+    CHECK(inspected[0] == 255 && inspected[1] == 0 && inspected[2] == 0 && inspected[3] == 128);
+    glDeleteTextures(1, &renderer.textures[0]);
+    renderer.textures[0] = 0;
+    renderer.blend_mode = VIEW_BLEND_OPAQUE;
+    view_renderer_draw(&renderer, 64, 64, 0.0f);
+    CHECK(pixel_equals(16, 16, 255, 0, 0));
+
     CHECK(set_source(&renderer, "vec4(surface.uv, time, 1.0)", &error));
     view_renderer_draw(&renderer, 64, 64, 0.25f);
     CHECK(pixel_equals(16, 48, 66, 193, 64));
@@ -356,7 +382,7 @@ int main(int argc, char **argv)
 
     ViewSource ring = {0};
     char read_error[256];
-    CHECK(view_source_poll(&ring, "examples/gl/ring.gfrag", read_error, sizeof(read_error)) == VIEW_SOURCE_CHANGED);
+    CHECK(view_source_poll(&ring, "tests/view/fixtures/ring.gfrag", read_error, sizeof(read_error)) == VIEW_SOURCE_CHANGED);
     bool ring_loaded = set_source(&renderer, ring.text, &error);
     view_source_destroy(&ring);
     CHECK(ring_loaded);
@@ -366,10 +392,10 @@ int main(int argc, char **argv)
         CHECK(snapshot(argv[1]));
     }
 
-    CHECK(load_texture(&renderer, 0, "examples/compositions/masked-reveal/mask.gtex", &error));
-    CHECK(load_texture(&renderer, 1, "examples/compositions/masked-reveal/rings.gtex", &error));
+    CHECK(load_texture(&renderer, 0, "tests/view/fixtures/masked-reveal/mask.gtex", &error));
+    CHECK(load_texture(&renderer, 1, "tests/view/fixtures/masked-reveal/rings.gtex", &error));
     ViewSource composition = {0};
-    CHECK(view_source_poll(&composition, "examples/compositions/masked-reveal/masked-reveal.gfrag",
+    CHECK(view_source_poll(&composition, "tests/view/fixtures/masked-reveal/masked-reveal.gfrag",
         read_error, sizeof(read_error)) == VIEW_SOURCE_CHANGED);
     bool composition_loaded = set_source(&renderer, composition.text, &error);
     view_source_destroy(&composition);
@@ -448,6 +474,19 @@ int main(int argc, char **argv)
     GraficMeshGridSpec grid = {2, 2, 32, 32};
     CHECK(graficmesh_mesh_from_grid(&grid, &mesh, &mesh_error));
     CHECK(view_renderer_set_mesh(&renderer, &mesh, &error));
+    renderer.blend_mode = VIEW_BLEND_ALPHA;
+    CHECK(set_mesh_sources(&renderer, NULL, "vec4(1.0, 0.0, 0.0, 0.5)", &error));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    CHECK(pixel_equals(64, 64, 143, 15, 15));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, true);
+    unsigned char alpha_uv[4], opaque_uv[4];
+    glReadPixels(64, 64, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, alpha_uv);
+    CHECK(!glIsEnabled(GL_BLEND));
+    renderer.blend_mode = VIEW_BLEND_OPAQUE;
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, true);
+    glReadPixels(64, 64, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, opaque_uv);
+    CHECK(memcmp(alpha_uv, opaque_uv, sizeof(alpha_uv)) == 0);
+    CHECK(set_mesh_sources(&renderer, NULL, NULL, &error));
     float original[3];
     glBindBuffer(GL_ARRAY_BUFFER, renderer.mesh.buffers[0]);
     glGetBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(original), original);
@@ -780,6 +819,49 @@ int main(int argc, char **argv)
             CHECK(snapshot(argv[7]));
         }
     }
+
+    /* The complete fire asset has clear margins, an anchored base, and animation. */
+    CHECK(load_texture(&renderer, 0, "examples/fire/flame.gtex", &error));
+    ViewSource fire = {0};
+    CHECK(view_source_poll(&fire, "examples/fire/fire.gfrag", read_error,
+        sizeof(read_error)) == VIEW_SOURCE_CHANGED);
+    bool fire_loaded = set_source(&renderer, fire.text, &error);
+    view_source_destroy(&fire);
+    CHECK(fire_loaded);
+    view_renderer_draw(&renderer, 128, 128, 0.0f);
+    unsigned char fire_edge[4], fire_base[4];
+    glReadPixels(0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, fire_edge);
+    glReadPixels(64, 18, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, fire_base);
+    CHECK(fire_edge[3] == 0 && fire_base[3] == 255);
+    CHECK(fire_base[0] > 200 && fire_base[1] > 100);
+    for (int x = 54; x <= 74; x += 20) {
+        glReadPixels(x, 18, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, fire_base);
+        CHECK(fire_base[3] == 255);
+    }
+    glReadPixels(0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, before_wave);
+    view_renderer_draw(&renderer, 128, 128, 0.8f);
+    glReadPixels(0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, after_wave);
+    CHECK(memcmp(before_wave, after_wave, sizeof(before_wave)) != 0);
+    /* Pale core pixels must stay inside the opaque body above the base fade. */
+    for (size_t frame = 0; frame < 2; frame += 1) {
+        const unsigned char *pixels = frame == 0 ? before_wave : after_wave;
+        size_t core_pixels = 0;
+        for (size_t pixel = 18 * 128; pixel < 128 * 128; pixel += 1) {
+            if (pixels[pixel * 4 + 2] > 60) {
+                CHECK(pixels[pixel * 4 + 3] == 255);
+                core_pixels += 1;
+            }
+        }
+        CHECK(core_pixels > 0);
+    }
+    renderer.blend_mode = VIEW_BLEND_ALPHA;
+    view_renderer_draw(&renderer, 128, 128, 0.8f);
+    CHECK(pixel_equals(0, 0, 31, 31, 31));
+    for (int frame = 8; frame < argc; frame += 1) {
+        view_renderer_draw(&renderer, 512, 512, 0.8f * (float)(frame - 7));
+        CHECK(snapshot(argv[frame]));
+    }
+    renderer.blend_mode = VIEW_BLEND_OPAQUE;
 
     /* A farther triangle drawn last must not obscure the nearer triangle. */
     float layered_positions[] = {-1,-1,-0.5f, 1,-1,-0.5f, 0,1,-0.5f,

@@ -10,6 +10,12 @@ enum { VIEW_TEXTURE_COUNT = 4 };
 
 typedef struct GLFWwindow GLFWwindow;
 
+/* Alpha mode uses straight RGB and separate coverage; inspection stays opaque. */
+typedef enum {
+    VIEW_BLEND_OPAQUE,
+    VIEW_BLEND_ALPHA
+} ViewBlendMode;
+
 typedef struct {
     unsigned int program;
     unsigned int inspection_program;
@@ -22,6 +28,7 @@ typedef struct {
 
 typedef struct {
     GLFWwindow *window;
+    ViewBlendMode blend_mode;
     unsigned int vertex_array;
     unsigned int vertex_shader;
     unsigned int program;
@@ -61,6 +68,8 @@ void view_renderer_destroy_mesh(ViewRenderer *renderer);
 /* Shared OpenGL program creation; returns zero on failure. Requires a context. */
 unsigned int view_program_create(const char *vertex, const char *fragment, ViewRenderError *error);
 bool view_program_bind_textures(const ViewRenderer *renderer, unsigned int program, ViewRenderError *error);
+/* Shared material draw state; callers clear the target and disable blending afterward. */
+void view_renderer_apply_blend(ViewBlendMode mode);
 void view_renderer_destroy(ViewRenderer *renderer);
 
 #endif

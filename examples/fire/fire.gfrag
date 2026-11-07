@@ -1,0 +1,105 @@
+// Straight-alpha fire on the viewer's XY plane. All shape and color is unlit.
+let point = surface.uv
+  .center()
+  .aspect();
+
+// Keep the base above the lower edge and reserve space for detached tips.
+let height = surface.uv
+  .y()
+  .add(-0.1)
+  .multiply(1.25)
+  .clamp(0.0, 1.0);
+
+let rising = vec2(surface.uv.x().multiply(3.2), surface.uv.y().multiply(0.65))
+  .scroll(vec2(-0.025, -0.46), time)
+  .repeat()
+  .sample(tex0);
+
+let detail = vec2(surface.uv.x().multiply(1.4), surface.uv.y().multiply(0.6))
+  .scroll(vec2(0.035, -0.7), time)
+  .repeat()
+  .sample(tex0);
+
+// Bending grows toward the tips, leaving the base anchored.
+let bend = rising
+  .b()
+  .multiply(2.0)
+  .add(-1.0)
+  .multiply(height.pow(1.2))
+  .multiply(0.26);
+
+let across = point
+  .x()
+  .add(bend);
+
+let taper = height
+  .multiply(-1.0)
+  .add(1.0)
+  .pow(0.9)
+  .multiply(0.22)
+  .add(0.008);
+
+let profile = across
+  .multiply(across)
+  .multiply(taper.pow(-2.0))
+  .multiply(-1.0)
+  .add(1.0);
+
+// Broad tongues define the body; finer erosion grows only toward the tips.
+let tip_breakup = detail
+  .g()
+  .multiply(-0.7)
+  .add(0.2)
+  .multiply(height.pow(1.4));
+
+let density = profile
+  .add(rising.r().multiply(1.65))
+  .add(tip_breakup)
+  .add(height.multiply(-1.5))
+  .add(-0.62);
+
+let base = surface.uv
+  .y()
+  .add(-0.1)
+  .multiply(100.0)
+  .clamp(0.0, 1.0);
+
+let tip = height
+  .multiply(-1.0)
+  .add(1.0)
+  .multiply(30.0)
+  .clamp(0.0, 1.0);
+
+let coverage = density
+  .multiply(30.0)
+  .clamp(0.0, 1.0)
+  .multiply(base)
+  .multiply(tip);
+
+// The outer color boundary follows density, with a narrow transition.
+let heat = density
+  .add(-0.18)
+  .multiply(75.0)
+  .clamp(0.0, 1.0);
+
+// Reuse the flame's bent profile with much weaker noise, keeping the core calm.
+// The density inset leaves a yellow margin even when the outer body peels away.
+let core_inset = density
+  .add(-0.32)
+  .multiply(50.0)
+  .clamp(0.0, 1.0);
+
+let core = profile
+  .add(rising.r().multiply(0.35))
+  .add(height.multiply(-1.8))
+  .add(-0.65)
+  .multiply(50.0)
+  .clamp(0.0, 1.0)
+  .multiply(core_inset);
+
+let color = rgb(1.0, 0.16, 0.025)
+  .mix(rgb(1.0, 0.64, 0.04), heat)
+  .mix(rgb(1.0, 0.94, 0.58), core);
+
+// RGB is not multiplied by coverage; the host performs straight-alpha blending.
+vec4(color, coverage)

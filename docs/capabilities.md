@@ -8,8 +8,7 @@ Run a command with `--builtins` for the authoritative signatures and docs.
 ## Shaders: grafic gl
 
 ```sh
-grafic gl < examples/gl/ring.gfrag > ring.frag
-grafic gl --preview-line 4 < examples/gl/ring.gfrag > preview.frag
+grafic gl < examples/waves/waves.gfrag > waves.frag
 grafic gl --stage vertex < examples/waves/waves.gvert > waves.vert
 ```
 
@@ -33,7 +32,7 @@ mask to the fragment shader as `surface.mask`. It defaults to zero.
 
 ```sh
 grafic tex --width 256 --height 256 --seed 42 \
-  < examples/tex/clouds.gtex > clouds.png
+  < examples/waves/ripples.gtex > ripples.png
 ```
 
 A complete program returns `vec4`. Texture functions include seeded noise,
@@ -56,7 +55,7 @@ The texture seed controls point placement.
 ## Geometry: grafic mesh
 
 ```sh
-grafic mesh < examples/mesh/radial.gmesh > radial.obj
+grafic mesh < examples/waves/waves.gmesh > waves.obj
 ```
 
 A complete program returns `mesh`. `disk()` creates a filled disk.

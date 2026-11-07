@@ -187,10 +187,12 @@ void view_renderer_draw_mesh(const ViewRenderer *renderer, int width, int height
         glBindTexture(GL_TEXTURE_2D, renderer->textures[slot]);
     }
     glActiveTexture(GL_TEXTURE0);
+    view_renderer_apply_blend(wireframe || uv_colors ? VIEW_BLEND_OPAQUE : renderer->blend_mode);
     glEnable(GL_DEPTH_TEST);
     glBindVertexArray(mesh->vertex_array);
     glPolygonMode(GL_FRONT_AND_BACK, wireframe ? GL_LINE : GL_FILL);
     glDrawElements(GL_TRIANGLES, (GLsizei)mesh->index_count, GL_UNSIGNED_INT, NULL);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glDisable(GL_DEPTH_TEST);
+    glDisable(GL_BLEND);
 }

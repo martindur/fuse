@@ -4,6 +4,18 @@
 use `--stage vertex` for `.gvert` programs. The host supplies geometry, transforms,
 textures, and uniform values. Inactive uniforms and inputs may be optimized out.
 
+## Color and coverage
+
+Fragment programs return RGBA. For straight-alpha blending, construct
+`vec4(color, coverage)` without multiplying RGB by coverage. The host uses
+`SRC_ALPHA, ONE_MINUS_SRC_ALPHA` for color and `ONE, ONE_MINUS_SRC_ALPHA` for
+alpha. Blending is host state, not embedded in generated GLSL. The viewer enables
+it with `--blend alpha`; its default remains opaque.
+
+`colorize(mask, color)` scales both RGB and alpha by the mask. Use the explicit
+`vec4` constructor when authoring straight-alpha materials to avoid applying
+coverage twice.
+
 ## Vertex results
 
 Vertex inputs remain `position: vec3`, `uv: vec2`, and `time: float`. Positions

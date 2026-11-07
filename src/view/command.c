@@ -58,6 +58,7 @@ static void usage(FILE *output)
         "  --frag FILE.gfrag   fragment shader for a mesh or vertex preview\n"
         "  --width N           initial window width (default: 960)\n"
         "  --height N          initial window height (default: 640)\n"
+        "  --blend MODE        opaque (default) or straight alpha\n"
         "  --preview-line N    display the intermediate result on a line\n"
         "  --tex0 FILE.gtex    bind a procedural texture to tex0\n"
         "  --tex1 FILE.gtex    bind a procedural texture to tex1\n"
@@ -325,6 +326,7 @@ int grafic_view_main(int argc, char **argv)
     for (size_t slot = 0; slot < VIEW_TEXTURE_COUNT; slot += 1) {
         app.textures[slot].label = view_texture_name(slot);
     }
+    ViewBlendMode blend_mode = VIEW_BLEND_OPAQUE;
     size_t width = 960;
     size_t height = 640;
     bool files_only = false;
@@ -353,6 +355,14 @@ int grafic_view_main(int argc, char **argv)
                 return EXIT_FAILURE;
             }
             app.textures[slot].path = argv[++index];
+        } else if (!files_only && strcmp(argument, "--blend") == 0) {
+            if (index + 1 >= argc || (strcmp(argv[index + 1], "opaque") != 0
+                    && strcmp(argv[index + 1], "alpha") != 0)) {
+                fprintf(stderr, "grafic view: --blend requires opaque or alpha\n");
+                usage(stderr);
+                return EXIT_FAILURE;
+            }
+            blend_mode = strcmp(argv[++index], "alpha") == 0 ? VIEW_BLEND_ALPHA : VIEW_BLEND_OPAQUE;
         } else if (!files_only && strcmp(argument, "--seed") == 0) {
             uintmax_t seed;
             if (index + 1 >= argc || !parse_unsigned(argv[++index], &seed) || seed > UINT64_MAX) {
@@ -400,6 +410,10 @@ int grafic_view_main(int argc, char **argv)
         app.primary.label = "mesh";
     } else {
         fprintf(stderr, "grafic view: unsupported source extension; expected .gfrag, .gvert, .gtex, or .gmesh\n");
+        return EXIT_FAILURE;
+    }
+    if (app.kind == VIEW_TEXTURE && blend_mode != VIEW_BLEND_OPAQUE) {
+        fprintf(stderr, "grafic view: --blend alpha requires a shader or mesh preview\n");
         return EXIT_FAILURE;
     }
     ViewInput *extras[] = {&app.mesh, &app.vertex, &app.fragment};
@@ -450,6 +464,7 @@ int grafic_view_main(int argc, char **argv)
         fprintf(stderr, "grafic view: %s\n", render_error.message);
         goto cleanup;
     }
+    app.renderer.blend_mode = blend_mode;
     if (has_textures && (app.texture_config.width > (size_t)app.renderer.texture_limit
             || app.texture_config.height > (size_t)app.renderer.texture_limit)) {
         fprintf(stderr, "grafic view: texture dimensions exceed GPU limit (%d)\n", app.renderer.texture_limit);

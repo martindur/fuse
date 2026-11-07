@@ -1,5 +1,0 @@
-uv
-.multiply(3.0)
-.noise()
-.smoothstep(0.25, 0.75)
-.colorize(rgb(1.0, 1.0, 1.0))
