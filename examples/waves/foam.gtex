@@ -1,0 +1,31 @@
+// Larger bubble holes sit inside irregular foam patches.
+let patch = uv
+  .multiply(4.0)
+  .add(vec2(7.1, -3.4))
+  .noise(vec2(4.0, 4.0))
+  .smoothstep(0.3, 0.68);
+
+let bubbles = uv
+  .multiply(8.0)
+  .cellular(vec2(8.0, 8.0))
+  .smoothstep(0.18, 0.62);
+
+let patches = bubbles
+  .multiply(patch);
+
+// Two smaller cell sizes break up the spaces between larger bubbles.
+let fine = uv
+  .multiply(36.0)
+  .add(vec2(2.7, 5.3))
+  .cellular(vec2(36.0, 36.0))
+  .smoothstep(0.1, 0.45);
+
+let strands = uv
+  .multiply(20.0)
+  .add(vec2(-4.2, 1.8))
+  .cellular(vec2(20.0, 20.0))
+  .smoothstep(0.16, 0.58)
+  .multiply(fine);
+
+// Red: patchy large bubbles. Green: fine breakup. Blue: unused. Alpha: opaque.
+vec4(patches, strands, 0.0, 1.0)

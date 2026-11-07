@@ -338,6 +338,69 @@ static bool test_texture_primitives(void)
     return passed;
 }
 
+static bool test_cellular_noise(void)
+{
+    const char *sources[] = {
+        "vec4(uv.cellular(), 0.0, 0.0, 1.0)",
+        "vec4(uv.cellular(vec2(1.0, 1.0)), 0.0, 0.0, 1.0)",
+        "vec4(uv.cellular(vec2(4.0, 7.0)), 0.0, 0.0, 1.0)"
+    };
+    bool passed = true;
+    for (size_t kind = 0; kind < 3 && passed; kind += 1) {
+        const char *source = sources[kind];
+        Program *program = parse_and_lower(source);
+        SemanticInfo info;
+        if (program == NULL) return false;
+        if (!analyze_program(program, source, &info)) {
+            program_destroy(program);
+            return false;
+        }
+        bool seed_changes = false;
+        for (size_t sample = 0; sample < 80 && passed; sample += 1) {
+            EvalContext context = {.uv = {(float)sample / 13.0f - 3.01f,
+                (float)sample / 19.0f - 2.03f}, .seed = 42};
+            RuntimeValue original, repeated, shifted;
+            EvalError error;
+            passed = grafictex_evaluate_program(program, source, &context, &original, &error)
+                && grafictex_evaluate_program(program, source, &context, &repeated, &error)
+                && original.components[0] == repeated.components[0]
+                && isfinite(original.components[0]) && original.components[0] >= 0
+                && original.components[0] <= sqrtf(2.0f);
+            context.uv[0] += 0.001f;
+            passed = passed && grafictex_evaluate_program(program, source, &context, &shifted, &error)
+                /* Distance to a point set is 1-Lipschitz, including cell boundaries. */
+                && fabsf(original.components[0] - shifted.components[0]) <= 0.00101f;
+            context.uv[0] -= 0.001f;
+            if (kind > 0) {
+                const float periods[2] = {kind == 1 ? 1.0f : 4.0f,
+                    kind == 1 ? 1.0f : 7.0f};
+                for (size_t axis = 0; axis < 2 && passed; axis += 1) {
+                    context.uv[axis] += periods[axis];
+                    passed = grafictex_evaluate_program(program, source, &context, &shifted, &error)
+                        && approximately_equal(original.components[0], shifted.components[0]);
+                    context.uv[axis] -= periods[axis];
+                }
+            }
+            context.seed = 43;
+            passed = passed && grafictex_evaluate_program(program, source, &context, &shifted, &error);
+            seed_changes = seed_changes || (passed
+                && !approximately_equal(original.components[0], shifted.components[0]));
+        }
+        passed = passed && seed_changes;
+        semantic_info_destroy(&info);
+        program_destroy(program);
+    }
+    /* Seed zero places the single periodic feature at the integer origin.
+     * These distances check Euclidean units and the neighboring tile image. */
+    RuntimeValue value;
+    passed = passed && evaluate_source_at(sources[1], 0.3f, 0.4f, 0, &value)
+        && approximately_equal(value.components[0], 0.5f)
+        && evaluate_source_at(sources[1], -0.1f, 0.9f, 0, &value)
+        && approximately_equal(value.components[0], sqrtf(0.02f));
+    printf("%s GraficTex cellular distance, seed, continuity, and periodicity\n", passed ? "PASS" : "FAIL");
+    return passed;
+}
+
 static bool test_image_reinitialization(void)
 {
     Image image = {0};
@@ -483,6 +546,10 @@ int main(void)
         passed += 1;
     }
 
-    printf("%zu/5 GraficTex tests passed\n", passed);
-    return passed == 5 ? EXIT_SUCCESS : EXIT_FAILURE;
+    if (test_cellular_noise()) {
+        passed += 1;
+    }
+
+    printf("%zu/6 GraficTex tests passed\n", passed);
+    return passed == 6 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

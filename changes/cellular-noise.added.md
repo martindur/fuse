@@ -1,0 +1,1 @@
+Add seeded cellular distance noise to texture programs, with an optional integer period for seamless tiling. Layer bubble sizes in the wave foam texture, distort its scrolling UVs with ripple data, and restrict coverage to scattered wave-top patches.

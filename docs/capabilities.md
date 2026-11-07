@@ -42,6 +42,14 @@ The output is an RGBA PNG image that ordinary image tools can open. A period
 argument to `noise`, such as `uv.noise(vec2(3.0, 3.0))`, makes noise tileable
 in noise-coordinate units.
 
+`point.cellular()` returns Euclidean distance to the nearest seeded feature
+point, with one point per unit lattice cell. Distances are in input-coordinate
+units, bounded by `sqrt(2)` rather than normalized to [0, 1]. The optional period
+uses positive integer components, just like `noise`: for example,
+`uv.multiply(8.0).cellular(vec2(8.0, 8.0))` repeats every UV unit.
+Use thresholds to turn these distances into bubble holes or cellular patterns.
+The texture seed controls point placement.
+
 ## Geometry: grafic mesh
 
 ```sh

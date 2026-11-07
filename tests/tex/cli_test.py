@@ -64,7 +64,7 @@ class TextureTests(CompilerTests):
 
     def test_typed_completion_and_hover(self):
         items = self.completions("let p = uv.")
-        self.assertTrue({"noise", "length", "dot"} <= items.keys())
+        self.assertTrue({"noise", "cellular", "length", "dot"} <= items.keys())
         self.assertNotIn("colorize", items)
         items = self.completions("uv.noise().")
         self.assertIn("colorize", items)
@@ -77,6 +77,21 @@ class TextureTests(CompilerTests):
         self.assertIn("noise(vec2) -> float", text)
         self.assertIn("Perlin noise", text)
         self.assertIn("```grafictex", text)
+
+    def test_cellular_period_validation(self):
+        for period in ["vec2(0.0, 4.0)", "vec2(-1.0, 4.0)", "vec2(2.5, 4.0)"]:
+            with self.subTest(period=period):
+                result = self.render(source=f"vec4(uv.cellular({period}), 0.0, 0.0, 1.0)")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, b"")
+                self.assertIn(b"cellular period must contain positive integers", result.stderr)
+        _, responses = self.lsp_session(
+            opened("uv.cellular()", self.language_id),
+            request("textDocument/hover", 2, at("uv.ce")),
+        )
+        text = responses[2]["result"]["contents"]["value"]
+        self.assertIn("cellular(vec2) -> float", text)
+        self.assertIn("nearest seeded point", text)
 
     def test_diagnostics(self):
         packets, _ = self.lsp_session(opened("uv", self.language_id))

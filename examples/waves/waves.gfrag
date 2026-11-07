@@ -28,7 +28,7 @@ let shading_normal = surface.normal
   .add(ripples)
   .normalize();
 
-// Deep water, turquoise swells, and a little pale color at the highest crests.
+// Deep water and turquoise swells, with a separate crest-foam material.
 let height = surface.position
   .y()
   .add(0.15)
@@ -38,11 +38,60 @@ let height = surface.position
 let water = rgb(0.01, 0.07, 0.14)
   .mix(rgb(0.025, 0.32, 0.38), height);
 
-let crest = height
-  .add(-0.75)
+// Height is an artistic crest proxy, not a breaking-wave simulation.
+let foam_start = 0.65;
+let foam_scale = 2.0;
+let foam_strength = 1.0;
+let foam_threshold = 0.64;
+
+let foam_crest = height
+  .add(foam_start.multiply(-1.0))
   .multiply(4.0)
+  .clamp(0.0, 1.0);
+
+// Small moving offsets bend the patterns as they scroll.
+let foam_distortion = 0.025;
+
+// Sample the two pattern fields independently so their overlap changes shape.
+let foam_patches = surface.uv
+  .multiply(foam_scale)
+  .scroll(vec2(-0.025, 0.03), time)
+  .distort(ripple_a, foam_distortion)
+  .repeat()
+  .sample(tex1)
+  .r();
+
+let foam_strands = surface.uv
+  .multiply(foam_scale)
+  .scroll(vec2(-0.04, 0.017), time)
+  .distort(ripple_b, foam_distortion.multiply(0.7))
+  .repeat()
+  .sample(tex1)
+  .g();
+
+// Stronger crests lower the threshold: fragments join into denser froth.
+let foam_fill = foam_patches
+  .multiply(0.65)
+  .add(foam_strands.multiply(0.35))
+  .add(foam_crest.multiply(0.18))
+  .add(foam_threshold.multiply(-1.0))
+  .multiply(10.0)
+  .clamp(0.0, 1.0);
+
+// Restrict coverage to the flatter tops, leaving more reflective water exposed.
+let foam_peak = surface.normal
+  .y()
   .clamp(0.0, 1.0)
-  .multiply(0.2);
+  .pow(4.0);
+
+// Smooth the threshold with t*t*(3-2*t).
+let foam_coverage = foam_fill
+  .multiply(foam_fill)
+  .multiply(foam_fill.multiply(-2.0).add(3.0))
+  .multiply(foam_crest)
+  .multiply(foam_peak)
+  .multiply(foam_strength)
+  .clamp(0.0, 1.0);
 
 // The same sun direction drives diffuse light and reflected highlights.
 let light = vec3(-0.55, 0.7, -0.45)
@@ -55,7 +104,6 @@ let brightness = shading_normal
   .add(0.35);
 
 let lit_water = water
-  .mix(rgb(0.75, 0.88, 0.9), crest)
   .multiply(brightness);
 
 // reflect() takes an incoming direction, so reverse the surface-to-view vector.
@@ -94,8 +142,21 @@ let sunlight = rgb(1.0, 0.85, 0.6)
 let environment = sky
   .add(sunlight);
 
-let color = lit_water
+let reflected_water = lit_water
   .mix(environment, fresnel);
+
+// Foam uses broad diffuse light, without the water's sky reflection or sun glints.
+let foam_light = surface.normal
+  .dot(light)
+  .clamp(0.0, 1.0)
+  .multiply(0.45)
+  .add(0.55);
+
+let foam_color = rgb(0.88, 0.94, 0.95)
+  .multiply(foam_light);
+
+let color = reflected_water
+  .mix(foam_color, foam_coverage);
 
 // Keep the artistic screen fade subtle enough to retain the reflections.
 let fade = screen.uv

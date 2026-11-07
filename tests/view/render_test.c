@@ -597,6 +597,7 @@ int main(int argc, char **argv)
     CHECK(pixel_equals(0, 0, 32, 32, 48));
 
     CHECK(load_texture(&renderer, 0, "examples/waves/ripples.gtex", &error));
+    CHECK(load_texture(&renderer, 1, "examples/waves/foam.gtex", &error));
     ViewSource wave_file = {0}, water_file = {0};
     CHECK(view_source_poll(&wave_file, "examples/waves/waves.gvert", read_error, sizeof(read_error)) == VIEW_SOURCE_CHANGED);
     CHECK(view_source_poll(&water_file, "examples/waves/waves.gfrag", read_error, sizeof(read_error)) == VIEW_SOURCE_CHANGED);
@@ -615,6 +616,49 @@ int main(int argc, char **argv)
     view_renderer_draw_mesh(&renderer, 128, 128, 1.0f, false, false);
     glReadPixels(0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, after_wave);
     CHECK(memcmp(before_wave, after_wave, sizeof(before_wave)) == 0);
+    /* Foam is a diffuse material replacement, gated by crest eligibility. */
+    CHECK(set_texture(&renderer, 1, "vec4(0.0, 0.0, 0.0, 1.0)", 1, 1, &error));
+    CHECK(set_mesh_sources(&renderer, "vertex(position.add(vec3(0.0, 0.15, 0.0)), uv, vec3(0.0, 1.0, 0.0))", water_file.text, &error));
+    unsigned char water_view[4], grazing_water[4], foam_view[4], grazing_foam[4];
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    glReadPixels(64, 64, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, water_view);
+    glUniform3f(glGetUniformLocation(renderer.mesh.program, "u_view_direction"), 0.8f, 0.1f, 0.6f);
+    glDrawElements(GL_TRIANGLES, (GLsizei)renderer.mesh.index_count, GL_UNSIGNED_INT, NULL);
+    glReadPixels(64, 64, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, grazing_water);
+    CHECK(memcmp(water_view, grazing_water, sizeof(water_view)) != 0);
+    /* Either packed channel contributes to coverage; neither is an unused copy. */
+    const char *foam_channels[] = {
+        "vec4(1.0, 0.55, 0.0, 1.0)", "vec4(0.55, 1.0, 0.0, 1.0)"
+    };
+    for (size_t channel = 0; channel < 2; channel += 1) {
+        CHECK(set_texture(&renderer, 1, foam_channels[channel], 1, 1, &error));
+        view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+        glReadPixels(64, 64, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, foam_view);
+        CHECK(foam_view[0] + foam_view[1] + foam_view[2] > water_view[0] + water_view[1] + water_view[2] + 30);
+    }
+    CHECK(set_texture(&renderer, 1, "vec4(1.0, 1.0, 1.0, 1.0)", 1, 1, &error));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    glReadPixels(64, 64, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, foam_view);
+    glUniform3f(glGetUniformLocation(renderer.mesh.program, "u_view_direction"), 0.8f, 0.1f, 0.6f);
+    glDrawElements(GL_TRIANGLES, (GLsizei)renderer.mesh.index_count, GL_UNSIGNED_INT, NULL);
+    glReadPixels(64, 64, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, grazing_foam);
+    CHECK(memcmp(foam_view, grazing_foam, sizeof(foam_view)) == 0);
+    CHECK(foam_view[0] + foam_view[1] + foam_view[2] > water_view[0] + water_view[1] + water_view[2] + 30);
+    CHECK(set_mesh_sources(&renderer, "vertex(position, uv, vec3(0.0, 1.0, 0.0))", water_file.text, &error));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    glReadPixels(64, 64, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, foam_view);
+    CHECK(set_texture(&renderer, 1, "vec4(0.0, 0.0, 0.0, 1.0)", 1, 1, &error));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    glReadPixels(64, 64, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, water_view);
+    CHECK(memcmp(foam_view, water_view, sizeof(foam_view)) == 0);
+    CHECK(load_texture(&renderer, 1, "examples/waves/foam.gtex", &error));
+    /* With geometry and ripple normals fixed, foam alone must animate. */
+    CHECK(set_mesh_sources(&renderer, "vertex(position.add(vec3(0.0, 0.15, 0.0)), uv, vec3(0.0, 1.0, 0.0))", water_file.text, &error));
+    view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+    glReadPixels(0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, before_wave);
+    view_renderer_draw_mesh(&renderer, 128, 128, 4.0f, false, false);
+    glReadPixels(0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, after_wave);
+    CHECK(memcmp(before_wave, after_wave, sizeof(before_wave)) != 0);
     CHECK(load_texture(&renderer, 0, "examples/waves/ripples.gtex", &error));
     bool water_loaded = set_mesh_sources(&renderer, wave_file.text, water_file.text, &error);
     view_source_destroy(&wave_file);

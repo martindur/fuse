@@ -227,3 +227,11 @@ shader capability defines the vertex, surface, and screen interfaces; the shared
 language does not construct arbitrary records. Authored normals use a separate
 interpolated varying and a flat presence flag. Vertex-preview context is prepared
 without selecting markers and is owned by `PreparedProgram`.
+
+## Future stateful effects
+
+Persistent foam trails and particle simulations are future requirements beyond
+the current procedural crest-foam example. They should remain usable in engine
+hosts through exported assets and explicit state/update contracts, with the host
+owning their lifecycle. No history buffers or viewer-specific persistence are
+introduced by the current foam material.

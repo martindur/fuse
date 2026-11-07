@@ -106,6 +106,18 @@ static const BuiltinSignature BUILTINS[] = {
         {VALUE_TYPE_VEC2, VALUE_TYPE_VEC2},
     },
     {
+        "cellular",
+        VALUE_TYPE_FLOAT,
+        1,
+        {VALUE_TYPE_VEC2},
+    },
+    {
+        "cellular",
+        VALUE_TYPE_FLOAT,
+        2,
+        {VALUE_TYPE_VEC2, VALUE_TYPE_VEC2},
+    },
+    {
         "vec2",
         VALUE_TYPE_VEC2,
         2,
@@ -224,6 +236,10 @@ static const SymbolDocumentation DOCUMENTATION[] = {
     {
         "noise",
         "Generates seeded 2D improved Perlin noise. Input coordinates control scale; the GraficTex seed controls variation. An optional period makes the noise tileable. Returns a value in the [0, 1] range.",
+    },
+    {
+        "cellular",
+        "Returns Euclidean distance to the nearest seeded point, with one point per unit cell. Distances use input-coordinate units (not normalized); an optional positive integer vec2 period makes the field tileable. Uses the same texture seed as noise.",
     },
     {
         "vec2",

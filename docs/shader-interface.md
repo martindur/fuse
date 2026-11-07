@@ -165,6 +165,22 @@ preserves the relationship between the normal and the combined height gradient.
 The fragment then normalizes and uses the same shading normal throughout the
 lighting calculations. Mesh geometry and the stage interface are unchanged.
 
+## Crest foam
+
+The wave material binds `foam.gtex` to `tex1`. It stores a tileable linear
+patch field in red and a finer breakup field in green; blue is unused and alpha
+is opaque. Layered cellular distances form the bubbles. The fields scroll
+independently, bend with a small ripple-driven UV offset, and combine before a
+soft threshold.
+Height-based crest eligibility lowers the threshold to fill stronger crests,
+then gates the resulting coverage together with an upward-facing normal mask. Foam is a separate diffuse material mixed
+over reflected water before the screen-space fade, so high coverage suppresses
+water reflections instead of adding white to the specular result. Both the
+pattern and the crest gate remain inspectable with `.show()`.
+
+The example bakes cellular patterns with `.gtex` and uses ordinary shader math. It has no foam history;
+persistent trails are deferred to future stateful effects and export contracts.
+
 ## Inspection
 
 Fragment `.show()` and `--preview-line` results display as follows:

@@ -268,6 +268,50 @@ static float noise_value(
     return normalized;
 }
 
+static float cellular_value(
+    const EvalContext *context,
+    float x,
+    float y,
+    int64_t period_x,
+    int64_t period_y
+)
+{
+    if (!isfinite(x) || !isfinite(y)) {
+        return 0.0f;
+    }
+
+    /* Reduce periodic coordinates before converting the lattice to integers. */
+    double point_x = period_x > 0 ? fmod((double)x, (double)period_x) : x;
+    double point_y = period_y > 0 ? fmod((double)y, (double)period_y) : y;
+    double floor_x = floor(point_x), floor_y = floor(point_y);
+    if (floor_x <= (double)INT64_MIN || floor_x >= (double)INT64_MAX
+        || floor_y <= (double)INT64_MIN || floor_y >= (double)INT64_MAX) {
+        return 0.0f;
+    }
+    int64_t cell_x = (int64_t)floor_x, cell_y = (int64_t)floor_y;
+    float local_x = (float)(point_x - floor_x);
+    float local_y = (float)(point_y - floor_y);
+    float nearest_squared = 2.0f;
+
+    /* The containing cell bounds F1 by sqrt(2). Cells beyond this 5x5
+     * neighborhood cannot improve that bound, even with full-cell jitter. */
+    for (int offset_y = -2; offset_y <= 2; offset_y += 1) {
+        for (int offset_x = -2; offset_x <= 2; offset_x += 1) {
+            int64_t lattice_x = cell_x + offset_x;
+            int64_t lattice_y = cell_y + offset_y;
+            if (period_x > 0) lattice_x = noise_wrap_lattice(lattice_x, period_x);
+            if (period_y > 0) lattice_y = noise_wrap_lattice(lattice_y, period_y);
+            uint64_t hash = noise_hash(context->seed, lattice_x, lattice_y);
+            float jitter_x = (float)(hash & UINT64_C(0xffffff)) / 16777216.0f;
+            float jitter_y = (float)((hash >> 24) & UINT64_C(0xffffff)) / 16777216.0f;
+            float dx = (float)offset_x + jitter_x - local_x;
+            float dy = (float)offset_y + jitter_y - local_y;
+            nearest_squared = fminf(nearest_squared, dx * dx + dy * dy);
+        }
+    }
+    return sqrtf(nearest_squared);
+}
+
 static bool evaluate_expression(
     Evaluator *evaluator,
     const Expr *expression,
@@ -553,6 +597,19 @@ static bool evaluate_call(
                     period_y
                 )
             );
+        }
+    } else if (call_name_is(evaluator, expression, "cellular")
+        && (argument_count == 1 || argument_count == 2)
+        && value_is_vec2(&arguments[0])) {
+        int64_t period_x = 0, period_y = 0;
+        if (argument_count == 2
+            && (!noise_period_component(arguments[1].components[0], &period_x)
+                || !noise_period_component(arguments[1].components[1], &period_y))) {
+            evaluator_fail(evaluator, expression->span,
+                "cellular period must contain positive integers");
+        } else {
+            resolved = value_set_float(out_value, cellular_value(evaluator->context,
+                arguments[0].components[0], arguments[0].components[1], period_x, period_y));
         }
     } else if (call_name_is(evaluator, expression, "vec2")
         && argument_count == 2

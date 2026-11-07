@@ -23,16 +23,17 @@ static bool write_source(const char *path, const char *text, size_t length)
     fprintf(stderr, "FAIL viewer source lifecycle at line %d\n", __LINE__); \
     passed = false; goto cleanup; } } while (0)
 
-static bool test_ripple_slopes(void)
+static bool test_wave_texture(const char *path, bool slopes)
 {
     ViewSource source = {0};
     PreparedProgram prepared = {0};
     CompileError error;
     char read_error[256];
-    bool valid = view_source_poll(&source, "examples/waves/ripples.gtex", read_error, sizeof(read_error)) == VIEW_SOURCE_CHANGED
+    bool valid = view_source_poll(&source, path, read_error, sizeof(read_error)) == VIEW_SOURCE_CHANGED
         && prepare_program(source.text, source.length, grafictex_dialect(), 0, &prepared, &error);
+    float channel_difference = 0;
     float minimum[2] = {1, 1}, maximum[2] = {0, 0};
-    for (size_t index = 0; valid && index < 32; index += 1) {
+    for (size_t index = 0; valid && index < 64; index += 1) {
         EvalContext context = {.uv = {(float)index / 31.0f + 0.017f, (float)index / 17.0f - 0.23f},
             .resolution = {512, 512}, .seed = 42};
         RuntimeValue original, shifted;
@@ -52,12 +53,18 @@ static bool test_ripple_slopes(void)
             minimum[channel] = fminf(minimum[channel], value);
             maximum[channel] = fmaxf(maximum[channel], value);
         }
-        valid = valid && original.components[2] == 0.5f && original.components[3] == 1;
+        valid = valid && original.components[3] == 1;
+        if (slopes) valid = valid && original.components[2] == 0.5f;
+        else {
+            valid = valid && original.components[2] == 0;
+            channel_difference += fabsf(original.components[0] - original.components[1]);
+        }
     }
     valid = valid && maximum[0] - minimum[0] > 0.1f && maximum[1] - minimum[1] > 0.1f;
+    valid = valid && (slopes || channel_difference > 1.0f);
     prepared_program_destroy(&prepared);
     view_source_destroy(&source);
-    printf("%s tileable ripple slopes and channel encoding\n", valid ? "PASS" : "FAIL");
+    printf("%s tileable wave texture and channel encoding: %s\n", valid ? "PASS" : "FAIL", path);
     return valid;
 }
 
@@ -80,7 +87,8 @@ int main(void)
     char *glsl = NULL;
     Image image = {0};
     GraficMesh mesh = {0};
-    bool passed = test_ripple_slopes();
+    bool passed = test_wave_texture("examples/waves/ripples.gtex", true)
+        && test_wave_texture("examples/waves/foam.gtex", false);
     CHECK(write_source(path, valid, strlen(valid)));
     CHECK(view_source_poll(&source, path, error, sizeof(error)) == VIEW_SOURCE_CHANGED);
     CHECK(view_shader_compile(&source, SHADER_STAGE_FRAGMENT, 0, &glsl, &compile_error));

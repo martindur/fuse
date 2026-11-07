@@ -80,7 +80,8 @@ size 2 by 2, with 64 subdivisions along X and Z, and Y up.
 grafic view examples/waves/waves.gvert
 grafic view examples/waves/waves.gmesh \
   --vert examples/waves/waves.gvert --frag examples/waves/waves.gfrag \
-  --tex0 examples/waves/ripples.gtex
+  --tex0 examples/waves/ripples.gtex \
+  --tex1 examples/waves/foam.gtex
 ```
 
 Use `--frag FILE.gfrag` to supply a surface color program. The default vertex
@@ -94,7 +95,9 @@ from authored, interpolated wave normals, shader-generated sky reflections,
 Fresnel strength, and sun glints. `view.direction` points toward the viewer in
 surface-local space. Two scrolling samples of `ripples.gtex`, supplied with `--tex0`, perturb the
 shading normal without changing geometry. Press `2` to inspect the map and `1`
-to return to the water. A subtle screen-space fade blends toward a chosen color. The vertex, fragment, and mesh sources live
+to return to the water. `foam.gtex`, supplied with `--tex1`, breaks crest foam
+into diffuse strands and patches; press `3` to inspect that mask. A subtle
+screen-space fade blends toward a chosen color. The vertex, fragment, and mesh sources live
 together in `examples/waves/`; edit them to explore motion, color, and geometry.
 A `.gfrag` source still opens fullscreen unless `--mesh` or `--vert` requests a
 3D surface. Each role can be supplied once; a primary file already fills its

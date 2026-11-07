@@ -56,17 +56,18 @@ rendering host, compile textures to PNG with `grafic tex` and shaders with `graf
 - `waves.gvert` combines a dominant Gerstner swell, a smaller supporting swell, and a weak crossing wave.
 - `waves.gfrag` combines water color, reflected sky, Fresnel reflection, and sun glints.
 - `ripples.gtex` supplies a tileable ripple-slope map, bound to `tex0`.
+- `foam.gtex` supplies tileable foam patch and breakup fields, bound to `tex1`.
 
 ```sh
 build/grafic view examples/waves/waves.gmesh \
   --vert examples/waves/waves.gvert \
   --frag examples/waves/waves.gfrag \
-  --tex0 examples/waves/ripples.gtex
+  --tex0 examples/waves/ripples.gtex \
+  --tex1 examples/waves/foam.gtex
 ```
 
 Edit any source to reload it independently. Press `W` to inspect triangles or
-`U` to compare UV colors. Press `2` to inspect the ripple texture and `1` to
-return to the surface. Increase mesh subdivisions for finer silhouettes; ripple
+`U` to compare UV colors. Press `2` to inspect ripples, `3` to inspect foam, and `1` to return to the surface. Increase mesh subdivisions for finer silhouettes; ripple
 shading does not add vertices.
 
 The vertex shader uses Gerstner displacement: vertices move horizontally toward
@@ -112,3 +113,32 @@ viewer; pass `--seed` to choose another pattern. Save the `.gtex` source to
 regenerate and reload it. `.show()` can inspect intermediate noise or slope
 values, and `.show()` on the fragment's shading normal displays that normal
 using the usual numeric preview colors.
+
+The foam texture layers cellular distances at several sizes: red holds larger
+bubble holes inside irregular patches, and green holds finer bubble breakup. Both are tileable linear pattern fields; blue is unused and alpha is
+opaque. The material samples them with different scrolling UVs and combines them
+before thresholding, making patches join and break apart as their overlap changes.
+A small UV offset from the moving ripple map bends both fields. Stronger crests
+lower the threshold to fill in denser froth; an upward-normal mask restricts it
+to wave tops, leaving more reflective water exposed.
+
+`foam_start`, `foam_scale`, and `foam_strength` in `waves.gfrag` control placement,
+pattern size, and opacity. Raise `foam_threshold` to leave fewer foam patches;
+`foam_distortion` controls how much the ripple map bends them. The start threshold uses normalized wave height:
+it is an artistic crest proxy, not a breaking-wave simulation. Add `.show()` at
+the end of the `foam_coverage` chain to inspect the animated coverage, or on
+`patches` and `strands` in `foam.gtex` to inspect each field separately.
+
+Foam has its own pale diffuse color. Mixing it over the reflected water reduces
+water reflections and sun glints according to coverage. It does not inherit the
+water's sharp specular lighting. The former pale height bands are removed.
+
+Export the foam fields as an ordinary packed PNG texture for another rendering host:
+
+```sh
+build/grafic tex --width 512 --height 512 --seed 42 \
+  < examples/waves/foam.gtex > build/foam.png
+```
+
+Import it as linear mask data and bind it to `tex1` alongside the exported shaders.
+This version is stateless: it has no persistent trails after a crest passes.
