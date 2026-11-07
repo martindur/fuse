@@ -681,6 +681,31 @@ int main(int argc, char **argv)
     view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
     glReadPixels(64, 64, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, water_view);
     CHECK(memcmp(foam_view, water_view, sizeof(foam_view)) == 0);
+    /* Below the crest threshold, foam belongs only on the short trailing face. */
+    const char *trail_coverage_end = strstr(water_file.text, "// Finite differences");
+    CHECK(trail_coverage_end != NULL);
+    size_t trail_capacity = water_file.length + 128;
+    char *trail_source = malloc(trail_capacity);
+    CHECK(trail_source != NULL);
+    snprintf(trail_source, trail_capacity,
+        "%.*svec4(foam_coverage, foam_coverage, foam_coverage, 1.0)",
+        (int)(trail_coverage_end - water_file.text), water_file.text);
+    const char *trail_vertices[] = {
+        "vertex(position, uv, vec3(-0.47, 1.0, -0.171)).mask(0.1)",
+        "vertex(position, uv, vec3(0.47, 1.0, 0.171)).mask(0.1)",
+        "vertex(position, uv, vec3(-0.47, 1.0, -0.171)).mask(-0.2)"
+    };
+    bool trail_valid = set_texture(&renderer, 1, "vec4(1.0, 1.0, 1.0, 1.0)", 1, 1, &error);
+    for (size_t side = 0; side < 3 && trail_valid; side += 1) {
+        trail_valid = set_mesh_sources(&renderer, trail_vertices[side], trail_source, &error);
+        if (trail_valid) {
+            view_renderer_draw_mesh(&renderer, 128, 128, 0.0f, false, false);
+            int coverage = side == 0 ? 255 : 0;
+            trail_valid = pixel_equals(64, 64, coverage, coverage, coverage);
+        }
+    }
+    free(trail_source);
+    CHECK(trail_valid);
     CHECK(load_texture(&renderer, 1, "examples/waves/foam.gtex", &error));
     /* With geometry and ripple normals fixed, foam alone must animate. */
     CHECK(set_mesh_sources(&renderer, "vertex(position.add(vec3(0.0, 0.15, 0.0)), uv, vec3(0.0, 1.0, 0.0)).mask(1.0)", water_file.text, &error));
@@ -732,8 +757,28 @@ int main(int argc, char **argv)
     glReadPixels(0, 0, 128, 128, GL_RGBA, GL_UNSIGNED_BYTE, after_wave);
     CHECK(memcmp(before_wave, after_wave, sizeof(before_wave)) != 0);
     if (argc > 6) {
+        /* Capture the actual example grid, with an optional denser comparison. */
+        GraficMesh preview_mesh = {0};
+        ViewSource grid_source = {0};
+        CHECK(view_source_poll(&grid_source, "examples/waves/waves.gmesh", read_error,
+            sizeof(read_error)) == VIEW_SOURCE_CHANGED);
+        CompileError grid_error;
+        bool uploaded = view_mesh_render(&grid_source, 0, &preview_mesh, &grid_error)
+            && view_renderer_set_mesh(&renderer, &preview_mesh, &error);
+        view_source_destroy(&grid_source);
+        graficmesh_mesh_destroy(&preview_mesh);
+        CHECK(uploaded);
         view_renderer_draw_mesh(&renderer, 512, 512, 1.0f, false, false);
         CHECK(snapshot(argv[6]));
+        if (argc > 7) {
+            GraficMeshGridSpec dense_grid = {2, 2, 128, 128};
+            uploaded = graficmesh_mesh_from_grid(&dense_grid, &preview_mesh, &mesh_error)
+                && view_renderer_set_mesh(&renderer, &preview_mesh, &error);
+            graficmesh_mesh_destroy(&preview_mesh);
+            CHECK(uploaded);
+            view_renderer_draw_mesh(&renderer, 512, 512, 1.0f, false, false);
+            CHECK(snapshot(argv[7]));
+        }
     }
 
     /* A farther triangle drawn last must not obscure the nearer triangle. */

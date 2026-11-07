@@ -203,6 +203,12 @@ material mixed over reflected water before the screen-space fade, so high covera
 water reflections instead of adding white to the specular result. Both the
 pattern and the crest gate remain inspectable with `.show()`.
 
+A short stateless trailing region uses the surface normal's alignment with the
+dominant wave direction and the same compression mask. It appears on the back
+face below the crest threshold and erodes away as the surface expands. It does
+not receive the crest connection boost. Direction and cutoff are authored in
+the example; no extra stage input or simulation state is required.
+
 The example bakes cellular patterns with `.gtex` and uses ordinary shader math.
 It has no foam history; persistent trails are deferred to future stateful effects
 and export contracts.

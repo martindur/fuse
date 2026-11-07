@@ -54,15 +54,42 @@ let water = rgb(0.01, 0.07, 0.14)
   .mix(rgb(0.025, 0.32, 0.38), height);
 
 // The vertex mask measures horizontal compression, not wave height.
-let foam_start = 0.38;
+let foam_start = 0.32;
 let foam_scale = 2.0;
 let foam_strength = 1.0;
 let foam_threshold = 0.55;
+let foam_connection = 0.2;
 let foam_relief = 0.008;
+let foam_trail_strength = 0.85;
+let foam_trail_end = -0.12;
+
+// Keep this direction aligned with the dominant swell in waves.gvert.
+let foam_direction = vec3(0.94, 0.0, 0.342)
+  .normalize();
 
 let foam_crest = surface.mask
   .add(foam_start.multiply(-1.0))
   .multiply(3.5)
+  .clamp(0.0, 1.0);
+
+// The trailing face rises along the direction of travel; its normal points back.
+let foam_back = surface.normal
+  .dot(foam_direction)
+  .multiply(-3.0)
+  .clamp(0.0, 1.0);
+
+// Leave a short tail into slightly expanded water, then erode it completely.
+let foam_trail_extent = surface.mask
+  .add(foam_trail_end.multiply(-1.0))
+  .multiply(4.0)
+  .clamp(0.0, 1.0);
+
+let foam_trail = foam_back
+  .multiply(foam_trail_extent)
+  .multiply(foam_trail_strength);
+
+let foam_presence = foam_crest
+  .add(foam_trail)
   .clamp(0.0, 1.0);
 
 // Small moving offsets bend the patterns as they scroll.
@@ -95,17 +122,24 @@ let foam_peak = surface.normal
   .clamp(0.0, 1.0)
   .pow(4.0);
 
-// As the crest falls, raise the threshold until holes eat through the patch.
-// With no crest, the threshold exceeds the pattern's maximum of one.
-let foam_erosion = foam_crest
+// Behind the crest, declining compression erodes the trail into smaller fragments.
+// Without a crest or trailing face, the threshold exceeds the pattern maximum.
+let foam_erosion = foam_presence
   .multiply(-0.55)
   .add(0.55)
   .add(foam_peak.multiply(-0.25).add(0.25));
+
+// Strong compression joins fragments across the peak; weak crests stay patchy.
+// The boost remains below foam_threshold, preserving large gaps in the pattern.
+let foam_join = foam_crest
+  .pow(2.0)
+  .multiply(foam_connection);
 
 let foam_fill = foam_patches
   .multiply(0.65)
   .add(foam_strands.multiply(0.35))
   .add(foam_erosion.multiply(-1.0))
+  .add(foam_join)
   .add(foam_threshold.multiply(-1.0))
   .multiply(25.0)
   .clamp(0.0, 1.0);

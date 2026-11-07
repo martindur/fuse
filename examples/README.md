@@ -99,6 +99,10 @@ the glint multiplier controls brightness. This is an artistic approximation of
 rough reflections using the analytic sky. `screen.uv.y()` retains a subtle
 artistic fade toward a chosen color. The viewer background is unchanged.
 
+The current 64×64 grid preserves the wave silhouettes at the default preview
+scale. A 128×128 comparison showed little visible benefit, so the example keeps
+64×64; raise subdivisions for closer views if needed.
+
 Each chained operation has its own line, including bindings, so `.show()` can
 be inserted between steps while exploring the example.
 
@@ -131,7 +135,9 @@ to wave tops. As the crest falls, the threshold rises: holes widen and strands
 separate while surviving fragments stay opaque. Only their edges soften.
 
 `foam_start`, `foam_scale`, and `foam_strength` in `waves.gfrag` control placement,
-pattern size, and opacity. Raise `foam_threshold` to leave fewer foam patches;
+pattern size, and opacity. Raise `foam_threshold` to leave fewer foam patches.
+`foam_connection` lowers the erosion threshold most strongly at compressed peaks,
+joining fragments into broken crest lines while weaker crests remain scattered;
 `foam_distortion` controls how much the ripple map bends them. `foam_relief`
 controls subtle bubble-scale normals sampled from the same moving detail field.
 The start threshold uses horizontal compression supplied by the vertex shader's
@@ -141,6 +147,15 @@ means expanded. A tall, gentle swell can stay foam-free. This is a formation
 proxy, not a breaking-wave simulation. Add `.show()` at
 the end of the `foam_coverage` chain to inspect the animated coverage, or on
 `patches` and `strands` in `foam.gtex` to inspect each field separately.
+
+`foam_trail_strength` adds a short tail on the face behind a crest. The normal's
+alignment with `foam_direction` identifies that face; compression controls how
+far the trail extends into spreading water. `foam_trail_end` is the cutoff in
+compression units (negative values permit a little expansion). Keep
+`foam_direction` aligned with the dominant swell in `waves.gvert`. The crest
+connection boost applies only to crest foam, so the tail is sparser and erodes
+into separate opaque fragments. This geometry-driven approximation follows the
+wave shape; it does not store foam age or let foam drift independently.
 
 Foam has its own pale diffuse color. Mixing it over the reflected water reduces
 water reflections and sun glints according to coverage. It does not inherit the
@@ -154,4 +169,5 @@ build/grafic tex --width 512 --height 512 --seed 42 \
 ```
 
 Import it as linear mask data and bind it to `tex1` alongside the exported shaders.
-This version is stateless: it has no persistent trails after a crest passes.
+This version is stateless: its short trailing region follows the wave rather
+than persisting independently after the wave passes.
