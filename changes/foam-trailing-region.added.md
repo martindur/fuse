@@ -1,1 +1,0 @@
-Add a short stateless foam region behind wave crests, using the trailing surface slope and horizontal compression to erode fragments as water spreads. Expose trail strength, direction, and expansion cutoff in the wave material. Retain the 64-by-64 example grid after comparing it with 128-by-128 at the default preview scale.

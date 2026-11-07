@@ -1,1 +1,1 @@
-Compile `.gvert` vertex programs with `grafic gl --stage vertex` and preview GPU-animated surfaces directly with `grafic view`. Vertex programs return local-space positions and support stage-specific diagnostics, completion, hover, and `.show()` inspection. Compose independently reloading sources with `--mesh`, `--vert`, and `--frag`, preserving previous working geometry and shaders on errors. Add an animated wave example.
+Compile and preview .gvert vertex shaders, with authored normals, interpolated material masks, and .show() inspection.

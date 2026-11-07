@@ -1,1 +1,0 @@
-Add a layered-wave vertex example combining a broad swell, a crossing wave, and smaller ripples with independent directions, wavelengths, amplitudes, and speeds. Keep the active mesh, vertex shader, and colored lighting shader together under `examples/waves/`, replacing earlier wave iterations.

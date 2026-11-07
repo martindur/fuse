@@ -1,1 +1,0 @@
-Erode wave foam through its texture threshold as crests fall, keeping surviving fragments opaque instead of fading the whole patch. Add bubble-scale diffuse normals from the scrolling detail field, controlled by foam_relief.
